@@ -1,0 +1,2 @@
+A:/aayo-application-master/aayo-application-master/android/app/.cxx/RelWithDebInfo/1g1l7220/x86/CMakeFiles/edit_cache.dir
+A:/aayo-application-master/aayo-application-master/android/app/.cxx/RelWithDebInfo/1g1l7220/x86/CMakeFiles/rebuild_cache.dir

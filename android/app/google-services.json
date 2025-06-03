@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "703528893342",
+    "project_id": "aayoapplication",
+    "storage_bucket": "aayoapplication.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:703528893342:android:dfd41c6955f39e96fbf48f",
+        "android_client_info": {
+          "package_name": "com.aayomeet.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "703528893342-40nj4303s5bk41o7gpfktfllkq7no89j.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCClH9xy_YDsht6rXX3P3gn6Y_HdJNhEMc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "703528893342-40nj4303s5bk41o7gpfktfllkq7no89j.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "703528893342-4t7r4l1do2lfmp61n805nur2tgos7qae.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.aayo"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

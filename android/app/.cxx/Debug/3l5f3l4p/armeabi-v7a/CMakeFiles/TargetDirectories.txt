@@ -1,0 +1,2 @@
+A:/aayo-application-master/aayo-application-master/android/app/.cxx/Debug/3l5f3l4p/armeabi-v7a/CMakeFiles/edit_cache.dir
+A:/aayo-application-master/aayo-application-master/android/app/.cxx/Debug/3l5f3l4p/armeabi-v7a/CMakeFiles/rebuild_cache.dir
