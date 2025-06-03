@@ -142,7 +142,7 @@ class _ChatListPageState extends State<ChatListPage> {
           Expanded(
             child: ListView.builder(
               itemCount: filteredChats.length,
-              itemBuilder: (context, index) {
+              itemBuilder: (context, index) {ccccccc
                 final chat = filteredChats[index];
                 return ListTile(
                   leading: CircleAvatar(
