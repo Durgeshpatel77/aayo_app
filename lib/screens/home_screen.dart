@@ -8,11 +8,15 @@
   import 'package:aayo/screens/eventsScreen.dart';
   import 'package:aayo/screens/events_details.dart';
   import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
+
+import '../providers/home_provider.dart';
   // Import your AddEventsImages
 
   // EventCard widget streamlined to show only the image and event name
   class EventCard extends StatelessWidget {
     final Event event;
+
 
     const EventCard({required this.event, super.key});
 
@@ -193,108 +197,9 @@
   }
 
   class _HomeScreenState extends State<HomeScreen> {
-    int _selectedIndex = 0;
+    DateTime? _lastBackPressTime;
 
-    // List to hold events posted by the user
-    final List<Event> _userPostedEvents = [];
-
-    // Initial random events
-    final List<Event> _randomEvents = [
-      Event(
-          id: '1',
-          name: "Startup Meetup: Innovate & Connect",
-          imageUrl:
-              'https://images.unsplash.com/photo-1527529482837-4698179dc6ce?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-          caption: 'A great networking event for startups.',
-          location: 'Ahmedabad',
-          category: 'Tech',
-          organizer: 'Innovate Hub',
-          price: 25.00,
-          date: DateTime(2025, 6, 15),
-          time: const TimeOfDay(hour: 10, minute: 0),
-          eventDateTime: DateTime(2025, 6, 15, 10, 0)),
-      Event(
-          id: '2',
-          name: "Groovy Music Fest 2024: Summer Beats",
-          imageUrl:
-              'https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-          caption: 'Experience the best summer beats!',
-          location: 'Goa',
-          category: 'Music',
-          organizer: 'Beat Masters',
-          price: 150.00,
-          date: DateTime(2025, 7, 20),
-          time: const TimeOfDay(hour: 18, minute: 0),
-          eventDateTime: DateTime(2025, 7, 20, 18, 0)),
-      Event(
-          id: '3',
-          name: "Future of AI: A Deep Dive Tech Talk",
-          imageUrl:
-              'https://images.unsplash.com/photo-1556125574-d7f27ec36a06?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-          caption: 'Explore the latest in Artificial Intelligence.',
-          location: 'Bangalore',
-          category: 'Tech',
-          organizer: 'AI Minds',
-          price: 50.00,
-          date: DateTime(2025, 8, 10),
-          time: const TimeOfDay(hour: 14, minute: 0),
-          eventDateTime: DateTime(2025, 8, 10, 14, 0)),
-      Event(
-          id: '4',
-          name: "Abstract Art Exhibition: Colors & Forms",
-          imageUrl:
-              'https://images.unsplash.com/photo-1527529482837-4698179dc6ce?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-          caption: 'A vibrant display of contemporary art.',
-          location: 'Mumbai',
-          category: 'Art',
-          organizer: 'Art Gallery',
-          price: 10.00,
-          date: DateTime(2025, 9, 1),
-          time: const TimeOfDay(hour: 11, minute: 0),
-          eventDateTime: DateTime(2025, 9, 1, 11, 0)),
-    ];
-
-    late List<Widget> _screens;
-
-    @override
-    void initState() {
-      super.initState();
-      _updateScreens(); // Initialize _screens here
-    }
-
-    // Helper method to re-initialize _screens when _userPostedEvents changes
-    void _updateScreens() {
-      _screens = [
-        HomeTabContent(
-          // Combine user-posted events (at top) with random events
-          allEvents: [..._userPostedEvents, ..._randomEvents],
-          onEventTapped: _onEventTapped,
-        ),
-        const Eventsscreen(),
-        Addeventsscreen(), // Pass the callback
-        const Notificationscreen(),
-        const UserProfileList(),
-      ];
-    }
-
-    // Callback function to receive posted event from AddEventsImages
-    void _addPostedEvent(Event newEvent) {
-      setState(() {
-        _userPostedEvents.insert(0, newEvent); // Add to the beginning of the list
-        _updateScreens(); // Re-initialize _screens to reflect the new list
-        _selectedIndex = 0; // Navigate back to the home tab
-      });
-    }
-
-    void _onItemTapped(int index) {
-      setState(() {
-        _selectedIndex = index;
-      });
-    }
-
-    void _onEventTapped(String eventName) {
-      // In a real app, you'd pass the event ID or the full Event object
-      // to EventDetailScreen to fetch/display correct details.
+    void _onEventTapped(BuildContext context, String eventName) {
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -305,26 +210,56 @@
 
     @override
     Widget build(BuildContext context) {
-      return Scaffold(
-        body: SafeArea(
-          child: _screens[_selectedIndex],
-        ),
-        bottomNavigationBar: BottomNavigationBar(
-          currentIndex: _selectedIndex,
-          onTap: _onItemTapped,
-          selectedItemColor: Colors.pink,
-          unselectedItemColor: Colors.grey,
-          type: BottomNavigationBarType.fixed,
-          items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
-            BottomNavigationBarItem(icon: Icon(Icons.event), label: "Events"),
-            BottomNavigationBarItem(
-                icon: Icon(Icons.add_circle_outline), label: "Add"),
-            BottomNavigationBarItem(
-                icon: Icon(Icons.notifications), label: "Notification"),
-            BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
-          ],
-        ),
+      return Consumer<homeProvider>(
+        builder: (context, eventProvider, child) {
+          final allScreens = [
+            HomeTabContent(
+              allEvents: eventProvider.allEvents,
+              onEventTapped: (name) => _onEventTapped(context, name),
+            ),
+            const Eventsscreen(),
+            Addeventsscreen(),
+            const Notificationscreen(),
+            const UserProfileList(),
+          ];
+
+          return WillPopScope(
+            onWillPop: () async {
+              if (eventProvider.selectedIndex != 0) {
+                eventProvider.setSelectedIndex(0);
+                return false;
+              }
+
+              DateTime now = DateTime.now();
+              if (_lastBackPressTime == null ||
+                  now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
+                _lastBackPressTime = now;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Tap again to exit')),
+                );
+                return false;
+              }
+              return true;
+            },
+            child: Scaffold(
+              body: SafeArea(child: allScreens[eventProvider.selectedIndex]),
+              bottomNavigationBar: BottomNavigationBar(
+                currentIndex: eventProvider.selectedIndex,
+                onTap: eventProvider.setSelectedIndex,
+                selectedItemColor: Colors.pink,
+                unselectedItemColor: Colors.grey,
+                type: BottomNavigationBarType.fixed,
+                items: const [
+                  BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
+                  BottomNavigationBarItem(icon: Icon(Icons.event), label: "Events"),
+                  BottomNavigationBarItem(icon: Icon(Icons.add_circle_outline), label: "Add"),
+                  BottomNavigationBarItem(icon: Icon(Icons.notifications), label: "Notification"),
+                  BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
+                ],
+              ),
+            ),
+          );
+        },
       );
     }
   }

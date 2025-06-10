@@ -1,10 +1,11 @@
-import 'package:aayo/screens/create_event_screen.dart';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
-import 'package:provider/provider.dart';
-import 'package:aayo/providers/onboarding_provider.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+
+import 'package:aayo/screens/create_event_screen.dart';
+import 'package:aayo/providers/onboarding_provider.dart';
 
 class Addeventsscreen extends StatefulWidget {
   const Addeventsscreen({super.key});
@@ -14,23 +15,10 @@ class Addeventsscreen extends StatefulWidget {
 }
 
 class _AddeventsscreenState extends State<Addeventsscreen> {
-  File? _tempPickedImage;
   final TextEditingController _postController = TextEditingController();
   DateTime? scheduledDateTime;
 
-  Future<void> _pickImage(ImageSource source) async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: source);
-
-    if (pickedFile != null) {
-      setState(() {
-        _tempPickedImage = File(pickedFile.path);
-      });
-      Provider.of<ImageSelectionProvider>(context, listen: false).setImage(_tempPickedImage);
-    } else {
-      Provider.of<ImageSelectionProvider>(context, listen: false).setImage(null);
-    }
-  }
+  static const double _imageDisplayHeight = 200;
 
   Future<void> _scheduleLater() async {
     final pickedDate = await showDatePicker(
@@ -61,7 +49,8 @@ class _AddeventsscreenState extends State<Addeventsscreen> {
   }
 
   bool get isPostEnabled {
-    return (_tempPickedImage != null || _postController.text.trim().isNotEmpty || scheduledDateTime != null);
+    final pickedImage = Provider.of<ImageSelectionProvider>(context).selectedImage;
+    return (pickedImage != null || _postController.text.trim().isNotEmpty || scheduledDateTime != null);
   }
 
   void _submitEvent() {
@@ -72,12 +61,19 @@ class _AddeventsscreenState extends State<Addeventsscreen> {
             : 'Event Posted!'),
       ),
     );
+
+    _postController.clear();
+    Provider.of<ImageSelectionProvider>(context, listen: false).setImage(null);
+    setState(() {
+      scheduledDateTime = null;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
+    final pickedImage = Provider.of<ImageSelectionProvider>(context).selectedImage;
 
     return Scaffold(
       appBar: AppBar(
@@ -92,28 +88,22 @@ class _AddeventsscreenState extends State<Addeventsscreen> {
           children: [
             SizedBox(height: screenHeight * 0.03),
 
-            Row(
-              children: [
-                CircleAvatar(
-                  backgroundImage: const NetworkImage('https://randomuser.me/api/portraits/men/75.jpg'),
-                  radius: screenWidth * 0.065,
-                ),
-                SizedBox(width: screenWidth * 0.03),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text("John Doe", style: TextStyle(fontWeight: FontWeight.bold, fontSize: screenWidth * 0.04)),
-                    Text("Event Organizer", style: TextStyle(color: Colors.grey, fontSize: screenWidth * 0.03)),
-                  ],
-                ),
-              ],
-            ),
+            const UserInfoHeader(),
+
             SizedBox(height: screenHeight * 0.02),
 
             if (scheduledDateTime != null) ...[
-              Text(
-                "Scheduled for: ${DateFormat.yMMMd().add_jm().format(scheduledDateTime!)}",
-                style: TextStyle(color: Colors.blueGrey, fontWeight: FontWeight.w600, fontSize: screenWidth * 0.035),
+              RichText(
+                text: TextSpan(
+                  style: TextStyle(color: Colors.blueGrey, fontSize: screenWidth * 0.035),
+                  children: [
+                    const TextSpan(text: 'Scheduled for: ', style: TextStyle(fontWeight: FontWeight.normal)),
+                    TextSpan(
+                      text: DateFormat.yMMMd().add_jm().format(scheduledDateTime!),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
               ),
               SizedBox(height: screenHeight * 0.01),
             ],
@@ -128,16 +118,16 @@ class _AddeventsscreenState extends State<Addeventsscreen> {
               onChanged: (_) => setState(() {}),
             ),
 
-            if (_tempPickedImage != null) ...[
+            if (pickedImage != null) ...[
               SizedBox(height: screenHeight * 0.02),
               Stack(
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(screenWidth * 0.02),
                     child: Image.file(
-                      _tempPickedImage!,
+                      pickedImage,
                       width: double.infinity,
-                      height: screenHeight * 0.25,
+                      height: _imageDisplayHeight,
                       fit: BoxFit.cover,
                     ),
                   ),
@@ -149,9 +139,6 @@ class _AddeventsscreenState extends State<Addeventsscreen> {
                       child: IconButton(
                         icon: const Icon(Icons.close, color: Colors.white, size: 16),
                         onPressed: () {
-                          setState(() {
-                            _tempPickedImage = null;
-                          });
                           Provider.of<ImageSelectionProvider>(context, listen: false).setImage(null);
                         },
                       ),
@@ -165,39 +152,45 @@ class _AddeventsscreenState extends State<Addeventsscreen> {
 
             Row(
               children: [
-                ElevatedButton.icon(
-                  onPressed: () => _pickImage(ImageSource.gallery),
-                  icon: Icon(Icons.photo, size: screenWidth * 0.045),
-                  label: Text("Gallery", style: TextStyle(fontSize: screenWidth * 0.03)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.pink.shade50,
-                    foregroundColor: Colors.pink,
-                    elevation: 0,
-                    padding: EdgeInsets.symmetric(
-                      horizontal: screenWidth * 0.03,
-                      vertical: screenHeight * 0.015,
+                Tooltip(
+                  message: 'Pick from Gallery',
+                  child: ElevatedButton.icon(
+                    onPressed: () => _pickImage(ImageSource.gallery),
+                    icon: Icon(Icons.photo, size: screenWidth * 0.045),
+                    label: Text("Gallery", style: TextStyle(fontSize: screenWidth * 0.03)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.pink.shade50,
+                      foregroundColor: Colors.pink,
+                      elevation: 0,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: screenWidth * 0.03,
+                        vertical: screenHeight * 0.015,
+                      ),
                     ),
                   ),
                 ),
                 SizedBox(width: screenWidth * 0.02),
-                ElevatedButton.icon(
-                  onPressed: () => _pickImage(ImageSource.camera),
-                  icon: Icon(Icons.camera_alt, size: screenWidth * 0.045),
-                  label: Text("Camera", style: TextStyle(fontSize: screenWidth * 0.03)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.pink.shade50,
-                    foregroundColor: Colors.pink,
-                    elevation: 0,
-                    padding: EdgeInsets.symmetric(
-                      horizontal: screenWidth * 0.03,
-                      vertical: screenHeight * 0.015,
+                Tooltip(
+                  message: 'Capture using Camera',
+                  child: ElevatedButton.icon(
+                    onPressed: () => _pickImage(ImageSource.camera),
+                    icon: Icon(Icons.camera_alt, size: screenWidth * 0.045),
+                    label: Text("Camera", style: TextStyle(fontSize: screenWidth * 0.03)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.pink.shade50,
+                      foregroundColor: Colors.pink,
+                      elevation: 0,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: screenWidth * 0.03,
+                        vertical: screenHeight * 0.015,
+                      ),
                     ),
                   ),
                 ),
                 SizedBox(width: screenWidth * 0.02),
                 ElevatedButton.icon(
                   onPressed: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (context) =>  CreateEventScreen()));
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => const CreateEventScreen()));
                   },
                   icon: Icon(Icons.event, size: screenWidth * 0.045),
                   label: Text("Event", style: TextStyle(fontSize: screenWidth * 0.03)),
@@ -226,21 +219,18 @@ class _AddeventsscreenState extends State<Addeventsscreen> {
                   icon: Icon(Icons.schedule, color: Colors.grey, size: screenWidth * 0.055),
                   tooltip: "Schedule Event",
                 ),
-                SizedBox(
-                  //height: screenHeight * 0.05,
-                  child: ElevatedButton(
-                    onPressed: isPostEnabled ? _submitEvent : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: isPostEnabled ? Colors.pink : Colors.grey,
-                      padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(screenWidth * 0.04),
-                      ),
+                ElevatedButton(
+                  onPressed: isPostEnabled ? _submitEvent : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isPostEnabled ? Colors.pink : Colors.grey,
+                    padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(screenWidth * 0.04),
                     ),
-                    child: Text(
-                      scheduledDateTime != null ? 'Schedule' : 'Post',
-                      style: TextStyle(fontSize: screenWidth * 0.04, color: Colors.white),
-                    ),
+                  ),
+                  child: Text(
+                    scheduledDateTime != null ? 'Schedule' : 'Post',
+                    style: TextStyle(fontSize: screenWidth * 0.04, color: Colors.white),
                   ),
                 ),
               ],
@@ -248,6 +238,37 @@ class _AddeventsscreenState extends State<Addeventsscreen> {
           ],
         ),
       ),
+    );
+  }
+
+  void _pickImage(ImageSource source) async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: source);
+    Provider.of<ImageSelectionProvider>(context, listen: false)
+        .setImage(pickedFile != null ? File(pickedFile.path) : null);
+  }
+}
+
+class UserInfoHeader extends StatelessWidget {
+  const UserInfoHeader({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    return Row(
+      children: [
+        const CircleAvatar(
+          backgroundImage: NetworkImage('https://randomuser.me/api/portraits/men/75.jpg'),
+        ),
+        SizedBox(width: screenWidth * 0.03),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("John Doe", style: TextStyle(fontWeight: FontWeight.bold, fontSize: screenWidth * 0.04)),
+            Text("Event Organizer", style: TextStyle(color: Colors.grey, fontSize: screenWidth * 0.03)),
+          ],
+        ),
+      ],
     );
   }
 }

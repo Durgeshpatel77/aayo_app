@@ -1,16 +1,13 @@
 import 'package:aayo/screens/home_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import '../providers/favorite_category_provider.dart';
 
-class ChooseFavoriteScreen extends StatefulWidget {
+class ChooseFavoriteScreen extends StatelessWidget {
   const ChooseFavoriteScreen({Key? key}) : super(key: key);
 
-  @override
-  State<ChooseFavoriteScreen> createState() => _ChooseFavoriteScreenState();
-}
-
-class _ChooseFavoriteScreenState extends State<ChooseFavoriteScreen> {
-  final List<Map<String, String>> categories = [
+  final List<Map<String, String>> categories = const [
     {'icon': '💼', 'title': 'Business'},
     {'icon': '🙌', 'title': 'Community'},
     {'icon': '🎵', 'title': 'Music & Entertainment'},
@@ -29,10 +26,10 @@ class _ChooseFavoriteScreenState extends State<ChooseFavoriteScreen> {
     {'icon': '✈️', 'title': 'Travel'},
   ];
 
-  final Set<String> selectedCategories = {};
-
   @override
   Widget build(BuildContext context) {
+    final provider = Provider.of<FavoriteCategoryProvider>(context);
+
     return Scaffold(
       body: SafeArea(
         child: Padding(
@@ -58,8 +55,6 @@ class _ChooseFavoriteScreenState extends State<ChooseFavoriteScreen> {
                 ),
               ),
               const SizedBox(height: 25),
-
-              // Scrollable list with dynamic layout
               Expanded(
                 child: SingleChildScrollView(
                   child: Wrap(
@@ -68,32 +63,36 @@ class _ChooseFavoriteScreenState extends State<ChooseFavoriteScreen> {
                     children: categories.map((cat) {
                       final title = cat['title']!;
                       final icon = cat['icon']!;
-                      final isSelected = selectedCategories.contains(title);
-                      return _buildCategoryItem(icon, title, isSelected);
+                      final isSelected = provider.isSelected(title);
+                      return _buildCategoryItem(
+                        context,
+                        icon,
+                        title,
+                        isSelected,
+                      );
                     }).toList(),
                   ),
                 ),
               ),
-
-              // Finish Button
               Padding(
                 padding: const EdgeInsets.only(bottom: 20, top: 10),
                 child: SizedBox(
                   width: double.infinity,
                   height: 52,
                   child: ElevatedButton(
-                    onPressed: selectedCategories.isNotEmpty
+                    onPressed: provider.hasSelection
                         ? () {
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) => HomeScreen()),
-                            );
-                          }
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const HomeScreen(),
+                        ),
+                      );
+                    }
                         : null,
                     style: ElevatedButton.styleFrom(
                       elevation: 0,
-                      backgroundColor: selectedCategories.isNotEmpty
+                      backgroundColor: provider.hasSelection
                           ? Colors.pink
                           : Colors.grey[600],
                       shape: RoundedRectangleBorder(
@@ -118,17 +117,11 @@ class _ChooseFavoriteScreenState extends State<ChooseFavoriteScreen> {
     );
   }
 
-  Widget _buildCategoryItem(String icon, String title, bool isSelected) {
+  Widget _buildCategoryItem(BuildContext context, String icon, String title, bool isSelected) {
+    final provider = Provider.of<FavoriteCategoryProvider>(context, listen: false);
+
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          if (isSelected) {
-            selectedCategories.remove(title);
-          } else {
-            selectedCategories.add(title);
-          }
-        });
-      },
+      onTap: () => provider.toggleCategory(title),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(

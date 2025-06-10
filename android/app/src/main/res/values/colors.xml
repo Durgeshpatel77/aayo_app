@@ -1,0 +1,5 @@
+<resources>
+    <!-- Other colors -->
+
+    <color name="your_notification_color">#FF0000FF</color> <!-- Blue, for example -->
+</resources>

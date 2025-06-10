@@ -28,9 +28,9 @@ class EditProfileScreen extends StatefulWidget {
     super.key,
     this.initialName = 'Tanya Hill', // Default for demonstration
     this.initialAbout =
-        'We have a team but still missing a couple of people. Let\'s play together! We have a team but still missing a couple of people.', // Default
+    'We have a team but still missing a couple of people. Let\'s play together! We have a team but still missing a couple of people.', // Default
     this.initialProfileImageUrl =
-        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=1964&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', // Example profile pic
+    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=1964&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', // Example profile pic
     this.initialProfileImageFile,
     this.initialemail = "durgesh@gmail.com",  this.initialmobile="+91 9662153554", // Initial local file
   });
@@ -65,7 +65,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Future<void> _pickImage() async {
     final XFile? image =
-        await ImagePicker().pickImage(source: ImageSource.gallery);
+    await ImagePicker().pickImage(source: ImageSource.gallery);
     if (image != null) {
       setState(() {
         _pickedProfileImage = File(image.path);
@@ -134,14 +134,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     backgroundColor: Colors.grey[200],
                     backgroundImage: _pickedProfileImage != null
                         ? FileImage(_pickedProfileImage!)
-                            as ImageProvider<Object>?
+                    as ImageProvider<Object>?
                         : (widget.initialProfileImageUrl.isNotEmpty
-                                ? NetworkImage(widget.initialProfileImageUrl)
-                                : const AssetImage(
-                                    'assets/placeholder_profile.png'))
-                            as ImageProvider<Object>?,
+                        ? NetworkImage(widget.initialProfileImageUrl)
+                        : const AssetImage(
+                        'assets/placeholder_profile.png'))
+                    as ImageProvider<Object>?,
                     child: _pickedProfileImage == null &&
-                            widget.initialProfileImageUrl.isEmpty
+                        widget.initialProfileImageUrl.isEmpty
                         ? Icon(Icons.person, size: 60, color: Colors.grey[600])
                         : null,
                   ),
@@ -152,7 +152,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       backgroundColor: Colors.pinkAccent,
                       radius: 20,
                       child:
-                          Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                      Icon(Icons.camera_alt, color: Colors.white, size: 20),
                     ),
                   ),
                 ],
@@ -177,8 +177,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
 
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.pink.shade500,width: 1)
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.pink.shade500,width: 1)
               ),
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
@@ -212,7 +212,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               hintText: 'Enter your mobile number',
               prefixIcon: Icons.person,
             ),
-SizedBox(height: 20,),
+            SizedBox(height: 20,),
             Container(
               height: 55,
               padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -251,7 +251,7 @@ SizedBox(height: 20,),
                 backgroundColor: Colors.pink, // Button color
                 foregroundColor: Colors.white, // Text color
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 140, vertical: 15),
+                const EdgeInsets.symmetric(horizontal: 140, vertical: 15),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -262,8 +262,8 @@ SizedBox(height: 20,),
               ),
             ),
 
-    ],
-              ),
+          ],
+        ),
       ),);
   }
 }

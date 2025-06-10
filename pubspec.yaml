@@ -55,8 +55,11 @@ dependencies:
   latlong2: ^0.9.0
   open_street_map_search_and_pick: ^0.1.1
   cloud_firestore: ^5.6.8
-  change_app_package_name: ^1.5.0
   flutter_launcher_icons: ^0.14.3
+  flutter_local_notifications: ^19.2.1
+  firebase_messaging: ^15.2.6
+  overlay_support: ^2.1.0
+  shared_preferences: ^2.5.3
 flutter_launcher_icons:
   android: true
   ios: true
