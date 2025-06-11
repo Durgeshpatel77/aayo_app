@@ -37,7 +37,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => GoogleSignInProvider()),
         ChangeNotifierProvider(create: (_) => ChatProvider()),
         ChangeNotifierProvider(create: (_) => FavoriteCategoryProvider()),
-        ChangeNotifierProvider(create: (_) => EventPostProvider()),
+        ChangeNotifierProvider(create: (_) => EventCreationProvider()),
         ChangeNotifierProvider(create: (_) => OnboardingProvider()),
         ChangeNotifierProvider(create: (_) => WriteToUsProvider()),
 

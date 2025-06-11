@@ -217,7 +217,7 @@ import '../providers/home_provider.dart';
               allEvents: eventProvider.allEvents,
               onEventTapped: (name) => _onEventTapped(context, name),
             ),
-            const Eventsscreen(),
+             Eventsscreen(),
             Addeventsscreen(),
             const Notificationscreen(),
             const UserProfileList(),

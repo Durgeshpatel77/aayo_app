@@ -8,7 +8,10 @@ import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart'; // Import image_picker
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 
+import '../models/Create_Event_model.dart';
+import '../providers/event_provider.dart';
 import '../widgets/TextField _editprofiile.dart'; // For date formatting
 
 class CreateEventScreen extends StatefulWidget {
@@ -82,7 +85,6 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
         _startDate = picked;
       });
       // Prompt for start time immediately
-      await _selectStartTime(context);
     }
   }
   Future<void> _selectEndDate(BuildContext context) async {
@@ -90,11 +92,11 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
       context: context,
       initialDate: _endDate ?? _startDate ?? DateTime.now(),
       firstDate: _startDate ?? DateTime.now(),
-      lastDate: DateTime.now().add(Duration(days: 365 * 5)),
+      lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.dark(
+            colorScheme: const ColorScheme.dark(
               primary: Colors.pink,
               onPrimary: Colors.white,
               onSurface: Colors.white,
@@ -107,12 +109,18 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
         );
       },
     );
+
     if (picked != null) {
+      if (_startDate != null && picked.isBefore(_startDate!)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('End date can’t be before start date')),
+        );
+        return;
+      }
+
       setState(() {
         _endDate = picked;
       });
-      // Prompt for end time immediately
-      await _selectEndTime(context);
     }
   }
   // --- Time Picking Functions ---
@@ -528,20 +536,21 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                 children: [
                   _buildDateTimeRow(
                     context: context,
+                    date: _startDate,
+                    time: _startTime,
+                    onSelectDate: () => _selectStartDate(context),
+                    onSelectTime: () => _selectStartTime(context),
+                    text: 'Select Start Date & time',
+                  ),
+                  const SizedBox(height: 20),
+
+                  _buildDateTimeRow(
+                    context: context,
                     date: _endDate,
                     time: _endTime,
                     onSelectDate: () => _selectEndDate(context), // Fix this
                     onSelectTime: () => _selectEndTime(context), // Fix this
                     text: 'Select End Date & Time',
-                  ),
-                  const SizedBox(height: 20),
-                  _buildDateTimeRow(
-                    context: context,
-                    date: _endDate,
-                    time: _endTime,
-                    onSelectDate: () => _selectStartDate(context),
-                    onSelectTime: () => _selectStartTime(context),
-                    text: 'Select End Date & time',
                   ),
                 ],
               ),
@@ -749,17 +758,25 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                           left: 8.0), // space between buttons
                       child: ElevatedButton(
                         onPressed: () {
-                          print('Event Name: ${_eventNameController.text}');
-                          print('Start Date: ${_startDate?.toIso8601String()}');
-                          print('Start Time: ${_startTime?.format(context)}');
-                          print('End Date: ${_endDate?.toIso8601String()}');
-                          print('End Time: ${_endTime?.format(context)}');
-                          print('Require Approval: $_requireApproval');
-                          print('Image picked: ${_pickedEventImage?.path}');
+                          final newEvent = EventModel(
+                            name: _eventNameController.text,
+                            startDate: _startDate,
+                            startTime: _startTime,
+                            endDate: _endDate,
+                            endTime: _endTime,
+                            location: selectedLocation,
+                            description: 'Some description', // if you capture it
+                            ticketType: _ticketType,
+                            ticketPrice: _ticketType == 'Paid' ? _ticketPrice : null,
+                            image: _pickedEventImage,
+                          );
 
+                          Provider.of<EventCreationProvider>(context, listen: false)
+                              .addEvent(newEvent);
+
+                          Navigator.pop(context); // Go back to event list page or your event tab
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text('Create Event button tapped!')),
+                            const SnackBar(content: Text('Event created!')),
                           );
                         },
                         style: ElevatedButton.styleFrom(

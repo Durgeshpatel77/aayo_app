@@ -4,46 +4,48 @@ class TextfieldEditprofiile extends StatelessWidget {
   final TextEditingController controller;
   final String hintText;
   final IconData prefixIcon;
-  final bool obscureText;
-  final int maxLines;
+  final bool readOnly;
+  final TextInputType keyboardType;
+  final int? maxLines;
 
   const TextfieldEditprofiile({
-    Key? key,
+    super.key,
     required this.controller,
     required this.hintText,
-    this.prefixIcon = Icons.person,
-    this.obscureText = false,
-    this.maxLines = 1,  // default to 1 line
-
-  }) : super(key: key);
+    required this.prefixIcon,
+    this.readOnly = false,
+    this.keyboardType = TextInputType.text,
+    this.maxLines = 1,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final pink = Colors.pinkAccent;
-
     return TextField(
       controller: controller,
+      readOnly: readOnly,
+      keyboardType: keyboardType,
+      maxLines: maxLines,
       decoration: InputDecoration(
         hintText: hintText,
-        hintStyle: TextStyle(color: Colors.black),
+        prefixIcon: Icon(prefixIcon, color: Colors.grey),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.pink.shade500, width: 1),
+        ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: pink.shade400, width: 1),
+          borderSide: BorderSide(color: Colors.pink.shade500, width: 1),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: pink.shade400, width: 1),
+          borderSide: BorderSide(color: Colors.pink, width: 2), // Highlight when focused
         ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: pink.shade400, width: 1),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: pink.shade400, width: 1),
-        ),
+        fillColor: Colors.white,
+        filled: true,
+        contentPadding: const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
       ),
-      maxLines: maxLines,
+      style: const TextStyle(fontSize: 16),
+      cursorColor: Colors.pink, // Custom cursor color
     );
   }
 }

@@ -60,6 +60,7 @@ dependencies:
   firebase_messaging: ^15.2.6
   overlay_support: ^2.1.0
   shared_preferences: ^2.5.3
+  firebase_storage: ^12.4.7
 flutter_launcher_icons:
   android: true
   ios: true

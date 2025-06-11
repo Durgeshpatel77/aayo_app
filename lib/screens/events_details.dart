@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:ionicons/ionicons.dart';
 
 import '../res/app_colors.dart';
+import 'Approve_screen.dart';
 import 'ChatPage.dart';
 import 'home_screen.dart';
 
@@ -18,13 +19,17 @@ class EventDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    final screenWidth = mediaQuery.size.width;
+    final screenHeight = mediaQuery.size.height;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SingleChildScrollView(
         child: Column(
           children: [
             Container(
-              height: 280,
+              height: 250,
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
@@ -33,19 +38,19 @@ class EventDetailScreen extends StatelessWidget {
                     child: Image.network(
                       'https://images.unsplash.com/photo-1504609813442-a8924e83f76e?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
                       width: double.infinity,
-                      height: 200,
+                      height: 300,
                       fit: BoxFit.cover,
                     ),
                   ),
-// Inside your Stack widget
+                  // The "Manage Access" message, styled as a card/banner
                   Positioned(
-                    top: 44,
+                    top: 54,
                     left: 22,
                     child: InkWell(
                       onTap: () {
                         Navigator.pop(context);
                       },
-                      child: const Icon(
+                      child: Icon(
                         Icons.arrow_back_ios_new,
                         color: Colors.white,
                         size: 25,
@@ -54,7 +59,7 @@ class EventDetailScreen extends StatelessWidget {
                   ),
 
                   Positioned(
-                    top: 44,
+                    top: 54,
                     right: 22,
                     child: Icon(
                       Icons.favorite_border,
@@ -63,7 +68,7 @@ class EventDetailScreen extends StatelessWidget {
                     ),
                   ),
                   Positioned(
-                    top: 130,
+                    top: 170,
                     left: 16,
                     right: 16,
                     child: Container(
@@ -215,12 +220,82 @@ class EventDetailScreen extends StatelessWidget {
                 ],
               ),
             ),
-            SizedBox(height: 28),
+            SizedBox(height: 10),
+
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              padding: const EdgeInsets.symmetric(horizontal: 16.0,vertical: 90),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: screenWidth * 0.03,
+                      vertical: screenHeight * 0.01,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.pink.shade50,
+                      border: Border.all(color: Colors.pink,width: 0.4),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.pink.withOpacity(0.1),
+                          spreadRadius: 1,
+                          blurRadius: 5,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Text(
+                          'You have manage access for this event',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.pink,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Spacer(),
+                        InkWell(
+                          onTap: () {
+                            Navigator.push(context, MaterialPageRoute(builder: (context) {
+                              return ApproveScreen();
+                            },));
+                          },
+                          child: Container(
+                            width: screenWidth * 0.2,
+                            height: screenHeight * 0.04,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(20),
+                              color: Colors.pink,
+                            ),
+                            child: Center(
+                              child: RichText(
+                                text: TextSpan(
+                                  children: [
+                                    TextSpan(
+                                      text: "Manage",
+                                      style: TextStyle(color: Colors.white, fontSize: 12),
+                                    ),
+                                    WidgetSpan(
+                                      child: Icon(
+                                        Icons.north_east,
+                                        color: Colors.white,
+                                        size: 15,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+SizedBox(height: 18,),
                   // About Section
                   Text('About',
                       style:

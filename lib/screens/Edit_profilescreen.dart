@@ -1,38 +1,29 @@
-// screens/EditProfileScreen.dart
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-import '../widgets/TextField _editprofiile.dart'; // We'll use this if the profile image is also managed by a provider
-
-// Assuming you have a User or Profile model, similar to Event model
-// If you don't have one, you might need to create a basic one.
-// import 'package:aayo/models/user_profile_model.dart'; // Example path
-
-// For demonstration, let's assume you have a provider for the user's profile image
-// If your main profile image is managed by a provider like ImageSelectionProvider, you can use it here too.
-// Or, if it's a separate UserProfileProvider, import that.
-// Adjust path if needed
+import '../widgets/TextField _editprofiile.dart'; // Ensure this file exists
 
 class EditProfileScreen extends StatefulWidget {
-  // You might want to pass initial user data here
+  // Initial values are now primarily for fallback or when passed directly
+  // from UserProfileList (e.g., about, mobile, which are from Firestore)
   final String initialName;
   final String initialAbout;
-  final String initialemail;
-  final String initialmobile;
+  final String initialEmail;
+  final String initialMobile; // Updated to initialMobile
 
-  final String initialProfileImageUrl; // For network image
-  final File? initialProfileImageFile; // For local file image
+  // Assuming you might pass a local file for the profile image if it was previously picked
+  final File? initialProfileImageFile;
 
   const EditProfileScreen({
     super.key,
-    this.initialName = 'Tanya Hill', // Default for demonstration
-    this.initialAbout =
-    'We have a team but still missing a couple of people. Let\'s play together! We have a team but still missing a couple of people.', // Default
-    this.initialProfileImageUrl =
-    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=1964&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', // Example profile pic
-    this.initialProfileImageFile,
-    this.initialemail = "durgesh@gmail.com",  this.initialmobile="+91 9662153554", // Initial local file
+    this.initialName = '',
+    this.initialAbout = '',
+    this.initialEmail = '',
+    this.initialMobile = '', // Default empty
+    this.initialProfileImageFile, required String initialmobile,
   });
 
   @override
@@ -42,64 +33,16 @@ class EditProfileScreen extends StatefulWidget {
 class _EditProfileScreenState extends State<EditProfileScreen> {
   final _nameController = TextEditingController();
   final _aboutController = TextEditingController();
-  final _eamilController = TextEditingController();
-  final _mobileController=TextEditingController();
+  final _emailController = TextEditingController();
+  final _mobileController = TextEditingController(); // Renamed from _eamilController
+
   File? _pickedProfileImage; // Stores the newly picked local image
+  User? _currentUser; // Firebase authenticated user
 
-  @override
-  void initState() {
-    super.initState();
-    _nameController.text = widget.initialName;
-    _aboutController.text = widget.initialAbout;
-    _pickedProfileImage = widget.initialProfileImageFile;
-    _eamilController.text=widget.initialemail;
-    _mobileController.text=widget.initialmobile;
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _aboutController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _pickImage() async {
-    final XFile? image =
-    await ImagePicker().pickImage(source: ImageSource.gallery);
-    if (image != null) {
-      setState(() {
-        _pickedProfileImage = File(image.path);
-      });
-      // Optionally, if your main profile image is managed by a provider, update it here:
-      // Provider.of<ImageSelectionProvider>(context, listen: false).setImage(_pickedProfileImage);
-    }
-  }
-
-  void _saveProfile() {
-    // Implement save logic here
-    final newName = _nameController.text;
-    final newAbout = _aboutController.text;
-
-    // You would typically send this data to a database or update a global state/provider
-    // For example, if you had a UserProfileProvider:
-    // Provider.of<UserProfileProvider>(context, listen: false).updateProfile(
-    //   newName,
-    //   newAbout,
-    //   _pickedProfileImage,
-    // );
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Profile saved!')),
-    );
-
-    // Navigate back to the previous screen (UserProfileList)
-    Navigator.of(context).pop();
-  }
-  String _selectedGender = 'Female';
-
+  String _selectedGender = 'Female'; // Default gender, will be updated from Firestore
   final List<String> _genders = ['Male', 'Female', 'Other'];
-  String _selectedCountry ='United States';
 
+  String _selectedCountry = 'United States'; // Default country, will be updated from Firestore
   final List<String> _countries = [
     'India',
     'United States',
@@ -107,6 +50,134 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     'United Kingdom',
     'Australia'
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _currentUser = FirebaseAuth.instance.currentUser;
+
+    // Set initial values from Firebase Auth and passed arguments
+    _nameController.text = _currentUser?.displayName ?? '';
+    _emailController.text = _currentUser?.email ?? '';
+    _aboutController.text = widget.initialAbout; // 'about' comes from UserProfileList
+    _pickedProfileImage = widget.initialProfileImageFile;
+
+    // Fetch additional profile data (mobile, gender, country) from Firestore
+    _fetchAndPopulateProfileData();
+  }
+
+  // New method to fetch and populate additional profile data from Firestore
+  Future<void> _fetchAndPopulateProfileData() async {
+    if (_currentUser == null) return;
+
+    try {
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(_currentUser!.uid)
+          .get();
+
+      if (userDoc.exists) {
+        Map<String, dynamic> data = userDoc.data() as Map<String, dynamic>;
+        setState(() {
+          _mobileController.text = data['phoneNumber'] ?? widget.initialMobile; // Use fetched or initial
+          _selectedGender = data['gender'] ?? 'Female'; // Use fetched or default
+          _selectedCountry = data['country'] ?? 'United States'; // Use fetched or default
+          _aboutController.text = data['about'] ?? widget.initialAbout; // Also fetch about here for consistency
+        });
+      } else {
+        // If document doesn't exist, use initial values passed or component defaults
+        setState(() {
+          _mobileController.text = widget.initialMobile;
+          // _selectedGender and _selectedCountry already have defaults
+        });
+      }
+    } catch (e) {
+      print("Error fetching user profile data: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error loading profile: $e')),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _aboutController.dispose();
+    _emailController.dispose();
+    _mobileController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickImage() async {
+    final XFile? image = await ImagePicker().pickImage(source: ImageSource.gallery);
+    if (image != null) {
+      setState(() {
+        _pickedProfileImage = File(image.path);
+      });
+      // TODO: Implement image upload to Firebase Storage here.
+      // After upload, update user's photoURL in FirebaseAuth:
+      // String downloadUrl = await uploadImageToFirebaseStorage(_pickedProfileImage!);
+      // await _currentUser!.updatePhotoURL(downloadUrl);
+    }
+  }
+
+  void _saveProfile() async {
+    final newName = _nameController.text.trim();
+    final newAbout = _aboutController.text.trim();
+    final newEmail = _emailController.text.trim();
+    final newMobile = _mobileController.text.trim();
+    final newGender = _selectedGender;
+    final newCountry = _selectedCountry;
+
+    if (_currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No active user to save profile for.')),
+      );
+      return;
+    }
+
+    try {
+      // 1. Update Firebase Authentication profile
+      await _currentUser!.updateDisplayName(newName);
+      // await _currentUser!.updateEmail(newEmail); // Be careful with email updates, often requires re-authentication.
+
+      // 2. Update/Create user document in Firestore with additional data
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(_currentUser!.uid)
+          .set(
+        {
+          'displayName': newName,
+          'email': newEmail, // Storing email in Firestore too (optional, but can be useful)
+          'about': newAbout,
+          'phoneNumber': newMobile,
+          'gender': newGender,
+          'country': newCountry,
+          // 'photoURL': _currentUser!.photoURL, // You might store the photo URL here after Firebase Storage upload
+        },
+        SetOptions(merge: true), // Merge to update existing fields or add new ones without overwriting.
+      );
+
+      // Reload _currentUser to ensure the latest display name, photoURL are reflected
+      await _currentUser!.reload();
+      _currentUser = FirebaseAuth.instance.currentUser; // Get the reloaded user object
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profile updated successfully!')),
+      );
+
+      Navigator.of(context).pop(); // Navigate back to UserProfileList
+    } catch (e) {
+      print("Error saving profile: $e");
+      String errorMessage = "Failed to save profile.";
+      if (e is FirebaseAuthException) {
+        errorMessage = e.message ?? errorMessage;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessage)),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -131,19 +202,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 children: [
                   CircleAvatar(
                     radius: 60,
-                    backgroundColor: Colors.grey[200],
-                    backgroundImage: _pickedProfileImage != null
-                        ? FileImage(_pickedProfileImage!)
-                    as ImageProvider<Object>?
-                        : (widget.initialProfileImageUrl.isNotEmpty
-                        ? NetworkImage(widget.initialProfileImageUrl)
-                        : const AssetImage(
-                        'assets/placeholder_profile.png'))
-                    as ImageProvider<Object>?,
-                    child: _pickedProfileImage == null &&
-                        widget.initialProfileImageUrl.isEmpty
-                        ? Icon(Icons.person, size: 60, color: Colors.grey[600])
-                        : null,
+                    backgroundColor: Colors.pink,
+                    child: CircleAvatar(
+                      radius: 57,
+                      // Display picked local image, else Firebase photoURL, else default asset
+                      backgroundImage: _pickedProfileImage != null
+                          ? FileImage(_pickedProfileImage!)
+                          : (_currentUser?.photoURL != null
+                          ? NetworkImage(_currentUser!.photoURL!)
+                          : const AssetImage('images/default_avatar.png')) as ImageProvider,
+                    ),
                   ),
                   Positioned(
                     bottom: 0,
@@ -151,8 +219,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     child: CircleAvatar(
                       backgroundColor: Colors.pinkAccent,
                       radius: 20,
-                      child:
-                      Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                      child: Icon(Icons.camera_alt, color: Colors.white, size: 20),
                     ),
                   ),
                 ],
@@ -166,9 +233,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
             const SizedBox(height: 20),
             TextfieldEditprofiile(
-              controller: _eamilController,
+              controller: _emailController,
               hintText: 'Enter your email',
-              prefixIcon: Icons.person,
+              prefixIcon: Icons.email,
+              readOnly: true, // Often email is read-only or requires re-auth to change
             ),
             const SizedBox(height: 20),
             // Gender Dropdown
@@ -176,12 +244,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               height: 55,
               padding: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
-
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.pink.shade500,width: 1)
-              ),
+                  color: Colors.white,
+                  border: Border.all(color: Colors.pink.shade500, width: 1)),
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
+                  focusColor: Colors.white,
                   value: _selectedGender,
                   icon: const Icon(Icons.arrow_drop_down),
                   isExpanded: true,
@@ -191,9 +259,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       child: Text(
                         value,
                         style: TextStyle(
-                          color: value == 'Select Gender'
-                              ? Colors.black
-                              : Colors.black,
+                          color: Colors.black,
                         ),
                       ),
                     );
@@ -210,13 +276,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             TextfieldEditprofiile(
               controller: _mobileController,
               hintText: 'Enter your mobile number',
-              prefixIcon: Icons.person,
+              prefixIcon: Icons.phone,
+              keyboardType: TextInputType.phone, // Suggest phone keyboard
             ),
-            SizedBox(height: 20,),
+            SizedBox(
+              height: 20,
+            ),
             Container(
               height: 55,
               padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
+              decoration: BoxDecoration(color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Colors.pink.shade500, width: 1),
               ),
@@ -231,7 +300,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       child: Text(
                         value,
                         style: TextStyle(
-                          color: value == 'Select Country' ? Colors.black : Colors.black,
+                          color: Colors.black,
                         ),
                       ),
                     );
@@ -244,26 +313,33 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 190),
+            const SizedBox(height: 20), // Reduced space here
+            TextfieldEditprofiile(
+              controller: _aboutController,
+              hintText: 'Tell us about yourself',
+              prefixIcon: Icons.info_outline,
+              maxLines: 3, // Allow multiple lines for about
+            ),
+            const SizedBox(height: 30), // Increased space before button
             ElevatedButton(
               onPressed: _saveProfile,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.pink, // Button color
-                foregroundColor: Colors.white, // Text color
+                backgroundColor: Colors.pink,
+                foregroundColor: Colors.white,
                 padding:
-                const EdgeInsets.symmetric(horizontal: 140, vertical: 15),
+                const EdgeInsets.symmetric(horizontal: 100, vertical: 15), // Adjusted padding
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
               child: const Text(
-                'Update',
+                'Update Profile', // More descriptive text
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
             ),
-
           ],
         ),
-      ),);
+      ),
+    );
   }
 }

@@ -1,9 +1,64 @@
-import 'package:aayo/models/profile_stats.dart';
-import 'package:aayo/screens/Edit_profilescreen.dart';
-import 'package:aayo/screens/setting_screen.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // Import Firebase Auth
+import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore
+
+import 'package:aayo/screens/Edit_profilescreen.dart'; // Your Edit Profile Screen
+import 'package:aayo/screens/setting_screen.dart'; // Your Settings Screen
+
+// Assuming you have this model for profile stats if needed, or you can simplify
+// import 'package:aayo/models/profile_stats.dart';
+
+// Dummy StatWidget definition for demonstration if you don't have it
+class StatWidget extends StatelessWidget {
+  final List<String> avatarUrls;
+  final String count;
+  final String label;
+
+  const StatWidget({
+    super.key,
+    required this.avatarUrls,
+    required this.count,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Row(
+          children: avatarUrls
+              .map(
+                (url) => Padding(
+              padding: const EdgeInsets.only(right: 4.0),
+              child: CircleAvatar(
+                radius: 12, // Smaller avatars
+                backgroundImage: NetworkImage(url),
+              ),
+            ),
+          )
+              .toList(),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          count,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            color: Colors.grey,
+          ),
+        ),
+      ],
+    );
+  }
+}
+// End of Dummy StatWidget
 
 class UserProfileList extends StatefulWidget {
   const UserProfileList({super.key});
@@ -16,20 +71,57 @@ class _UserProfileListState extends State<UserProfileList>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   User? _currentUser;
+  String? _userAbout; // To store the 'about' fetched from Firestore
+  String? _userPhoneNumber; // To store the phone number
+  String? _userGender; // To store the gender
+  String? _userCountry; // To store the country
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-
-    // Fetch Firebase user
     _currentUser = FirebaseAuth.instance.currentUser;
+
+    // Fetch user profile data from Firestore
+    _fetchUserProfileData();
+  }
+
+  Future<void> _fetchUserProfileData() async {
+    if (_currentUser == null) return;
+
+    try {
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(_currentUser!.uid)
+          .get();
+
+      if (userDoc.exists) {
+        Map<String, dynamic> data = userDoc.data() as Map<String, dynamic>;
+        setState(() {
+          _userAbout = data['about'] ?? 'No bio available.';
+          _userPhoneNumber = data['phoneNumber'] ?? 'N/A';
+          _userGender = data['gender'] ?? 'N/A';
+          _userCountry = data['country'] ?? 'N/A';
+        });
+      } else {
+        setState(() {
+          _userAbout = 'No bio available.';
+          _userPhoneNumber = 'N/A';
+          _userGender = 'N/A';
+          _userCountry = 'N/A';
+        });
+      }
+    } catch (e) {
+      print("Error fetching user profile data for display: $e");
+    }
   }
 
   // Example data for photos (replace with actual user photos)
   final List<String> _userPhotos = [
     'https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
     'https://images.unsplash.com/photo-1556125574-d7f27ec36a06?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-    'https://plus.unsplash.com/premium_photo-1661494266874-a18be6bda750?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D''https://images.unsplash.com/photo-1556125574-d7f27ec36a06?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+    'https://plus.unsplash.com/premium_photo-1661494266874-a18be6bda750?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+    'https://images.unsplash.com/photo-1556125574-d7f27ec36a06?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
     'https://plus.unsplash.com/premium_photo-1661494266874-a18be6bda750?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
     'https://images.unsplash.com/photo-1556125574-d7f27ec36a06?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
     'https://plus.unsplash.com/premium_photo-1661494266874-a18be6bda750?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
@@ -44,8 +136,6 @@ class _UserProfileListState extends State<UserProfileList>
   ];
 
   @override
-
-  @override
   void dispose() {
     _tabController.dispose();
     super.dispose();
@@ -55,7 +145,7 @@ class _UserProfileListState extends State<UserProfileList>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        scrolledUnderElevation: 0.0, // This will fix the problem
+        scrolledUnderElevation: 0.0,
         automaticallyImplyLeading: false,
         title: Text(
           "My Profile",
@@ -81,19 +171,20 @@ class _UserProfileListState extends State<UserProfileList>
             ),
           ),
         ],
-        elevation: 0, // <-- Add this line
-        backgroundColor: Colors.white, // Transparent to show background
-        // You might want a custom top bar here if needed
+        elevation: 0,
+        backgroundColor: Colors.white,
       ),
-backgroundColor: Colors.white,
-body: SafeArea(
-  child: SingleChildScrollView(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: SingleChildScrollView(
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start, // <--- ADD THIS LINE HERE
+
             children: [
               // Top Section: Profile Picture, Name, Stats, Edit Button
               Padding(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
+                const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
                 child: Column(
                   children: [
                     // Profile Picture
@@ -115,6 +206,7 @@ body: SafeArea(
                         fontWeight: FontWeight.bold,
                       ),
                     ),
+                    // Display Email (optional)
                     const SizedBox(height: 20),
                     // Connections and Activities Stats
                     Row(
@@ -128,7 +220,7 @@ body: SafeArea(
 
                         // Vertical Divider
                         Container(
-                          height: 40, // Adjust height as needed
+                          height: 40,
                           width: 1,
                           color: Colors.grey.shade300,
                           margin: const EdgeInsets.symmetric(horizontal: 8),
@@ -150,14 +242,27 @@ body: SafeArea(
                       width: double.infinity,
                       height: 50,
                       child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) => EditProfileScreen()));
+                        onPressed: () async {
+                          // Navigate to EditProfileScreen and wait for result
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => EditProfileScreen(
+                                // Pass current fetched data as initial values
+                                initialName: _currentUser?.displayName ?? '',
+                                initialEmail: _currentUser?.email ?? '',
+                                initialAbout: _userAbout ?? '',
+                                initialmobile: _userPhoneNumber ?? '',
+                                // If you want to pre-select gender/country, you'd pass those too
+                              ),
+                            ),
+                          );
+                          // After returning from EditProfileScreen, refresh data
+                          _currentUser = FirebaseAuth.instance.currentUser; // Get updated Auth data
+                          _fetchUserProfileData(); // Fetch updated Firestore data
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.pink, // Button color
+                          backgroundColor: Colors.pink,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -176,8 +281,10 @@ body: SafeArea(
               // About Section
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child:
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start, // This aligns children to the left (start of the cross axis)
+                  mainAxisAlignment: MainAxisAlignment.start,   // This aligns children to the top (start of the main axis)
                   children: [
                     const Text(
                       "About",
@@ -189,27 +296,26 @@ body: SafeArea(
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      "We have a team but still missing a couple of people. Let's play together! We have a team but still missing a couple of people. We have a team but still missing a couple of people",
+                      _userAbout ?? "Loading about...", // Display fetched 'about' or "Loading about..."
                       style: TextStyle(
                         fontSize: 14,
                         color: Colors.grey[700],
                       ),
                     ),
                   ],
-                ),
-              ),
+                ),              ),
               const SizedBox(height: 24),
 
               // Tab Bar
               TabBar(
                 controller: _tabController,
-                indicatorColor: Colors.pink, // Indicator color
-                labelColor: Colors.pink, // Selected tab text color
-                unselectedLabelColor: Colors.grey, // Unselected tab text color
+                indicatorColor: Colors.pink,
+                labelColor: Colors.pink,
+                unselectedLabelColor: Colors.grey,
                 labelStyle: const TextStyle(fontWeight: FontWeight.bold,fontSize: 10.9),
                 unselectedLabelStyle: const TextStyle(
-                  fontSize: 10.9, // set unselected tab text size
-                   ),
+                  fontSize: 10.9,
+                ),
                 tabs: const [
                   Tab(text: "Photos"),
                   Tab(text: "Schedule Activities"),
@@ -218,8 +324,6 @@ body: SafeArea(
               ),
 
               // Tab Bar View (Photos Grid)
-              // Use a fixed height for TabBarView inside SingleChildScrollView
-
               SizedBox(
                 height: MediaQuery.of(context).size.height * 0.5,
                 child: TabBarView(
@@ -228,7 +332,6 @@ body: SafeArea(
                     Padding(
                       padding: const EdgeInsets.all(16),
                       child: SingleChildScrollView(
-                        // <-- add this
                         child: StaggeredGrid.count(
                           crossAxisCount: 3,
                           mainAxisSpacing: 10,
@@ -257,7 +360,7 @@ body: SafeArea(
             ],
           ),
         ),
-),
+      ),
     );
   }
 }

@@ -1,37 +1,14 @@
-import 'dart:io';
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
-class EventPostProvider with ChangeNotifier {
-  File? _image;
-  String _description = '';
-  DateTime? _scheduledDateTime;
+import '../models/Create_Event_model.dart';
 
-  File? get image => _image;
-  String get description => _description;
-  DateTime? get scheduledDateTime => _scheduledDateTime;
+class EventCreationProvider with ChangeNotifier {
+  final List<EventModel> _createdEvents = [];
 
-  void setImage(File? file) {
-    _image = file;
+  List<EventModel> get createdEvents => _createdEvents;
+
+  void addEvent(EventModel event) {
+    _createdEvents.add(event);
     notifyListeners();
   }
-
-  void setDescription(String text) {
-    _description = text;
-    notifyListeners();
-  }
-
-  void setScheduledDateTime(DateTime? dateTime) {
-    _scheduledDateTime = dateTime;
-    notifyListeners();
-  }
-
-  void clearAll() {
-    _image = null;
-    _description = '';
-    _scheduledDateTime = null;
-    notifyListeners();
-  }
-
-  bool get isPostEnabled =>
-      _image != null || _description.trim().isNotEmpty || _scheduledDateTime != null;
 }
