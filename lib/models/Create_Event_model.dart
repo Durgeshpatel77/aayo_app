@@ -1,6 +1,6 @@
+// lib/models/event_model.dart
 import 'dart:io';
-
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart'; // Needed for TimeOfDay
 
 class EventModel {
   final String name;

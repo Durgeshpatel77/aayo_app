@@ -46,7 +46,8 @@ class Eventsscreen extends StatelessWidget {
           // The rest of your events list
           Expanded(
             // Make sure the ListView takes the remaining space
-            child: createdEvents.isEmpty
+            child:
+            createdEvents.isEmpty
                 ? const Center(child: Text("No events found."))
                 : ListView.builder(
                     itemCount: createdEvents.length,

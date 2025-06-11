@@ -705,6 +705,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                       keyboardType: TextInputType.number,
                       decoration: InputDecoration(
                         labelText: 'Ticket Price',
+                        labelStyle: TextStyle(color: Colors.pink),
                         hintText: 'Enter ticket price',
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
