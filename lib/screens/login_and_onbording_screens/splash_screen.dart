@@ -1,9 +1,9 @@
 // splash_screen.dart
-import 'package:aayo/screens/onbording_and_login_screens/onboarding_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import 'choose_your_fav_screen.dart';
+import 'onboarding_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});

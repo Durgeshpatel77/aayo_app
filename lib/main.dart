@@ -8,7 +8,7 @@ import 'package:aayo/providers/setting_screens_providers/event_provider.dart';
 import 'package:aayo/providers/home_screens_providers/home_provider.dart';
 import 'package:aayo/providers/setting_screens_providers/write_to_us_provider.dart';
 import 'package:aayo/providers/user_profile_provider.dart';
-import 'package:aayo/screens/onbording_and_login_screens/splash_screen.dart';
+import 'package:aayo/screens/login_and_onbording_screens/splash_screen.dart';
 import 'package:aayo/services/notification_services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
