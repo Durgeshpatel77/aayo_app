@@ -79,7 +79,12 @@ class LoginAndRegister extends StatelessWidget {
                                 : () async {
                                     final user = await googleProvider
                                         .signInWithGoogle(context);
-                                    print(user?.displayName);
+                                    print("User Name:${user?.displayName}");
+                                    print("User email:${user?.email}");
+                                    print("User phone number:${user?.phoneNumber}");
+                                    print("User id:${user?.tenantId}");
+
+
                                     if (user != null) {
                                       Navigator.pushReplacement(
                                         context,
