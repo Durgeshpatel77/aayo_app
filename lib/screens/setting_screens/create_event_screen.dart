@@ -10,9 +10,9 @@ import 'package:image_picker/image_picker.dart'; // Import image_picker
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-import '../models/Create_Event_model.dart';
-import '../providers/event_provider.dart';
-import '../widgets/TextField _editprofiile.dart'; // For date formatting
+import '../../models/create_event_model.dart';
+import '../../providers/setting_screens_providers/event_provider.dart';
+import '../../widgets/TextField _editprofiile.dart';
 
 class CreateEventScreen extends StatefulWidget {
   const CreateEventScreen({super.key});

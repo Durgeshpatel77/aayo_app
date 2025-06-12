@@ -1,6 +1,5 @@
 // splash_screen.dart
-import 'package:aayo/screens/home_screen.dart';
-import 'package:aayo/screens/onboarding_screen.dart';
+import 'package:aayo/screens/onbording_and_login_screens/onboarding_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 

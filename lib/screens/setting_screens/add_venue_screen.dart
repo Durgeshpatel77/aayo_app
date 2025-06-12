@@ -8,7 +8,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 
-import '../widgets/TextField _editprofiile.dart'; // Import image_picker
+import '../../widgets/TextField _editprofiile.dart'; // Import image_picker
 
 class AddVenueScreen extends StatefulWidget {
   const AddVenueScreen({super.key});

@@ -1,11 +1,12 @@
 import 'dart:io';
+import 'package:aayo/screens/setting_screens/create_event_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-import 'package:aayo/screens/create_event_screen.dart';
-import 'package:aayo/providers/onboarding_provider.dart';
+import '../../providers/onording_login_screens_providers/onboarding_provider.dart';
+
 
 class Addeventsscreen extends StatefulWidget {
   const Addeventsscreen({super.key});

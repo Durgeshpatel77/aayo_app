@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import '../models/events_list_item.dart';
-import '../providers/event_provider.dart';
-import 'ChatListPage.dart';
-import 'events_details.dart';
+import '../../models/events_list_item.dart';
+import '../../providers/setting_screens_providers/event_provider.dart';
+import 'chat_list_page.dart';
+import '../event_detail_screens/events_details.dart';
 
 class Eventsscreen extends StatelessWidget {
   const Eventsscreen({super.key});

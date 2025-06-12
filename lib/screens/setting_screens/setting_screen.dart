@@ -1,9 +1,9 @@
 // screens/SettingsScreen.dart
-import 'package:aayo/screens/about_us_screen.dart';
-import 'package:aayo/screens/add_venue_screen.dart';
-import 'package:aayo/screens/create_event_screen.dart';
-import 'package:aayo/screens/saved_events_screen.dart';
-import 'package:aayo/screens/write_to_usscreen.dart';
+import 'package:aayo/screens/setting_screens/about_us_screen.dart';
+import 'package:aayo/screens/setting_screens/add_venue_screen.dart';
+import 'package:aayo/screens/setting_screens/create_event_screen.dart';
+import 'package:aayo/screens/setting_screens/saved_events_screen.dart';
+import 'package:aayo/screens/setting_screens/write_to_usscreen.dart';
 import 'package:flutter/material.dart';
 
 class SettingsScreen extends StatelessWidget {

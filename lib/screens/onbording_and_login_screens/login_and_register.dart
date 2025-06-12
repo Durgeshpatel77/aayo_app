@@ -1,7 +1,8 @@
-import 'package:aayo/providers/google_signin_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'home_screen.dart';
+
+import '../../providers/onording_login_screens_providers/google_signin_provider.dart';
+import '../home_screens/home_screen.dart';
 
 class LoginAndRegister extends StatelessWidget {
   const LoginAndRegister({super.key});
@@ -76,14 +77,17 @@ class LoginAndRegister extends StatelessWidget {
                             onPressed: googleProvider.isSigningIn
                                 ? null
                                 : () async {
-                              final user = await googleProvider.signInWithGoogle(context);
-                              if (user != null) {
-                                Navigator.pushReplacement(
-                                  context,
-                                  MaterialPageRoute(builder: (_) => const HomeScreen()),
-                                );
-                              }
-                            },
+                                    final user = await googleProvider
+                                        .signInWithGoogle(context);
+                                    print(user?.displayName);
+                                    if (user != null) {
+                                      Navigator.pushReplacement(
+                                        context,
+                                        MaterialPageRoute(
+                                            builder: (_) => const HomeScreen()),
+                                      );
+                                    }
+                                  },
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               mainAxisAlignment: MainAxisAlignment.center,

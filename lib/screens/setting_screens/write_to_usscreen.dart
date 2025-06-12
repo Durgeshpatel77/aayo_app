@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/write_to_us_provider.dart';
+import '../../providers/setting_screens_providers/write_to_us_provider.dart';
 
 class WriteToUsScreen extends StatelessWidget {
   WriteToUsScreen({super.key});

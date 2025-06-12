@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 
-import 'loginandregister.dart';
+import 'login_and_register.dart';
 
 // Dummy colors for example; replace with your actual AppColors.text or import your colors
 class AppColors {

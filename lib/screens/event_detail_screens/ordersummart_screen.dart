@@ -1,8 +1,9 @@
-import 'package:aayo/screens/qrticketscreen.dart';
+import 'package:aayo/screens/event_detail_screens/qr_ticket_screen.dart';
 import 'package:flutter/material.dart';
 // Import the new E-Ticket screen
-import 'package:aayo/screens/home_screen.dart'; // Import HomeScreen for navigation
-import 'dart:math'; // For generating random data for QR code
+import 'dart:math';
+
+import '../home_screens/home_screen.dart'; // For generating random data for QR code
 
 class OrderSummaryScreen extends StatefulWidget {
   final String eventName;

@@ -1,6 +1,6 @@
 import 'package:flutter/cupertino.dart';
 
-import '../models/Create_Event_model.dart';
+import '../../models/create_event_model.dart';
 
 class EventCreationProvider with ChangeNotifier {
   final List<EventModel> _createdEvents = [];

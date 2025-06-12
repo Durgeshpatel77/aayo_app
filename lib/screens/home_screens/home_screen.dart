@@ -1,16 +1,17 @@
   import 'dart:io';
-  import 'package:aayo/screens/addEventsScreen.dart';
+  import 'package:aayo/screens/home_screens/add_events_screen.dart';
   import 'package:aayo/screens/user_profile_list.dart';
   import 'package:flutter/material.dart';
   import 'package:aayo/models/event_model.dart';
-  import 'package:aayo/screens/NotificationScreen.dart';
-  import 'package:aayo/screens/UserProfileList.dart'; // Assuming UserProfile is here
-  import 'package:aayo/screens/eventsScreen.dart';
-  import 'package:aayo/screens/events_details.dart';
+  import 'package:aayo/screens/home_screens/notification_screen.dart';
+  import 'package:aayo/screens/home_screens/userprofile_list.dart'; // Assuming UserProfile is here
+  import 'package:aayo/screens/home_screens/events_screen.dart';
+  import 'package:aayo/screens/event_detail_screens/events_details.dart';
   import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
-import '../providers/home_provider.dart';
+import '../../providers/home_screens_providers/home_provider.dart';
+
   // Import your AddEventsImages
 
   // EventCard widget streamlined to show only the image and event name

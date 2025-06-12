@@ -1,8 +1,8 @@
-import 'package:aayo/screens/home_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import '../providers/favorite_category_provider.dart';
+import '../../providers/onording_login_screens_providers/favorite_category_provider.dart';
+import '../home_screens/home_screen.dart';
 
 class ChooseFavoriteScreen extends StatelessWidget {
   const ChooseFavoriteScreen({Key? key}) : super(key: key);

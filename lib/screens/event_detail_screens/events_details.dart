@@ -1,11 +1,10 @@
-import 'package:aayo/screens/OrderSummartScreen.dart';
+import 'package:aayo/screens/event_detail_screens/ordersummart_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:ionicons/ionicons.dart';
 
-import '../res/app_colors.dart';
-import 'Approve_screen.dart';
-import 'ChatPage.dart';
-import 'home_screen.dart';
+import '../../res/app_colors.dart';
+import 'approve_screen.dart';
+import 'chat_page.dart';
 
 class EventDetailScreen extends StatelessWidget {
   final String eventName;
