@@ -5,8 +5,9 @@ class TextfieldEditprofiile extends StatelessWidget {
   final String hintText;
   final IconData prefixIcon;
   final bool readOnly;
-  final TextInputType keyboardType;
   final int? maxLines;
+  final TextInputType? keyboardType;
+  final void Function(String)? onChanged; // Add this line
 
   const TextfieldEditprofiile({
     super.key,
@@ -14,38 +15,32 @@ class TextfieldEditprofiile extends StatelessWidget {
     required this.hintText,
     required this.prefixIcon,
     this.readOnly = false,
-    this.keyboardType = TextInputType.text,
     this.maxLines = 1,
+    this.keyboardType,
+    this.onChanged, // Add this line
   });
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      readOnly: readOnly,
-      keyboardType: keyboardType,
-      maxLines: maxLines,
-      decoration: InputDecoration(
-        hintText: hintText,
-        prefixIcon: Icon(prefixIcon, color: Colors.grey),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.pink.shade500, width: 1),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.pink.shade500, width: 1),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.pink, width: 2), // Highlight when focused
-        ),
-        fillColor: Colors.white,
-        filled: true,
-        contentPadding: const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.pink.shade500, width: 1),
       ),
-      style: const TextStyle(fontSize: 16),
-      cursorColor: Colors.pink, // Custom cursor color
+      child: TextField(
+        controller: controller,
+        readOnly: readOnly,
+        maxLines: maxLines,
+        keyboardType: keyboardType,
+        onChanged: onChanged, // Pass the onChanged callback to the TextField
+        decoration: InputDecoration(
+          hintText: hintText,
+          prefixIcon: Icon(prefixIcon, color: Colors.pink.shade500),
+          border: InputBorder.none, // Removes the default underline border
+          contentPadding: const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
+        ),
+      ),
     );
   }
 }

@@ -83,6 +83,9 @@ class LoginAndRegister extends StatelessWidget {
                                     print("User email:${user?.email}");
                                     print("User phone number:${user?.phoneNumber}");
                                     print("User id:${user?.tenantId}");
+                                    print("User uid:${user?.uid}");
+
+
 
 
                                     if (user != null) {

@@ -3,7 +3,7 @@ import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:firebase_auth/firebase_auth.dart'; // Import Firebase Auth
 import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore
 
-import 'package:aayo/screens/setting_screens/edit_profile_screen.dart'; // Your Edit Profile Screen
+import 'package:aayo/screens/login_and_onbording_screens/edit_profile_screen.dart'; // Your Edit Profile Screen
 import 'package:aayo/screens/setting_screens/setting_screen.dart'; // Your Settings Screen
 
 // Assuming you have this model for profile stats if needed, or you can simplify
