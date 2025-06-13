@@ -3,140 +3,128 @@ import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-
 import 'package:shared_preferences/shared_preferences.dart';
 
+// 🚀 GoogleSignInProvider: Manages Google authentication and user registration with your backend.
 class GoogleSignInProvider extends ChangeNotifier {
+  // 🔑 FirebaseAuth instance: For Firebase authentication operations.
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  // 🌐 GoogleSignIn instance: For initiating Google Sign-In flow.
   final GoogleSignIn _googleSignIn = GoogleSignIn();
+
+  // 🔄 _isSigningIn: A boolean to track the signing-in state, used for UI feedback.
   bool _isSigningIn = false;
+  bool get isSigningIn => _isSigningIn; // Getter for the signing-in state.
 
-  // Used to show loading indicator during sign-in
-  bool get isSigningIn => _isSigningIn;
-
+  // Setter for _isSigningIn: Notifies listeners (UI) when the state changes.
   set isSigningIn(bool value) {
     _isSigningIn = value;
-    notifyListeners(); // Notify listeners when signing state changes
+    notifyListeners();
   }
 
-  // 🔗 Your backend API base URL
+  // 🔗 _apiBaseUrl: The base URL for your backend API.
   final String _apiBaseUrl = 'http://srv861272.hstgr.cloud:8000';
 
-  // 🔐 Google Sign-In Logic
+  // 🚀 signInWithGoogle: Initiates the Google Sign-In process.
+  // Returns the authenticated Firebase User object on success, null otherwise.
   Future<User?> signInWithGoogle(BuildContext context) async {
-    isSigningIn = true;
+    isSigningIn = true; // Set signing-in state to true to show loading indicator.
 
     try {
-      // Start the sign-in process
+      // 🤝 Step 1: Start the Google Sign-In flow to get the user's Google account.
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
-        // User canceled the sign-in
+
+        // User cancelled the sign-in process.
         isSigningIn = false;
         return null;
       }
 
-      // Get authentication details
+      // 🔐 Step 2: Get Google authentication credentials (accessToken and idToken).
       final googleAuth = await googleUser.authentication;
-
-      // Create a Firebase credential from Google token
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
-      // Sign in with Firebase
-      final UserCredential userCredential = await _auth.signInWithCredential(credential);
-      final User? user = userCredential.user;
+      // 🔗 Step 3: Sign in to Firebase using the Google credentials.
+      final UserCredential userCredential =
+      await _auth.signInWithCredential(credential);
+      final User? user = userCredential.user; // Get the Firebase User object.
 
       if (user != null) {
-        // Debug print user info
-        print("User Name: ${user.displayName}");
-        print("User email: ${user.email}");
-        print("User phone number: ${user.phoneNumber}");
-        print("User uid: ${user.uid}");
-        print("User photo: ${user.photoURL}");
+        // ✅ User successfully signed in to Firebase. Log user details.
 
-        // 👇 Register the user in your backend
+        // 📝 Step 4: Register or update the user's information in your custom backend.
         await _registerUserInBackend(user, context);
       }
 
-      isSigningIn = false;
-      return user;
+      isSigningIn = false; // Set signing-in state to false.
+      return user; // Return the authenticated Firebase user.
     } catch (e) {
-      isSigningIn = false;
-
-      // Show error in UI
+      // ❌ Handle any errors during the sign-in process.
+      isSigningIn = false; // Set signing-in state to false.
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Sign in failed: $e")),
+        SnackBar(content: Text("Sign in failed: $e")), // Show error message to user.
       );
       return null;
     }
   }
 
-  // 📝 Register the user in your backend and store details locally
+  // 📝 _registerUserInBackend: Sends user data to your custom backend for registration/update.
   Future<void> _registerUserInBackend(User user, BuildContext context) async {
     try {
       final prefs = await SharedPreferences.getInstance();
 
-      // 🗂️ Save basic user info locally using SharedPreferences
-      await prefs.setString('userId', user.uid); // Firebase UID
-      await prefs.setString('userEmail', user.email ?? '');
-      await prefs.setString('userName', user.displayName ?? 'Anonymous');
-
-      // 🔗 Call your Node.js/MongoDB backend API to register the user
-      final response = await http.post(
+      // Multipart request
+      var request = http.MultipartRequest(
+        'POST',
         Uri.parse('$_apiBaseUrl/api/user'),
-        headers: <String, String>{
-          'Content-Type': 'application/json; charset=UTF-8',
-        },
-        body: jsonEncode(<String, String?>{
-          "userId": user.uid,                         // Firebase UID
-          "name": user.displayName ?? 'Anonymous User',
-          "mobile": "1133567891",                     // Static mobile for demo
-          "email": user.email,
-          "image": user.photoURL,                     // Profile photo URL
-        }),
       );
+
+      // Add fields
+      request.fields['userId'] = user.uid;
+      request.fields['name'] = user.displayName ?? 'Anonymous User';
+      request.fields['mobile'] = "1234567891";
+      request.fields['email'] = user.email ?? '';
+      request.fields['profile'] = user.photoURL ?? '';
+
+      // Send the request
+      var response = await request.send();
+      var responseBody = await http.Response.fromStream(response);
 
       if (response.statusCode == 201) {
-        final responseBody = jsonDecode(response.body);
+        final data = jsonDecode(responseBody.body)['data'];
 
-        // 💾 Save backend MongoDB _id (required for delete later)
-        await prefs.setString('backendUserId', responseBody['data']['_id']);
+        final profile = data['profile']?.isNotEmpty == true
+            ? data['profile']
+            : user.photoURL ?? '';
 
-        print('✅ Backend registration successful: ${response.body}');
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Successfully registered with backend!")),
-        );
+        await prefs.setString('backendUserId', data['_id']);
+        await prefs.setString('userId', data['userId'] ?? user.uid);
+        await prefs.setString('userEmail', data['email'] ?? '');
+        await prefs.setString('userName', data['name'] ?? 'Anonymous');
+        await prefs.setString('userMobile', data['mobile'] ?? '');
+        await prefs.setString('userProfileImage', profile);
+
       } else {
-        // ⚠️ Handle backend failure
-        print('❌ Backend error: ${response.statusCode}');
-        print('Response body: ${response.body}');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Backend registration failed: ${response.statusCode}")),
-        );
+        print('Backend registration failed: ${response.statusCode}');
       }
     } catch (e) {
-      // ⚠️ Network or parsing error
-      print('❌ Error during backend API call: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Network error during backend registration: $e")),
-      );
+      print('Error making API call: $e');
     }
   }
 
-  // 🔓 Sign out from Firebase and Google
+  // 🚪 signOutGoogle: Signs out the user from Google and Firebase.
   Future<void> signOutGoogle() async {
-    isSigningIn = true;
+    isSigningIn = true; // Set signing-out state to true.
     try {
-      // Sign out from Google and Firebase
-      await _googleSignIn.signOut();
-      await _auth.signOut();
-      print('🚪 User signed out successfully.');
+      await _googleSignIn.signOut(); // Sign out from Google.
+      await _auth.signOut(); // Sign out from Firebase.
     } catch (e) {
-      print('⚠️ Error during Google sign-out: $e');
+      print('Sign-out error: $e'); // Log any sign-out errors.
     } finally {
-      isSigningIn = false;
+      isSigningIn = false; // Always set signing-out state to false, even on error.
     }
   }
 }
