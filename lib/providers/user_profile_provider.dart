@@ -1,36 +1,93 @@
-// providers/user_profile_provider.dart
-import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
-class UserProfileProvider with ChangeNotifier {
-  String _name = "Tanya Hill"; // Default initial name
-  String _about =
-      "We have a team but still missing a couple of people. Let's play together! We have a team but still missing a couple of people. We have a team but still missing a couple of people"; // Default initial about
-  String _profileImageUrl =
-      'https://images.unsplash.com/photo-1520813795554-e0b4a4413661?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'; // Default network image
-  File? _profileImageFile; // For locally picked image
+/// UserProvider manages user data, including fetching from and updating to backend.
+/// It also provides local updates to user profile fields using `notifyListeners()`.
+class UserProvider with ChangeNotifier {
+  // Internal user data stored as a map
+  Map<String, dynamic> _userData = {};
 
-  String get name => _name;
-  String get about => _about;
-  String get profileImageUrl => _profileImageUrl;
-  File? get profileImageFile => _profileImageFile;
+  // Public getter to access user data
+  Map<String, dynamic> get userData => _userData;
 
-  // Method to update name and about
-  void updateProfileText({required String newName, required String newAbout}) {
-    _name = newName;
-    _about = newAbout;
-    notifyListeners(); // Notify widgets listening to this provider
+  /// 🔄 Fetch user data from backend using stored MongoDB _id
+  Future<void> fetchUser(String s) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getString('backendUserId'); // MongoDB _id stored earlier
+
+      if (userId == null || userId.isEmpty) {
+        throw Exception('User ID not found in SharedPreferences');
+      }
+
+      final url = Uri.parse('http://srv861272.hstgr.cloud:8000/api/user/$userId');
+      debugPrint('📥 Fetching user with ID: $userId');
+
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final result = json.decode(response.body);
+        _userData = result['data']; // Save fetched user data
+        notifyListeners(); // Update UI
+      } else {
+        debugPrint('❌ Failed to fetch user. Status: ${response.statusCode}');
+        throw Exception('Failed to load user');
+      }
+    } catch (e) {
+      debugPrint('⚠️ Exception in fetchUser: $e');
+      rethrow;
+    }
   }
 
-  // Method to update profile image (either from network or local file)
-  void updateProfileImage({String? imageUrl, File? imageFile}) {
-    if (imageUrl != null) {
-      _profileImageUrl = imageUrl;
-      _profileImageFile = null; // Clear local file if setting network image
-    } else if (imageFile != null) {
-      _profileImageFile = imageFile;
-      _profileImageUrl = ''; // Clear network URL if setting local file
+  /// 📝 Update user data locally before sending to server.
+  /// Useful when editing form fields and previewing UI changes.
+  void updateUserLocal({
+    String? name,
+    String? email,
+    String? mobile,
+    String? about,
+    String? gender,
+    String? country,
+  }) {
+    if (name != null) _userData['name'] = name;
+    if (email != null) _userData['email'] = email;
+    if (mobile != null) _userData['mobile'] = mobile;
+    if (about != null) _userData['profile'] = about;
+    if (gender != null) _userData['gender'] = gender;
+    if (country != null) _userData['country'] = country;
+    notifyListeners(); // Trigger UI update
+  }
+
+  /// 📤 Push updated user data to the backend server using PUT API
+  Future<void> updateUserOnServer() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getString('backendUserId'); // MongoDB _id from login
+
+      if (userId == null || userId.isEmpty) {
+        throw Exception('Backend user ID not found in SharedPreferences');
+      }
+
+      final url = Uri.parse('http://srv861272.hstgr.cloud:8000/api/user/$userId');
+      debugPrint('📤 Updating user with ID: $userId');
+
+      final response = await http.put(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(_userData), // Send updated user map as JSON
+      );
+
+      if (response.statusCode == 200) {
+        debugPrint('✅ User successfully updated on server.');
+      } else {
+        debugPrint('❌ Update failed: ${response.statusCode}, ${response.body}');
+        throw Exception('Failed to update user on server');
+      }
+    } catch (e) {
+      debugPrint('⚠️ Exception in updateUserOnServer: $e');
+      rethrow;
     }
-    notifyListeners(); // Notify widgets listening to this provider
   }
 }

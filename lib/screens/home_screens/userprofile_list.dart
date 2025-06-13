@@ -249,10 +249,6 @@ class _UserProfileListState extends State<UserProfileList>
                             MaterialPageRoute(
                               builder: (context) => EditProfileScreen(
                                 // Pass current fetched data as initial values
-                                initialName: _currentUser?.displayName ?? '',
-                                initialEmail: _currentUser?.email ?? '',
-                                initialAbout: _userAbout ?? '',
-                                initialmobile: _userPhoneNumber ?? '',
                                 // If you want to pre-select gender/country, you'd pass those too
                               ),
                             ),
