@@ -79,21 +79,26 @@ class UserProvider with ChangeNotifier {
   /// @returns The URL/path of the uploaded image on the server, or null if upload fails.
   Future<String?> uploadProfileImage(File imageFile) async {
     try {
-      final uri = Uri.parse('http://srv861272.hstgr.cloud:8000/api/upload/profile');
-      var request = http.MultipartRequest('POST', uri);
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getString('backendUserId'); // MongoDB _id from login
+      final uri = Uri.parse('http://srv861272.hstgr.cloud:8000/api/user/$userId');
+
+      var request = http.MultipartRequest('PUT', uri);
       request.files.add(await http.MultipartFile.fromPath(
-          'profileImage', // This must match the field name your backend expects (e.g., in Multer)
-          imageFile.path,
-          filename: imageFile.path.split('/').last));
+        'profile', // Must match Multer field name
+        imageFile.path,
+        filename: imageFile.path.split('/').last,
+      ));
 
       var response = await request.send();
 
       if (response.statusCode == 200) {
         final responseBody = await response.stream.bytesToString();
         final decoded = json.decode(responseBody);
-        // Assuming your backend returns the new path/URL in 'profile' field
-        debugPrint('✅ Image uploaded successfully. Path: ${decoded['profile']}');
-        return decoded['profile']; // Adjust key based on your backend response
+        final profilePath = decoded['data']?['profile']; // ✅ corrected access
+
+        debugPrint('✅ Image uploaded successfully. Path: $profilePath');
+        return profilePath;
       } else {
         debugPrint('❌ Image upload failed: ${response.statusCode}, ${await response.stream.bytesToString()}');
         return null;
@@ -125,7 +130,6 @@ class UserProvider with ChangeNotifier {
       if (_userData.containsKey('interests') && _userData['interests'] is List) {
         _userData['interests'] = (_userData['interests'] as List).join(',');
       }
-
       final response = await http.put(
         url,
         headers: {'Content-Type': 'application/json'},

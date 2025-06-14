@@ -280,6 +280,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   controller: _mobileController,
                   hintText: 'Enter your mobile number',
                   prefixIcon: Icons.phone,
+                  maxLength: 10,
                   keyboardType: TextInputType.phone, // Optimize keyboard for phone input
                 ),
                 const SizedBox(height: 20),
@@ -299,6 +300,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   hintText: 'Tell us about yourself',
                   prefixIcon: Icons.info_outline,
                   maxLines: 3, // Allows multiple lines of text
+                  maxLength: 100,
                 ),
                 const SizedBox(height: 30),
 
