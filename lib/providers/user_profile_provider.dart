@@ -8,7 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// UserProvider manages user data, including fetching from and updating to backend.
 /// It also provides local updates to user profile fields using `notifyListeners()`,
 /// ensuring UI reflects changes immediately.
-class UserProvider with ChangeNotifier {
+class FetchEditUserProvider with ChangeNotifier {
   // Internal user data stored as a map
   Map<String, dynamic> _userData = {};
 

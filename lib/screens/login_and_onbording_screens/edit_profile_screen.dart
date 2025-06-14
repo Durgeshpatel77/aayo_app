@@ -58,7 +58,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     try {
       // Fetch user data using the provider. Listen: false as we are just calling a method.
-      await Provider.of<UserProvider>(context, listen: false).fetchUser(_firebaseUserId!);
+      await Provider.of<FetchEditUserProvider>(context, listen: false).fetchUser(_firebaseUserId!);
       if (!mounted) return; // Check mount state after async operation
 
       _populateFields(); // Populate controllers and dropdowns with fetched data
@@ -73,7 +73,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   // _populateFields: Fills the text controllers and sets dropdown values
   // based on the data retrieved from UserProvider.
   void _populateFields() {
-    final userData = Provider.of<UserProvider>(context, listen: false).userData;
+    final userData = Provider.of<FetchEditUserProvider>(context, listen: false).userData;
     // Check if userData is populated before trying to access keys
     if (userData.isNotEmpty) {
       _nameController.text = userData['name'] ?? '';
@@ -107,7 +107,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       return;
     }
 
-    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    final userProvider = Provider.of<FetchEditUserProvider>(context, listen: false);
 
     String? newProfileImageUrl; // Variable to hold the URL of the uploaded image
 
@@ -169,7 +169,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Widget build(BuildContext context) {
     // Consumer widget rebuilds when userData changes in UserProvider,
     // ensuring the UI always reflects the latest profile information.
-    return Consumer<UserProvider>(
+    return Consumer<FetchEditUserProvider>(
       builder: (context, userProvider, child) {
         final userData = userProvider.userData; // Get the latest data from the provider
         // Determine the profile image to display

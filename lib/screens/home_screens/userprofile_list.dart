@@ -99,7 +99,7 @@ class _UserProfileListState extends State<UserProfileList>
     }
 
     // Access the UserProvider without listening to avoid unnecessary rebuilds here
-    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    final userProvider = Provider.of<FetchEditUserProvider>(context, listen: false);
     // Call the provider to fetch user data from your backend using the Firebase UID
     await userProvider.fetchUser(_currentUser!.uid);
 
@@ -143,7 +143,7 @@ class _UserProfileListState extends State<UserProfileList>
   Widget build(BuildContext context) {
     // Consumer widget rebuilds its child whenever UserProvider's data changes.
     // This ensures the UI is always up-to-date with the latest profile information.
-    return Consumer<UserProvider>(
+    return Consumer<FetchEditUserProvider>(
       builder: (context, userProvider, child) {
         final userData = userProvider.userData; // Get the latest user data from the provider
         // Determine the profile image URL. We expect it to be in the 'profile' field
