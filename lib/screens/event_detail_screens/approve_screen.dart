@@ -4,7 +4,7 @@ import 'dart:math';
 
 import 'package:aayo/screens/event_detail_screens/registration_page.dart';
 import 'package:flutter/material.dart';
-// No need to import Create_Event_model.dart if you're not using a model
+// No need to import create_event_model.dart if you're not using a model
 import 'guest_page.dart';
 import 'overview_page.dart'; // This is where OverviewTab will be defined
 

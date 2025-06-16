@@ -6,6 +6,7 @@ import 'package:aayo/providers/onording_login_screens_providers/google_signin_pr
 import 'package:aayo/providers/onording_login_screens_providers/onboarding_provider.dart';
 import 'package:aayo/providers/setting_screens_providers/event_provider.dart';
 import 'package:aayo/providers/home_screens_providers/home_provider.dart';
+import 'package:aayo/providers/setting_screens_providers/venue_provider.dart';
 import 'package:aayo/providers/setting_screens_providers/write_to_us_provider.dart';
 import 'package:aayo/providers/user_profile_provider.dart';
 import 'package:aayo/screens/login_and_onbording_screens/splash_screen.dart';
@@ -40,6 +41,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => EventCreationProvider()),
         ChangeNotifierProvider(create: (_) => OnboardingProvider()),
         ChangeNotifierProvider(create: (_) => WriteToUsProvider()),
+        ChangeNotifierProvider(create: (_) => VenueProvider()),
 
       ],
       child: const MaterialApp(
