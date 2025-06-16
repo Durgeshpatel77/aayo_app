@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../providers/onording_login_screens_providers/google_signin_provider.dart';
 import '../home_screens/home_screen.dart';
+import 'choose_your_fav_screen.dart';
 
 class LoginAndRegister extends StatelessWidget {
   const LoginAndRegister({super.key});
@@ -92,7 +93,7 @@ class LoginAndRegister extends StatelessWidget {
                                       Navigator.pushReplacement(
                                         context,
                                         MaterialPageRoute(
-                                            builder: (_) => const HomeScreen()),
+                                            builder: (_) => const ChooseFavoriteScreen()),
                                       );
                                     }
                                   },

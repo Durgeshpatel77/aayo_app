@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:http/http.dart' as http;
 
-import 'google_signin_provider.dart'; // Adjust this import path based on your project
+import 'google_signin_provider.dart'; // Adjust this path if needed
 
 class LogoutProvider with ChangeNotifier {
   final GoogleSignInProvider googleProvider;
@@ -17,35 +16,16 @@ class LogoutProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getString('backendUserId');
-
-      if (userId == null || userId.isEmpty) {
-        debugPrint('User ID not found in SharedPreferences');
-        _isProcessing = false;
-        notifyListeners();
-        return false;
-      }
-
-      // Step 1: Sign out
+      // Step 1: Sign out from Google
       await googleProvider.signOutGoogle();
 
-      // Step 2: Delete user from backend
-      final response = await http.delete(
-        Uri.parse('http://srv861272.hstgr.cloud:8000/api/user/$userId'),
-      );
+      // Step 2: Clear SharedPreferences (session/local storage)
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.clear();
 
-      if (response.statusCode == 200) {
-        await prefs.clear(); // Step 3: Clear SharedPreferences
-        _isProcessing = false;
-        notifyListeners();
-        return true;
-      } else {
-        debugPrint('Failed to delete user. Status: ${response.statusCode}');
-        _isProcessing = false;
-        notifyListeners();
-        return false;
-      }
+      _isProcessing = false;
+      notifyListeners();
+      return true;
     } catch (e) {
       debugPrint('Error during logout: $e');
       _isProcessing = false;

@@ -81,25 +81,34 @@ class ChooseFavoriteScreen extends StatelessWidget {
                   height: 52,
                   child: ElevatedButton(
                     onPressed: provider.hasSelection
-                        ? () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const HomeScreen(),
-                        ),
-                      );
+                        ? () async {
+                      final success =
+                      await provider.submitInterests(context);
+                      if (success) {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const HomeScreen(),
+                          ),
+                        );
+                      }
                     }
                         : null,
                     style: ElevatedButton.styleFrom(
                       elevation: 0,
                       backgroundColor: provider.hasSelection
                           ? Colors.pink
-                          : Colors.grey[600],
+                          : Colors.grey[400],
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
                       ),
                     ),
-                    child: const Text(
+                    child: provider.isSubmitting
+                        ? const CircularProgressIndicator(
+                      valueColor:
+                      AlwaysStoppedAnimation<Color>(Colors.white),
+                    )
+                        : const Text(
                       "Finish",
                       style: TextStyle(
                         fontSize: 16,
@@ -117,11 +126,13 @@ class ChooseFavoriteScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildCategoryItem(BuildContext context, String icon, String title, bool isSelected) {
-    final provider = Provider.of<FavoriteCategoryProvider>(context, listen: false);
+  Widget _buildCategoryItem(
+      BuildContext context, String icon, String title, bool isSelected) {
+    final provider =
+    Provider.of<FavoriteCategoryProvider>(context, listen: false);
 
     return GestureDetector(
-      onTap: () => provider.toggleCategory(title),
+      onTap: () => provider.toggleCategory(context, title),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(

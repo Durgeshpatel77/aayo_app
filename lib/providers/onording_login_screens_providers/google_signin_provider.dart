@@ -5,126 +5,134 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
-// 🚀 GoogleSignInProvider: Manages Google authentication and user registration with your backend.
 class GoogleSignInProvider extends ChangeNotifier {
-  // 🔑 FirebaseAuth instance: For Firebase authentication operations.
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  // 🌐 GoogleSignIn instance: For initiating Google Sign-In flow.
   final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final String _apiBaseUrl = 'http://srv861272.hstgr.cloud:8000';
 
-  // 🔄 _isSigningIn: A boolean to track the signing-in state, used for UI feedback.
   bool _isSigningIn = false;
-  bool get isSigningIn => _isSigningIn; // Getter for the signing-in state.
+  bool get isSigningIn => _isSigningIn;
 
-  // Setter for _isSigningIn: Notifies listeners (UI) when the state changes.
   set isSigningIn(bool value) {
     _isSigningIn = value;
     notifyListeners();
   }
 
-  // 🔗 _apiBaseUrl: The base URL for your backend API.
-  final String _apiBaseUrl = 'http://srv861272.hstgr.cloud:8000';
-
-  // 🚀 signInWithGoogle: Initiates the Google Sign-In process.
-  // Returns the authenticated Firebase User object on success, null otherwise.
   Future<User?> signInWithGoogle(BuildContext context) async {
-    isSigningIn = true; // Set signing-in state to true to show loading indicator.
-
+    isSigningIn = true;
     try {
-      // 🤝 Step 1: Start the Google Sign-In flow to get the user's Google account.
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
-
-        // User cancelled the sign-in process.
         isSigningIn = false;
         return null;
       }
 
-      // 🔐 Step 2: Get Google authentication credentials (accessToken and idToken).
       final googleAuth = await googleUser.authentication;
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
-      // 🔗 Step 3: Sign in to Firebase using the Google credentials.
       final UserCredential userCredential =
       await _auth.signInWithCredential(credential);
-      final User? user = userCredential.user; // Get the Firebase User object.
+      final User? user = userCredential.user;
 
       if (user != null) {
-        // ✅ User successfully signed in to Firebase. Log user details.
-
-        // 📝 Step 4: Register or update the user's information in your custom backend.
-        await _registerUserInBackend(user, context);
+        await _registerOrFetchUserInBackend(user, context);
       }
 
-      isSigningIn = false; // Set signing-in state to false.
-      return user; // Return the authenticated Firebase user.
+      isSigningIn = false;
+      return user;
     } catch (e) {
-      // ❌ Handle any errors during the sign-in process.
-      isSigningIn = false; // Set signing-in state to false.
+      isSigningIn = false;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Sign in failed: $e")), // Show error message to user.
+        SnackBar(content: Text("Sign in failed: $e")),
       );
       return null;
     }
   }
 
-  // 📝 _registerUserInBackend: Sends user data to your custom backend for registration/update.
-  Future<void> _registerUserInBackend(User user, BuildContext context) async {
+  Future<void> _registerOrFetchUserInBackend(User user, BuildContext context) async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      final uid = user.uid;
 
-      // Multipart request
-      var request = http.MultipartRequest(
+      // Step 1: Try to fetch existing user by userId
+      final getResponse = await http.get(Uri.parse('$_apiBaseUrl/api/user?userId=$uid'));
+
+      if (getResponse.statusCode == 200) {
+        final json = jsonDecode(getResponse.body);
+        final dataList = json['data'];
+
+        if (dataList != null && dataList is List && dataList.isNotEmpty) {
+          final matchedUser = dataList.firstWhere(
+                (item) => item['userId'] == uid,
+            orElse: () => null,
+          );
+
+          if (matchedUser != null) {
+            print('✅ Existing user found (matched by userId)');
+
+            await prefs.setString('backendUserId', matchedUser['_id'] ?? '');
+            await prefs.setString('userId', matchedUser['userId'] ?? uid);
+            await prefs.setString('userEmail', matchedUser['email'] ?? '');
+            await prefs.setString('userName', matchedUser['name'] ?? 'Anonymous');
+            await prefs.setString('userMobile', matchedUser['mobile'] ?? '');
+            await prefs.setString('userProfileImage', matchedUser['profile'] ?? '');
+            return;
+          } else {
+            print('❌ User ID not found in fetched list');
+          }
+        } else {
+          print('❌ No user data returned');
+        }
+      }
+
+      print('! User not found, registering...');
+
+      // Step 2: Register new user
+      final request = http.MultipartRequest(
         'POST',
         Uri.parse('$_apiBaseUrl/api/user'),
       );
 
-      // Add fields
-      request.fields['userId'] = user.uid;
-      request.fields['name'] = user.displayName ?? 'Anonymous User';
+      request.fields['userId'] = uid;
+      request.fields['name'] = user.displayName ?? 'Anonymous';
       request.fields['mobile'] = "1234567891";
       request.fields['email'] = user.email ?? '';
       request.fields['profile'] = user.photoURL ?? '';
 
-      // Send the request
-      var response = await request.send();
-      var responseBody = await http.Response.fromStream(response);
+      final response = await request.send();
+      final responseBody = await http.Response.fromStream(response);
 
       if (response.statusCode == 201) {
         final data = jsonDecode(responseBody.body)['data'];
 
-        final profile = data['profile']?.isNotEmpty == true
-            ? data['profile']
-            : user.photoURL ?? '';
-
-        await prefs.setString('backendUserId', data['_id']);
-        await prefs.setString('userId', data['userId'] ?? user.uid);
+        print('✅ User registered');
+        await prefs.setString('backendUserId', data['_id'] ?? '');
+        await prefs.setString('userId', data['userId'] ?? uid);
         await prefs.setString('userEmail', data['email'] ?? '');
         await prefs.setString('userName', data['name'] ?? 'Anonymous');
         await prefs.setString('userMobile', data['mobile'] ?? '');
-        await prefs.setString('userProfileImage', profile);
-
+        await prefs.setString('userProfileImage', data['profile'] ?? '');
       } else {
-        print('Backend registration failed: ${response.statusCode}');
+        print('❌ Backend registration failed: ${response.statusCode}');
+        print('Response body: ${responseBody.body}');
       }
     } catch (e) {
-      print('Error making API call: $e');
+      print('🔥 Error in _registerOrFetchUserInBackend: $e');
     }
   }
 
-  // 🚪 signOutGoogle: Signs out the user from Google and Firebase.
   Future<void> signOutGoogle() async {
-    isSigningIn = true; // Set signing-out state to true.
+    isSigningIn = true;
     try {
-      await _googleSignIn.signOut(); // Sign out from Google.
-      await _auth.signOut(); // Sign out from Firebase.
+      await _googleSignIn.signOut();
+      await _auth.signOut();
     } catch (e) {
-      print('Sign-out error: $e'); // Log any sign-out errors.
+      print('Sign-out error: $e');
     } finally {
-      isSigningIn = false; // Always set signing-out state to false, even on error.
+      isSigningIn = false;
     }
   }
 }

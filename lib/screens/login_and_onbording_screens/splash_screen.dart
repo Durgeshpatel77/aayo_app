@@ -1,4 +1,5 @@
 // splash_screen.dart
+import 'package:aayo/screens/home_screens/home_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -28,7 +29,7 @@ class _SplashScreenState extends State<SplashScreen> {
       // User is logged in
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const ChooseFavoriteScreen()),
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
       );
     } else {
       // User not logged in
@@ -36,6 +37,7 @@ class _SplashScreenState extends State<SplashScreen> {
         context,
         MaterialPageRoute(builder: (_) => const OnboardingScreen()),
       );
+
     }
   }
 
