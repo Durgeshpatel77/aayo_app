@@ -32,27 +32,24 @@ class _EventsscreenState extends State<Eventsscreen> {
     final size = MediaQuery.of(context).size;
     final screenWidth = size.width;
     final screenHeight = size.height;
+    final textScale = MediaQuery.of(context).textScaleFactor;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Your Events'),
         centerTitle: true,
         backgroundColor: Colors.white,
-        elevation: 1,
-        shadowColor: Colors.black26,
         actions: [
           IconButton(
             icon: Icon(Icons.message_outlined, color: Colors.grey[800]),
             onPressed: () {
               Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => ChatListPage()),
-              );
+                  context, MaterialPageRoute(builder: (_) => ChatListPage()));
             },
           ),
         ],
       ),
-      backgroundColor: Colors.grey.shade100,
+      backgroundColor: Colors.white,
       body: Consumer<EventCreationProvider>(
         builder: (context, eventProvider, child) {
           if (eventProvider.isFetchingEvents) {
@@ -70,96 +67,70 @@ class _EventsscreenState extends State<Eventsscreen> {
             final events = eventProvider.allEvents;
             if (events.isEmpty) {
               return const Center(
-                child: Text(
-                  "No events found.",
-                  style: TextStyle(fontSize: 16),
-                ),
+                child: Text("No events found.",
+                    style: TextStyle(fontSize: 16)),
               );
             }
 
-            return ListView.builder(
-              padding: EdgeInsets.all(screenWidth * 0.04),
-              itemCount: events.length,
-              itemBuilder: (context, index) {
-                final event = events[index];
-                final details = event.eventDetails;
-                final title = details?.title ?? event.title;
-                final city = details?.city ?? "Unknown";
-                final price = details?.isFree == true
-                    ? "Free"
-                    : "₹${details?.price.toStringAsFixed(0)}";
-                final start = details?.startTime != null
-                    ? DateFormat('EEE, MMM d • hh:mm a')
-                    .format(details!.startTime!)
-                    : "";
-
-                return GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => EventDetailScreen(eventName: title),
+            return RefreshIndicator(
+              color: Colors.pink,
+              onRefresh: () async {
+                await Provider.of<EventCreationProvider>(context, listen: false)
+                    .fetchUserPostsFromPrefs(type: 'event');
+              },
+              child: ListView.builder(
+                padding: EdgeInsets.all(screenWidth * 0.04),
+                itemCount: events.length,
+                itemBuilder: (context, index) {
+                  final event = events[index];
+                  final details = event.eventDetails;
+                  final title = details?.title ?? event.title;
+                  final city = details?.city ?? "Unknown";
+                  final price = details?.isFree == true
+                      ? "Free"
+                      : "₹${details?.price.toStringAsFixed(0)}";
+                  final start = details?.startTime != null
+                      ? DateFormat('EEE, MMM d • hh:mm a')
+                      .format(details!.startTime!)
+                      : "";
+              
+                  return GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => EventDetailScreen(eventName: title)),
+                      );
+                    },
+                    child: Container(
+                      margin: EdgeInsets.only(bottom: screenHeight * 0.025),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.grey,width: 0.5),
+                        color: Colors.white,
                       ),
-                    );
-                  },
-                  child: Container(
-                    margin: EdgeInsets.only(bottom: screenHeight * 0.015),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.grey, width: 0.5),
-                      color: Colors.white,
-                    ),
-                    child: Row(
-                      children: [
-                        ClipRRect(
-                          borderRadius: const BorderRadius.horizontal(
-                              left: Radius.circular(16)),
-                          child: event.media.isNotEmpty
-                              ? Image.network(
-                            _buildFullImageUrl(event.media.first),
-                            width: screenWidth * 0.33,
-                            height: screenWidth * 0.38,
-                            fit: BoxFit.cover,
-                            loadingBuilder:
-                                (context, child, loadingProgress) {
-                              if (loadingProgress == null) return child;
-                              return Container(
-                                width: screenWidth * 0.33,
-                                height: screenWidth * 0.38,
-                                alignment: Alignment.center,
-                                child: const CircularProgressIndicator(
-                                  color: Colors.pink,
-                                  strokeWidth: 2,
-                                ),
-                              );
-                            },
-                            errorBuilder:
-                                (context, error, stackTrace) {
-                              return Container(
-                                width: screenWidth * 0.33,
-                                height: screenWidth * 0.38,
-                                color: Colors.grey.shade200,
-                                alignment: Alignment.center,
-                                child: const Icon(Icons.event,
-                                    size: 40,
-                                    color: Colors.pinkAccent),
-                              );
-                            },
-                          )
-                              : Container(
-                            width: screenWidth * 0.33,
-                            height: screenWidth * 0.38,
-                            color: Colors.grey.shade200,
-                            alignment: Alignment.center,
-                            child: const Icon(Icons.event,
-                                size: 40, color: Colors.pinkAccent),
+                      child: Row(
+                        children: [
+                          ClipRRect(
+                            borderRadius: const BorderRadius.horizontal(
+                                left: Radius.circular(16)),
+                            child: event.media.isNotEmpty
+                                ? Image.network(
+                              _buildFullImageUrl(event.media.first),
+                              width: screenWidth * 0.33,
+                              height: screenWidth * 0.38,
+                              fit: BoxFit.cover,
+                            )
+                                : Container(
+                              width: screenWidth * 0.33,
+                              height: screenWidth * 0.38,
+                              color: Colors.grey.shade100,
+                              child: const Icon(Icons.broken_image,
+                                  size: 80, color: Colors.grey),
+                            ),
                           ),
-                        ),
-                        SizedBox(width: screenWidth * 0.03),
-                        Expanded(
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(
-                                vertical: screenHeight * 0.015),
+                          SizedBox(width: screenWidth * 0.03),
+                          Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -228,13 +199,13 @@ class _EventsscreenState extends State<Eventsscreen> {
                                 ),
                               ],
                             ),
-                          ),
-                        )
-                      ],
+                          )
+                        ],
+                      ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             );
           }
         },

@@ -85,8 +85,8 @@ import 'package:shimmer/shimmer.dart';
                 loadingBuilder: (context, child, loadingProgress) {
                   if (loadingProgress == null) return child;
                   return Shimmer.fromColors(
-                    baseColor: Colors.grey[300]!,
-                    highlightColor: Colors.grey[100]!,
+                    baseColor: Colors.red[200]!,
+                    highlightColor: Colors.grey[50]!,
                     child: Container(
                       color: Colors.white,
                       width: double.infinity,
