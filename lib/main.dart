@@ -32,7 +32,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => homeProvider()),
+        ChangeNotifierProvider(create: (_) => HomeProvider()..fetchAll()),
         ChangeNotifierProvider(create: (_) => ImageSelectionProvider()),
         ChangeNotifierProvider(create: (_) => FetchEditUserProvider()),
         ChangeNotifierProvider(create: (_) => GoogleSignInProvider()),

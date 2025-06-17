@@ -1,47 +1,55 @@
-// lib/models/event_model.dart
-import 'dart:io';
-import 'package:flutter/material.dart'; // Import for TimeOfDay
-
 class Event {
-  final String id; // Unique ID for each event
-  final String name;
-  final String caption;
+  final String id;
+  final String title;
+  final String content;
   final String location;
-  final String category;
-  final String organizer;
+  final DateTime startTime;
+  final DateTime endTime;
+  final bool isFree;
   final double price;
-  final DateTime date; // Still keeping date and time separate for form logic
-  final TimeOfDay time;
-  final File? image; // Now nullable
-  final String imageUrl; // For a network image URL if you implement it later
-  final DateTime
-      eventDateTime; // Combined date and time for easier sorting/display
+  final List<String> likes;
+  final List<String> comments;
+  final String image;
+  final List<String> media; // ✅ Add this line
 
   Event({
     required this.id,
-    required this.name,
-    required this.caption,
+    required this.title,
+    required this.content,
     required this.location,
-    required this.category,
-    required this.organizer,
+    required this.startTime,
+    required this.endTime,
+    required this.isFree,
     required this.price,
-    required this.date,
-    required this.time,
-    this.image, // Now nullable
-    this.imageUrl = '', // Provide a default empty string or make it nullable
-    required this.eventDateTime, // This should be a combined DateTime
+    required this.likes,
+    required this.comments,
+    required this.image,
+    this.media = const [],
   });
 
-  // You already have a getter, but the constructor now takes eventDateTime directly.
-  // You can still keep this for convenience if you want to access the combined date/time
-  // from the separate date and time fields.
-  DateTime get fullDateTimeFromSeparateFields {
-    return DateTime(
-      date.year,
-      date.month,
-      date.day,
-      time.hour,
-      time.minute,
+  factory Event.fromJson(Map<String, dynamic> json) {
+    final eventDetails = json['eventDetails'] ?? {};
+
+    return Event(
+      id: json['_id'] ?? '',
+      title: json['title'] ?? '',
+      content: json['content'] ?? '',
+      location: eventDetails['location'] ?? '',
+      startTime: DateTime.tryParse(eventDetails['startTime'] ?? '') ?? DateTime.now(),
+      endTime: DateTime.tryParse(eventDetails['endTime'] ?? '') ?? DateTime.now(),
+      isFree: eventDetails['isFree'] ?? true,
+      price: (eventDetails['price'] ?? 0).toDouble(),
+      likes: (json['likes'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+      comments: (json['comments'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+      image: json['image'] ?? '',
+      media: (json['media'] as List<dynamic>?)
+          ?.map((e) {
+        if (e is String) return e;
+        if (e is Map && e['url'] != null) return e['url'].toString();
+        return '';
+      })
+          .where((url) => url.isNotEmpty)
+          .toList() ?? [],
     );
   }
 }

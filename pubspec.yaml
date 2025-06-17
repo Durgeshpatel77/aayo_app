@@ -61,6 +61,7 @@ dependencies:
   overlay_support: ^2.1.0
   shared_preferences: ^2.5.3
   firebase_storage: ^12.4.7
+  shimmer: ^3.0.0
 flutter_launcher_icons:
   android: true
   ios: true
