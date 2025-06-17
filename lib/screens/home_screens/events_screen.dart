@@ -1,203 +1,243 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import '../../models/events_list_item.dart';
 import '../../providers/setting_screens_providers/event_provider.dart';
 import 'chat_list_page.dart';
 import '../event_detail_screens/events_details.dart';
 
-class Eventsscreen extends StatelessWidget {
+class Eventsscreen extends StatefulWidget {
   const Eventsscreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    // Get MediaQueryData
-    final mediaQuery = MediaQuery.of(context);
-    final screenWidth = mediaQuery.size.width;
-    final screenHeight = mediaQuery.size.height;
+  State<Eventsscreen> createState() => _EventsscreenState();
+}
 
-    final createdEvents =
-        Provider.of<EventCreationProvider>(context).createdEvents;
+class _EventsscreenState extends State<Eventsscreen> {
+  @override
+  void initState() {
+    super.initState();
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      Provider.of<EventCreationProvider>(context, listen: false)
+          .fetchUserPostsFromPrefs(type: 'event');
+    });
+  }
+
+  String _buildFullImageUrl(String relativePath) {
+    return 'http://srv861272.hstgr.cloud:8000/$relativePath';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final screenWidth = size.width;
+    final screenHeight = size.height;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Your Events'),
         centerTitle: true,
-        scrolledUnderElevation: 0,
         backgroundColor: Colors.white,
+        elevation: 1,
+        shadowColor: Colors.black26,
         actions: [
-          Padding(
-            padding: EdgeInsets.only(
-                right: screenWidth * 0.025), // Responsive right padding
-            child: InkWell(
-              onTap: () {
-                Navigator.push(
-                    context, MaterialPageRoute(builder: (_) => ChatListPage()));
-              },
-              child: const Icon(Icons.message_outlined),
-            ),
-          )
+          IconButton(
+            icon: Icon(Icons.message_outlined, color: Colors.grey[800]),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => ChatListPage()),
+              );
+            },
+          ),
         ],
       ),
-      backgroundColor: Colors.white,
-      body: Column(
-        // Use a Column to stack the FAB-like message and the event list
-        children: [
-          // The rest of your events list
-          Expanded(
-            // Make sure the ListView takes the remaining space
-            child:
-            createdEvents.isEmpty
-                ? const Center(child: Text("No events found."))
-                : ListView.builder(
-                    itemCount: createdEvents.length,
-                    itemBuilder: (context, index) {
-                      final event = createdEvents[index];
-                      return Card(
-                        color: Colors.white,
-                        elevation: 3,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+      backgroundColor: Colors.grey.shade100,
+      body: Consumer<EventCreationProvider>(
+        builder: (context, eventProvider, child) {
+          if (eventProvider.isFetchingEvents) {
+            return const Center(
+              child: CircularProgressIndicator(color: Colors.pink),
+            );
+          } else if (eventProvider.errorMessage != null) {
+            return Center(
+              child: Text(
+                'Error: ${eventProvider.errorMessage}',
+                style: const TextStyle(color: Colors.red),
+              ),
+            );
+          } else {
+            final events = eventProvider.allEvents;
+            if (events.isEmpty) {
+              return const Center(
+                child: Text(
+                  "No events found.",
+                  style: TextStyle(fontSize: 16),
+                ),
+              );
+            }
+
+            return ListView.builder(
+              padding: EdgeInsets.all(screenWidth * 0.04),
+              itemCount: events.length,
+              itemBuilder: (context, index) {
+                final event = events[index];
+                final details = event.eventDetails;
+                final title = details?.title ?? event.title;
+                final city = details?.city ?? "Unknown";
+                final price = details?.isFree == true
+                    ? "Free"
+                    : "₹${details?.price.toStringAsFixed(0)}";
+                final start = details?.startTime != null
+                    ? DateFormat('EEE, MMM d • hh:mm a')
+                    .format(details!.startTime!)
+                    : "";
+
+                return GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => EventDetailScreen(eventName: title),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    margin: EdgeInsets.only(bottom: screenHeight * 0.015),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.grey, width: 0.5),
+                      color: Colors.white,
+                    ),
+                    child: Row(
+                      children: [
+                        ClipRRect(
+                          borderRadius: const BorderRadius.horizontal(
+                              left: Radius.circular(16)),
+                          child: event.media.isNotEmpty
+                              ? Image.network(
+                            _buildFullImageUrl(event.media.first),
+                            width: screenWidth * 0.33,
+                            height: screenWidth * 0.38,
+                            fit: BoxFit.cover,
+                            loadingBuilder:
+                                (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return Container(
+                                width: screenWidth * 0.33,
+                                height: screenWidth * 0.38,
+                                alignment: Alignment.center,
+                                child: const CircularProgressIndicator(
+                                  color: Colors.pink,
+                                  strokeWidth: 2,
+                                ),
+                              );
+                            },
+                            errorBuilder:
+                                (context, error, stackTrace) {
+                              return Container(
+                                width: screenWidth * 0.33,
+                                height: screenWidth * 0.38,
+                                color: Colors.grey.shade200,
+                                alignment: Alignment.center,
+                                child: const Icon(Icons.event,
+                                    size: 40,
+                                    color: Colors.pinkAccent),
+                              );
+                            },
+                          )
+                              : Container(
+                            width: screenWidth * 0.33,
+                            height: screenWidth * 0.38,
+                            color: Colors.grey.shade200,
+                            alignment: Alignment.center,
+                            child: const Icon(Icons.event,
+                                size: 40, color: Colors.pinkAccent),
+                          ),
                         ),
-                        // Responsive horizontal margin for cards
-                        margin: EdgeInsets.symmetric(
-                            horizontal: screenWidth * 0.04,
-                            vertical: screenHeight * 0.01),
-                        child: InkWell(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    EventDetailScreen(eventName: event.name),
-                              ),
-                            );
-                          },
+                        SizedBox(width: screenWidth * 0.03),
+                        Expanded(
                           child: Padding(
-                            padding: EdgeInsets.all(
-                                screenWidth * 0.03), // Responsive padding
-                            child: Row(
+                            padding: EdgeInsets.symmetric(
+                                vertical: screenHeight * 0.015),
+                            child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                if (event.image != null)
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: Image.file(
-                                      event.image!,
-                                      width:
-                                          screenWidth * 0.2, // Responsive width
-                                      height: screenWidth *
-                                          0.2, // Responsive height
-                                      fit: BoxFit.cover,
-                                    ),
-                                  )
-                                else
-                                  Container(
-                                    width:
-                                        screenWidth * 0.2, // Responsive width
-                                    height:
-                                        screenWidth * 0.2, // Responsive height
-                                    decoration: BoxDecoration(
-                                      color: Colors.grey.shade200,
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Icon(Icons.event,
-                                        size: screenWidth *
-                                            0.1), // Responsive icon size
+                                Text(
+                                  title,
+                                  style: TextStyle(
+                                    fontSize: screenWidth * 0.045,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black87,
                                   ),
-                                SizedBox(
-                                    width:
-                                        screenWidth * 0.03), // Responsive space
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        event.name ?? "Untitled Event",
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                SizedBox(height: screenHeight * 0.007),
+                                Row(
+                                  children: [
+                                    const Icon(Icons.calendar_today,
+                                        size: 16, color: Colors.pink),
+                                    SizedBox(width: screenWidth * 0.015),
+                                    Flexible(
+                                      child: Text(
+                                        start,
                                         style: TextStyle(
-                                          fontSize: 18, // Scale font size
-                                          fontWeight: FontWeight.w600,
+                                          fontSize: screenWidth * 0.032,
+                                          color: Colors.grey.shade600,
                                         ),
                                       ),
-                                      SizedBox(
-                                          height: screenHeight *
-                                              0.005), // Responsive space
-                                      Text(
-                                        "${event.ticketType} - ${event.ticketPrice ?? 'Free'}",
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: screenHeight * 0.006),
+                                Row(
+                                  children: [
+                                    const Icon(Icons.location_on,
+                                        size: 18, color: Colors.orange),
+                                    SizedBox(width: screenWidth * 0.015),
+                                    Flexible(
+                                      child: Text(
+                                        city,
                                         style: TextStyle(
-                                          color: Colors.grey[700],
-                                          fontSize: 14, // Scale font size
+                                          fontSize: screenWidth * 0.032,
+                                          color: Colors.grey.shade700,
                                         ),
                                       ),
-                                      SizedBox(
-                                          height: screenHeight *
-                                              0.01), // Responsive space
-                                      Row(
-                                        children: [
-                                          Icon(Icons.location_on,
-                                              size: 16,
-                                              color: Colors
-                                                  .redAccent), // Scale icon size
-                                          SizedBox(
-                                              width: screenWidth *
-                                                  0.01), // Responsive space
-                                          Expanded(
-                                            child: Text(
-                                              event.location ??
-                                                  "No location found",
-                                              overflow: TextOverflow.ellipsis,
-                                              style: TextStyle(
-                                                color: Colors.grey[600],
-                                                fontSize: 13, // Scale font size
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      SizedBox(
-                                          height: screenHeight *
-                                              0.005), // Responsive space
-                                      Row(
-                                        children: [
-                                          Icon(Icons.calendar_today,
-                                              size: 16,
-                                              color: Colors
-                                                  .blueAccent), // Scale icon size
-                                          Text(
-                                            " Start Date:",
-                                            style: TextStyle(
-                                              color: Colors.grey[600],
-                                              fontSize: 13, // Scale font size
-                                            ),
-                                          ),
-                                          SizedBox(
-                                              width: screenWidth *
-                                                  0.01), // Responsive space
-                                          Text(
-                                            event.startDate != null
-                                                ? DateFormat('MM/d/y')
-                                                    .format(event.startDate!)
-                                                : 'No start date',
-                                            style: TextStyle(
-                                              color: Colors.grey[600],
-                                              fontSize: 13, // Scale font size
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: screenHeight * 0.008),
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: screenWidth * 0.03,
+                                    vertical: screenHeight * 0.006,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.pink.shade50,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    price,
+                                    style: TextStyle(
+                                      fontSize: screenWidth * 0.035,
+                                      color: Colors.pink,
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                        ),
-                      );
-                    },
+                        )
+                      ],
+                    ),
                   ),
-          ),
-        ],
+                );
+              },
+            );
+          }
+        },
       ),
     );
   }

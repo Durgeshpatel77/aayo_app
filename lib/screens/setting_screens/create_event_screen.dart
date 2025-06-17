@@ -499,6 +499,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                   TextfieldEditprofiile(
                     controller: _eventNameController,
                     hintText: 'Enter event name',
+                    maxLength: 30,
                     prefixIcon: Icons.person,
                   ),
                 ],
@@ -550,7 +551,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                   child: Row(
                     children: [
                       const Icon(Icons.location_on_outlined,
-                          color: Colors.black, size: 24),
+                          color: Colors.pinkAccent, size: 24),
                       const SizedBox(width: 15),
                       Expanded(
                         child: Column(
@@ -641,7 +642,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                     child: Row(
                       children: [
                         const Icon(Icons.confirmation_number_outlined,
-                            color: Colors.black, size: 24),
+                            color: Colors.pinkAccent, size: 24),
                         const SizedBox(width: 15),
                         const Text(
                           'Tickets',
@@ -677,8 +678,6 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                     TextField(
                       keyboardType: TextInputType.number,
                       decoration: InputDecoration(
-                        labelText: 'Ticket Price',
-                        labelStyle: const TextStyle(color: Colors.pink),
                         hintText: 'Enter ticket price',
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
@@ -844,7 +843,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
             onTap: onSelectDate, // Tap on icon or text to select date
             child: Row(
               children: [
-                const Icon(Icons.calendar_today, size: 20),
+                const Icon(Icons.calendar_today, size: 20,color: Colors.pink,),
                 const SizedBox(width: 8),
                 Text(
                   date != null
@@ -860,7 +859,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
             onTap: onSelectTime, // Tap on icon or text to select time
             child: Row(
               children: [
-                const Icon(Icons.access_time, size: 20),
+                const Icon(Icons.access_time, color:Colors.pink,size: 20),
                 const SizedBox(width: 8),
                 Text(
                   time != null

@@ -106,6 +106,7 @@ import '../../providers/home_screens_providers/home_provider.dart';
   class _HomeTabContentState extends State<HomeTabContent> {
     @override
     Widget build(BuildContext context) {
+
       return SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
