@@ -1,4 +1,4 @@
-// screens/CreateEventScreen.dart
+// screens/create_event_screen.dart
 import 'dart:async';
 import 'dart:io'; // For File
 import 'package:flutter/material.dart';
@@ -7,10 +7,14 @@ import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart'; // Import image_picker
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:http/http.dart' as http; // Import http package (still needed if other HTTP calls are made here)
+import 'dart:convert'; // For json decoding (still needed if other JSON parsing is done here)
+
 
 import '../../models/create_event_model.dart';
 import '../../providers/setting_screens_providers/event_provider.dart';
 import '../../widgets/textfield _editprofiile.dart';
+import 'venue_list_page.dart'; // Import the new venue_list_page.dart
 
 class CreateEventScreen extends StatefulWidget {
   const CreateEventScreen({super.key});
@@ -24,6 +28,9 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   String _ticketType = 'Free'; // default value
   String _ticketPrice = '';
 
+  // Removed _useVenueList boolean as it's no longer needed for a toggle
+  String? _selectedVenueName; // To store the selected venue's name from the list page
+
   final TextEditingController _eventNameController = TextEditingController();
   final TextEditingController _eventDescriptionController = TextEditingController();
 
@@ -33,7 +40,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   DateTime? _endDate;
   TimeOfDay? _endTime;
 
-  String? selectedLocation;
+  String? selectedLocation; // Will hold the full address/name of the selected location/venue
   double? _selectedLatitude;
   double? _selectedLongitude;
   String? _selectedCity;
@@ -306,6 +313,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
       _selectedLatitude = position.latitude;
       _selectedLongitude = position.longitude;
       _selectedCity = place.locality; // Get city from placemark
+      _selectedVenueName = null; // Clear selected venue name if current location is used
     });
 
     _showMessage('Selected: $address');
@@ -317,7 +325,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     List<Map<String, dynamic>> _suggestions = [];
     bool _isLoading = false;
 
-    final result = await showDialog<Map<String, dynamic>?>( // Change return type to Map
+    final result = await showDialog<Map<String, dynamic>?>(
       context: context,
       builder: (context) {
         return StatefulBuilder(builder: (context, setState) {
@@ -426,8 +434,28 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
         _selectedLongitude = double.tryParse(result['lon']);
         // Try to extract city from the address details
         _selectedCity = result['address']?['city'] ?? result['address']?['town'] ?? result['address']?['village'] ?? "Unknown";
+        _selectedVenueName = null; // Clear selected venue name if manual location is used
       });
       _showMessage("Selected: ${result['display_name']}");
+    }
+  }
+
+  // Function to navigate to VenueListPage
+  Future<void> _navigateToVenueList() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const VenueListPage()),
+    );
+
+    if (result != null && result is Map<String, dynamic>) {
+      setState(() {
+        _selectedVenueName = result['name'] as String?;
+        selectedLocation = result['address'] as String?; // Use venue address as main location
+        _selectedLatitude = result['latitude'] as double?;
+        _selectedLongitude = result['longitude'] as double?;
+        _selectedCity = result['city'] as String?;
+      });
+      _showMessage('Selected Venue: ${_selectedVenueName}');
     }
   }
 
@@ -535,50 +563,99 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
             ),
             const SizedBox(height: 20),
 
-            // --- Add Event Location ---
+            // --- Add Event Location - Both Manual/Current and Venue List Options ---
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: GestureDetector(
-                onTap: _handleLocationTap,
-                child: Container(
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(width: 1, color: Colors.pink.shade400),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Event Location',
+                    style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black),
                   ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.location_on_outlined,
-                          color: Colors.pinkAccent, size: 24),
-                      const SizedBox(width: 15),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              (selectedLocation?.isNotEmpty ?? false)
-                                  ? selectedLocation!
-                                  : 'No location selected',
+                  const SizedBox(height: 10),
+                  // Option 1: Manual/Current Location
+                  GestureDetector(
+                    onTap: _handleLocationTap,
+                    child: Container(
+                      padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(width: 1, color: Colors.pink.shade400),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.location_on_outlined,
+                              color: Colors.pinkAccent, size: 24),
+                          const SizedBox(width: 15),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  (selectedLocation?.isNotEmpty ?? false) && _selectedVenueName == null // Display manual/current only if no venue is selected
+                                      ? selectedLocation!
+                                      : 'Tap to select manual or current location',
+                                  style: const TextStyle(
+                                    color: Colors.black,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const Text(
+                                  'Offline location or virtual link',
+                                  style:
+                                  TextStyle(color: Colors.grey, fontSize: 12),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(Icons.chevron_right, color: Colors.grey[400]),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 15), // Space between location options
+
+                  // Option 2: Select Venue from List
+                  GestureDetector(
+                    onTap: _navigateToVenueList,
+                    child: Container(
+                      padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(width: 1, color: Colors.pink.shade400),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.meeting_room_outlined,
+                              color: Colors.pinkAccent, size: 24),
+                          const SizedBox(width: 15),
+                          Expanded(
+                            child: Text(
+                              (_selectedVenueName?.isNotEmpty ?? false)
+                                  ? _selectedVenueName!
+                                  : 'Select Venue from List',
                               style: const TextStyle(
                                 color: Colors.black,
                                 fontSize: 16,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
-                            const Text(
-                              'Offline location or virtual link',
-                              style:
-                              TextStyle(color: Colors.grey, fontSize: 12),
-                            ),
-                          ],
-                        ),
+                          ),
+                          Icon(Icons.chevron_right, color: Colors.grey[400]),
+                        ],
                       ),
-                      Icon(Icons.chevron_right, color: Colors.grey[400]),
-                    ],
+                    ),
                   ),
-                ),
+                ],
               ),
             ),
             const SizedBox(height: 20),
@@ -624,7 +701,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                 )),
             const SizedBox(height: 20),
 
-            // --- Event Options List ---
+            // --- Event Options List (Tickets Section) ---
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
               child: Column(
@@ -673,7 +750,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                   ),
                   const SizedBox(height: 15),
 
-                  // Conditional Widgets
+                  // Conditional Widgets for Ticket Price
                   if (_ticketType == 'Paid')
                     TextField(
                       keyboardType: TextInputType.number,
@@ -731,12 +808,12 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                           left: 8.0), // space between buttons
                       child: ElevatedButton(
                         onPressed: () async {
+                          // Validation logic considering either manual location or venue list
                           if (_eventNameController.text.isEmpty ||
                               _startDate == null ||
                               _startTime == null ||
                               _endDate == null ||
                               _endTime == null ||
-                              selectedLocation == null ||
                               _eventDescriptionController.text.isEmpty) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text('Please fill all required fields.')),
@@ -744,13 +821,14 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                             return;
                           }
 
-                          // Ensure we have latitude, longitude, and city
-                          if (_selectedLatitude == null || _selectedLongitude == null || _selectedCity == null) {
+                          // Location validation logic: ensure selectedLocation and coordinates are set
+                          if (selectedLocation == null || _selectedLatitude == null || _selectedLongitude == null || _selectedCity == null) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Could not determine precise location details (latitude, longitude, city). Please re-select location.')),
+                              const SnackBar(content: Text('Please select an event location or venue.')),
                             );
                             return;
                           }
+
 
                           final bool isFreeEvent = _ticketType == 'Free';
                           final double? price = isFreeEvent ? 0.0 : double.tryParse(_ticketPrice);
@@ -771,7 +849,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                             startTime: _startTime!,
                             endDate: _endDate!,
                             endTime: _endTime!,
-                            location: selectedLocation!,
+                            location: selectedLocation!, // This will hold manual location or venue address
                             city: _selectedCity!,
                             latitude: _selectedLatitude!,
                             longitude: _selectedLongitude!,
