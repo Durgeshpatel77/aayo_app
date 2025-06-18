@@ -1,5 +1,6 @@
 // main.dart
 import 'package:aayo/firebase_options.dart';
+import 'package:aayo/providers/home_screens_providers/add_post_provider.dart';
 import 'package:aayo/providers/home_screens_providers/chat_provider.dart';
 import 'package:aayo/providers/onording_login_screens_providers/favorite_category_provider.dart';
 import 'package:aayo/providers/onording_login_screens_providers/google_signin_provider.dart';
@@ -8,7 +9,7 @@ import 'package:aayo/providers/setting_screens_providers/event_provider.dart';
 import 'package:aayo/providers/home_screens_providers/home_provider.dart';
 import 'package:aayo/providers/setting_screens_providers/venue_provider.dart';
 import 'package:aayo/providers/setting_screens_providers/write_to_us_provider.dart';
-import 'package:aayo/providers/user_profile_provider.dart';
+import 'package:aayo/providers/onording_login_screens_providers/user_profile_provider.dart';
 import 'package:aayo/screens/login_and_onbording_screens/splash_screen.dart';
 import 'package:aayo/services/notification_services.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -42,6 +43,8 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => OnboardingProvider()),
         ChangeNotifierProvider(create: (_) => WriteToUsProvider()),
         ChangeNotifierProvider(create: (_) => VenueProvider()),
+        ChangeNotifierProvider(create: (_) => AddPostProvider()),
+
 
       ],
       child: const MaterialApp(

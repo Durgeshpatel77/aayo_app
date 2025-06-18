@@ -9,7 +9,7 @@ class HomeProvider extends ChangeNotifier {
   List<Event> _allEvents = [];
   int _selectedIndex = 0;
 
-  bool get loading => _loading;
+  bool get isLoading => _loading;
   List<Event> get allEvents => _allEvents;
   int get selectedIndex => _selectedIndex;
 

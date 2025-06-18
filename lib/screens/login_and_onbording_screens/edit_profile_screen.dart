@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart'; // For image picking
 import 'package:provider/provider.dart'; // For accessing UserProvider
 import 'package:shared_preferences/shared_preferences.dart'; // For initial userId
-import '../../providers/user_profile_provider.dart'; // Your UserProvider
-import '../../widgets/TextField _editprofiile.dart'; // Your custom TextField widget
+import '../../providers/onording_login_screens_providers/user_profile_provider.dart'; // Your UserProvider
+import '../../widgets/textfield _editprofiile.dart'; // Your custom TextField widget
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});

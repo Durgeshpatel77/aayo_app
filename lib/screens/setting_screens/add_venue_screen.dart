@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/setting_screens_providers/venue_provider.dart';
-import '../../widgets/TextField _editprofiile.dart';
+import '../../widgets/textfield _editprofiile.dart';
 
 class AddVenueScreen extends StatefulWidget {
   const AddVenueScreen({super.key});

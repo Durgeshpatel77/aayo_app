@@ -6,7 +6,7 @@ import 'package:provider/provider.dart'; // State management for UserProvider
 
 import 'package:aayo/screens/login_and_onbording_screens/edit_profile_screen.dart'; // Path to your Edit Profile Screen
 import 'package:aayo/screens/setting_screens/setting_screen.dart'; // Path to your Settings Screen
-import '../../providers/user_profile_provider.dart'; // Path to your UserProvider
+import '../../providers/onording_login_screens_providers/user_profile_provider.dart'; // Path to your UserProvider
 
 // Dummy StatWidget: This widget is used to display numerical statistics with small avatars.
 // Replace this with your actual StatWidget implementation if it's different.
@@ -227,7 +227,8 @@ class _UserProfileListState extends State<UserProfileList>
                             backgroundImage: profileImage, // Dynamically determined profile image
                             child: profileImage == const AssetImage('images/default_avatar.png') || profileImage == null
                                 ? Center( // Fallback if no image is available (show initial of name)
-                              child: Text(
+                              child:
+                              Text(
                                 userName.isNotEmpty ? userName[0].toUpperCase() : 'U', // First letter of user name
                                 style: const TextStyle(
                                     fontSize: 40, color: Colors.white),

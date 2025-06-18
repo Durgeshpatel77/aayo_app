@@ -62,6 +62,7 @@ dependencies:
   shared_preferences: ^2.5.3
   firebase_storage: ^12.4.7
   shimmer: ^3.0.0
+  cached_network_image: ^3.4.1
 flutter_launcher_icons:
   android: true
   ios: true
@@ -96,6 +97,8 @@ flutter:
     - images/onbording/concert1.jpg
     - images/onbording/artist.jpg
     - images/onbording/confetti.jpg
+    - images/onbording/unkown.jpg
+
 
     - images/onbording/onbordiing2/couple.jpg
     - images/onbording/onbordiing2/audience1.jpg
