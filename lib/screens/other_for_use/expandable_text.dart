@@ -4,11 +4,15 @@ import 'package:flutter/material.dart';
 class ExpandableText extends StatefulWidget {
   final String content;
   final int wordLimit;
+  final Color? textColor;
+  final Color? linkColor;
 
   const ExpandableText({
     Key? key,
     required this.content,
     this.wordLimit = 20,
+    this.textColor,
+    this.linkColor,
   }) : super(key: key);
 
   @override
@@ -29,32 +33,35 @@ class _ExpandableTextState extends State<ExpandableText> {
         ? words.take(widget.wordLimit).join(' ')
         : widget.content);
 
+    final textColor = widget.textColor ?? Colors.black;
+    final linkColor = widget.linkColor ?? Colors.pink;
+
     return GestureDetector(
       onTap: () => setState(() => isExpanded = !isExpanded),
       child: RichText(
         text: TextSpan(
           text: displayText,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 14,
-            color: Colors.black,
+            color: textColor,
             fontWeight: FontWeight.bold,
           ),
           children: [
             if (isLongText && !isExpanded)
-              const TextSpan(
+              TextSpan(
                 text: '...read more',
                 style: TextStyle(
                   fontSize: 14,
-                  color: Colors.pink,
+                  color: linkColor,
                   fontWeight: FontWeight.w500,
                 ),
               ),
             if (isExpanded)
-              const TextSpan(
+              TextSpan(
                 text: ' ...show less',
                 style: TextStyle(
                   fontSize: 14,
-                  color: Colors.pink,
+                  color: linkColor,
                   fontWeight: FontWeight.w500,
                 ),
               ),
