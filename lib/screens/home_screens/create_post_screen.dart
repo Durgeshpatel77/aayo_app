@@ -42,8 +42,9 @@ class _AddPostScreenState extends State<AddPostScreen> {
             title: const Text('Create Post'),
             centerTitle: true,
             backgroundColor: Colors.white,
-            elevation: 1,
+            elevation: 0,
           ),
+
           body: SingleChildScrollView(
             padding: EdgeInsets.all(screenWidth * 0.04),
             child: Column(

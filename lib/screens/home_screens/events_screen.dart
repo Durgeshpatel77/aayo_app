@@ -38,6 +38,7 @@ class _EventsscreenState extends State<Eventsscreen> {
       appBar: AppBar(
         title: const Text('Your Events'),
         centerTitle: true,
+        scrolledUnderElevation: 0,
         backgroundColor: Colors.white,
         actions: [
           IconButton(
@@ -78,7 +79,8 @@ class _EventsscreenState extends State<Eventsscreen> {
                 await Provider.of<EventCreationProvider>(context, listen: false)
                     .fetchUserPostsFromPrefs(type: 'event');
               },
-              child: ListView.builder(
+              child:
+              ListView.builder(
                 padding: EdgeInsets.all(screenWidth * 0.04),
                 itemCount: events.length,
                 itemBuilder: (context, index) {
@@ -93,7 +95,7 @@ class _EventsscreenState extends State<Eventsscreen> {
                       ? DateFormat('EEE, MMM d • hh:mm a')
                       .format(details!.startTime!)
                       : "";
-              
+
                   return GestureDetector(
                     onTap: () {
                       Navigator.push(
@@ -103,7 +105,7 @@ class _EventsscreenState extends State<Eventsscreen> {
                       );
                     },
                     child: Container(
-                      margin: EdgeInsets.only(bottom: screenHeight * 0.025),
+                      margin: EdgeInsets.only(bottom: screenHeight * 0.010),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(color: Colors.grey,width: 0.5),
@@ -117,13 +119,13 @@ class _EventsscreenState extends State<Eventsscreen> {
                             child: event.media.isNotEmpty
                                 ? Image.network(
                               _buildFullImageUrl(event.media.first),
-                              width: screenWidth * 0.33,
-                              height: screenWidth * 0.38,
+                              width: screenWidth * 0.30,
+                              height: screenWidth * 0.30,
                               fit: BoxFit.cover,
                             )
                                 : Container(
-                              width: screenWidth * 0.33,
-                              height: screenWidth * 0.38,
+                              width: screenWidth * 0.30,
+                              height: screenWidth * 0.30,
                               color: Colors.grey.shade100,
                               child: const Icon(Icons.broken_image,
                                   size: 80, color: Colors.grey),
@@ -141,7 +143,7 @@ class _EventsscreenState extends State<Eventsscreen> {
                                     fontWeight: FontWeight.bold,
                                     color: Colors.black87,
                                   ),
-                                  maxLines: 2,
+                                  maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                                 SizedBox(height: screenHeight * 0.007),

@@ -15,7 +15,7 @@ import '../other_for_use/event_card_shimmer.dart';
 import '../event_detail_screens/events_details.dart';
 import '../other_for_use/expandable_text.dart';
 import '../other_for_use/utils.dart';
-import 'add_post_screen.dart';
+import 'create_post_screen.dart';
 import 'events_screen.dart';
 import 'notification_screen.dart'; // Existing event detail screen
 

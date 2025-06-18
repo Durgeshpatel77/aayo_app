@@ -9,7 +9,11 @@ class Notificationscreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
-        title: const Text("Notification"),),
+        backgroundColor: Colors.white,
+        title: const Text("Notification"),
+        scrolledUnderElevation: 0,
+      ),
+      backgroundColor: Colors.white,
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
