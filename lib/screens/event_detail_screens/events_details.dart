@@ -1,19 +1,35 @@
-import 'package:aayo/screens/event_detail_screens/ordersummart_screen.dart';
+// Make sure this file is named event_detail_screen.dart and the class is EventDetailScreen
 import 'package:flutter/material.dart';
 import 'package:ionicons/ionicons.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:intl/intl.dart';
 
 import '../../res/app_colors.dart';
 import 'approve_screen.dart';
 import 'chat_page.dart';
+import 'ordersummart_screen.dart';
+
+// Make sure this import path is correct for your Event model
+import '../../models/event_model.dart'; // Ensure this points to the file with the 'Event' class
+import '../other_for_use/expandable_text.dart';
+import '../other_for_use/utils.dart'; // For timeAgo function
 
 class EventDetailScreen extends StatelessWidget {
-  final String eventName;
+  final Event event;
 
-  const EventDetailScreen({required this.eventName, super.key});
+  EventDetailScreen({required this.event, super.key});
+
   String generateChatId(String user1, String user2) {
     return user1.hashCode <= user2.hashCode
         ? '${user1}_$user2'
         : '${user2}_$user1';
+  }
+
+  String getFullImageUrl(String relativePath) {
+    const baseUrl = 'http://srv861272.hstgr.cloud:8000';
+    if (relativePath.startsWith('http')) return relativePath;
+    if (!relativePath.startsWith('/')) relativePath = '/$relativePath';
+    return '$baseUrl$relativePath';
   }
 
   @override
@@ -22,298 +38,308 @@ class EventDetailScreen extends StatelessWidget {
     final screenWidth = mediaQuery.size.width;
     final screenHeight = mediaQuery.size.height;
 
+    final String imageUrl = event.media.isNotEmpty
+        ? getFullImageUrl(event.media.first)
+        : (event.image.isNotEmpty
+        ? getFullImageUrl(event.image)
+        : 'https://via.placeholder.com/400x200?text=No+Image');
+
+    final String eventTitle = event.title;
+    final String eventLocation = event.location;
+    final DateTime startTime = event.startTime;
+    final DateTime endTime = event.endTime;
+    final double price = event.price;
+    final bool isFree = event.isFree;
+    final String organizerName = event.organizer;
+    final String organizerProfileUrl = event.organizerProfile.isNotEmpty
+        ? getFullImageUrl(event.organizerProfile)
+        : 'https://randomuser.me/api/portraits/men/75.jpg';
+    final String eventContent = event.content;
+    final int totalLikes = event.likes.length;
+
+    String formattedDateTime = '';
+    if (startTime.day == endTime.day &&
+        startTime.month == endTime.month &&
+        startTime.year == endTime.year) {
+      formattedDateTime = '${DateFormat('EEE dMMM').format(startTime)} • '
+          '${DateFormat('hh:mma').format(startTime)}  ';
+    } else {
+      formattedDateTime =
+      '${DateFormat('EEEE,dMMM,hh:mma').format(startTime)}';
+    }
+
+    String priceDisplay = isFree ? "Free" : '₹${price.toStringAsFixed(0)}';
+
+    final int totalAttendees = 45;
+    final List<String> visibleAttendeeAvatars = [
+      'https://randomuser.me/api/portraits/women/68.jpg',
+      'https://randomuser.me/api/portraits/women/65.jpg',
+      'https://randomuser.me/api/portraits/women/66.jpg',
+      'https://randomuser.me/api/portraits/women/67.jpg',
+      'https://randomuser.me/api/portraits/men/45.jpg',
+    ];
+    final int otherAttendees = totalAttendees - visibleAttendeeAvatars.length;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SingleChildScrollView(
         child: Column(
           children: [
-            Container(
-              height: 250,
+            SizedBox(
+              height: screenHeight * 0.35,
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.only(),
-                    child: Image.network(
-                      'https://images.unsplash.com/photo-1504609813442-a8924e83f76e?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-                      width: double.infinity,
-                      height: 300,
+                  Positioned.fill(
+                    child: CachedNetworkImage(
+                      imageUrl: imageUrl,
                       fit: BoxFit.cover,
+                      placeholder: (context, url) => const Center(
+                        child: CircularProgressIndicator(color: Colors.pink),
+                      ),
+                      errorWidget: (context, url, error) =>
+                      const Icon(Icons.broken_image),
                     ),
                   ),
-                  // The "Manage Access" message, styled as a card/banner
                   Positioned(
-                    top: 54,
+                    top: mediaQuery.padding.top + 10,
                     left: 22,
                     child: InkWell(
                       onTap: () {
                         Navigator.pop(context);
                       },
-                      child: Icon(
+                      child: const Icon(
                         Icons.arrow_back_ios_new,
                         color: Colors.white,
                         size: 25,
                       ),
                     ),
                   ),
-
                   Positioned(
-                    top: 54,
+                    top: mediaQuery.padding.top + 10,
                     right: 22,
-                    child: Icon(
+                    child: const Icon(
                       Icons.favorite_border,
                       color: Colors.white,
                       size: 30,
                     ),
                   ),
                   Positioned(
-                    top: 170,
+                    top: screenHeight * 0.35 - 80,
                     left: 16,
                     right: 16,
                     child: Container(
-                        padding: EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black12,
-                              blurRadius: 8,
-                              offset: Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment
-                                  .spaceBetween, // space between title and price
-                              crossAxisAlignment: CrossAxisAlignment
-                                  .start, // align texts at top
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    "Party with friends at night - 2022",
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.black,
-                                    ),
-                                  ),
-                                ),
-                                SizedBox(
-                                    width:
-                                        12), // some spacing between text and price
-                                Text(
-                                  '\$30.00',
-                                  style: TextStyle(
-                                    fontSize: 18,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Colors.black12,
+                            blurRadius: 8,
+                            offset: Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  eventTitle,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 20,
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.black,
                                   ),
                                 ),
-                              ],
-                            ),
-                            SizedBox(height: 8),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.start,
-                              children: [
-                                Icon(Icons.location_on,
-                                    size: 16, color: Colors.grey[600]),
-                                SizedBox(width: 6),
-                                Text(
-                                  "Gandhinagar",
+                              ),
+                              Spacer(),
+                              Text(
+                                priceDisplay,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  color: Colors.green,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Icon(Icons.location_on, size: 16, color: Colors.grey[600]),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  eventLocation,
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
                                   style: TextStyle(
                                     fontSize: 14,
                                     color: Colors.grey[600],
                                   ),
                                 ),
-                                Spacer(),
-                                SizedBox(
-                                  width:
-                                      170, // enough width for 6 avatars with overlap
-                                  height: 36, // diameter = 2 * radius = 44
-                                  child: Stack(
-                                    children: [
+                              ),
+                              SizedBox(
+                                width: (visibleAttendeeAvatars.length * 23 +
+                                    (otherAttendees > 0 ? 30 : 0))
+                                    .toDouble(),
+                                height: 36,
+                                child: Stack(
+                                  children: [
+                                    ...List.generate(
+                                      visibleAttendeeAvatars.length,
+                                          (index) {
+                                        return Positioned(
+                                          left: (index * 20).toDouble(),
+                                          child: CircleAvatar(
+                                            radius: 18,
+                                            backgroundImage: NetworkImage(
+                                                visibleAttendeeAvatars[index]),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                    if (otherAttendees > 0)
                                       Positioned(
-                                        left: 0,
-                                        child: CircleAvatar(
-                                          radius: 18,
-                                          backgroundImage: NetworkImage(
-                                              'https://randomuser.me/api/portraits/women/68.jpg'),
-                                        ),
-                                      ),
-                                      Positioned(
-                                        left: 30,
-                                        child: CircleAvatar(
-                                          radius: 18,
-                                          backgroundImage: NetworkImage(
-                                              'https://randomuser.me/api/portraits/women/65.jpg'),
-                                        ),
-                                      ),
-                                      Positioned(
-                                        left: 60,
-                                        child: CircleAvatar(
-                                          radius: 18,
-                                          backgroundImage: NetworkImage(
-                                              'https://randomuser.me/api/portraits/women/66.jpg'),
-                                        ),
-                                      ),
-                                      Positioned(
-                                        left: 90,
-                                        child: CircleAvatar(
-                                          radius: 18,
-                                          backgroundImage: NetworkImage(
-                                              'https://randomuser.me/api/portraits/women/67.jpg'),
-                                        ),
-                                      ),
-                                      Positioned(
-                                        left: 120,
+                                        left: (visibleAttendeeAvatars.length * 20)
+                                            .toDouble(),
                                         child: CircleAvatar(
                                           backgroundColor: Colors.pinkAccent,
                                           radius: 18,
-                                          child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              Icon(
-                                                Icons.add,
-                                                size: 14,
-                                                color: Colors.white,
-                                              ),
-                                              Text(
-                                                "40",
-                                                style: TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 12),
-                                              ),
-                                            ],
+                                          child: Text(
+                                            "+$otherAttendees",
+                                            style: const TextStyle(
+                                                color: Colors.white, fontSize: 12),
                                           ),
                                         ),
                                       ),
-                                    ],
-                                  ),
-                                )
-                              ],
-                            ),
-                            Row(
-                              children: [
-                                Icon(Icons.calendar_today,
-                                    size: 16, color: Colors.grey[600]),
-                                SizedBox(width: 6),
-                                Text(
-                                  'THU 26 May, 09:00',
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              Icon(Icons.calendar_today,
+                                  size: 16, color: Colors.grey[600]),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  formattedDateTime,
                                   style: TextStyle(
                                     fontSize: 14,
                                     color: Colors.grey[600],
                                   ),
                                 ),
-                              ],
-                            ),
-                          ],
-                        )),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
-            SizedBox(height: 10),
-
+            SizedBox(height: screenHeight * 0.1),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0,vertical: 90),
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.symmetric(
-                      horizontal: screenWidth * 0.03,
-                      vertical: screenHeight * 0.01,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.pink.shade50,
-                      border: Border.all(color: Colors.pink,width: 0.4),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.pink.withOpacity(0.1),
-                          spreadRadius: 1,
-                          blurRadius: 5,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        Text(
-                          'You have manage access for this event',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.pink,
+                  if (event.type == 'event')
+                    Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: screenWidth * 0.03,
+                        vertical: screenHeight * 0.01,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.pink.shade50,
+                        border: Border.all(color: Colors.pink, width: 0.4),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.pink.withOpacity(0.1),
+                            spreadRadius: 1,
+                            blurRadius: 5,
+                            offset: const Offset(0, 3),
                           ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        Spacer(),
-                        InkWell(
-                          onTap: () {
-                            Navigator.push(context, MaterialPageRoute(builder: (context) {
-                              return ApproveScreen();
-                            },));
-                          },
-                          child: Container(
-                            width: screenWidth * 0.2,
-                            height: screenHeight * 0.04,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(20),
-                              color: Colors.pink,
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          const Expanded(
+                            child: Text(
+                              'You have manage access for this event',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.pink,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            child: Center(
-                              child: RichText(
-                                text: TextSpan(
-                                  children: [
-                                    TextSpan(
-                                      text: "Manage",
-                                      style: TextStyle(color: Colors.white, fontSize: 12),
-                                    ),
-                                    WidgetSpan(
-                                      child: Icon(
-                                        Icons.north_east,
-                                        color: Colors.white,
-                                        size: 15,
+                          ),
+                          const SizedBox(width: 12),
+                          InkWell(
+                            onTap: () {
+                              Navigator.push(context,
+                                  MaterialPageRoute(builder: (_) => ApproveScreen()));
+                            },
+                            child: Container(
+                              width: screenWidth * 0.2,
+                              height: screenHeight * 0.04,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(20),
+                                color: Colors.pink,
+                              ),
+                              child: Center(
+                                child: RichText(
+                                  text: TextSpan(
+                                    children: [
+                                      const TextSpan(
+                                        text: "Manage ",
+                                        style: TextStyle(
+                                            color: Colors.white, fontSize: 12),
                                       ),
-                                    ),
-                                  ],
+                                      WidgetSpan(
+                                        child: Icon(
+                                          Icons.north_east,
+                                          color: Colors.white,
+                                          size: 15,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
+                  const SizedBox(height: 18),
+                  const Text('About',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  ExpandableText(
+                    content: eventContent,
+                    textColor: Colors.grey[700]!,
                   ),
-SizedBox(height: 18,),
-                  // About Section
-                  Text('About',
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  SizedBox(height: 8),
-                  Text(
-                    'We have a team but still missing a couple of people. Let’s play together!',
-                    style: TextStyle(color: Colors.grey[700]),
-                  ),
-                  SizedBox(height: 24),
-                  Divider(
-                    color: Colors.grey.shade200,
-                  ),
-
-                  // Organizers and Attendees Section
-                  Text('Organizers and Attendees',
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  SizedBox(height: 20,),
+                  const SizedBox(height: 14),
+                  Divider(color: Colors.grey.shade300,),
+                  const Text('Organizers and Attendees',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 20),
                   Row(
                     children: [
                       SizedBox(
@@ -324,27 +350,26 @@ SizedBox(height: 18,),
                             Positioned(
                               left: 0,
                               child: CircleAvatar(
-                                radius: 24,
-                                backgroundImage: NetworkImage(
-                                    'https://randomuser.me/api/portraits/women/68.jpg'),
+                                radius: 20,
+                                backgroundImage: NetworkImage(organizerProfileUrl),
                               ),
                             ),
                             Positioned(
                               left: 35,
                               child: CircleAvatar(
                                 backgroundColor: Colors.pinkAccent,
-                                radius: 24,
+                                radius: 20,
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(
+                                    const Icon(
                                       Icons.add,
-                                      size: 18,
+                                      size: 16,
                                       color: Colors.white,
                                     ),
                                     Text(
-                                      "15",
-                                      style: TextStyle(
+                                      "$totalLikes",
+                                      style: const TextStyle(
                                           color: Colors.white, fontSize: 16),
                                     ),
                                   ],
@@ -354,33 +379,37 @@ SizedBox(height: 18,),
                           ],
                         ),
                       ),
-                      SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Organizers',
-                              style: TextStyle(
-                                color: Colors.grey,
-                                fontSize: 13,
-                              )),
-                          Text('Wade Warren',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              )),
-                        ],
+                      const SizedBox(width: 12),
+
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Organizers',
+                                style: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 13,
+                                )),
+                            Text(organizerName,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                )),
+                          ],
+                        ),
                       ),
-                      Spacer(),
                       GestureDetector(
                         onTap: () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => ChatPage(
-                                currentUserId: 'userA',
-                                peerUserId: 'userB',
-                                peerName: 'John',
-                                chatId: generateChatId('userA', 'userB'),
+                              builder: (_) => ChatPage(
+                                currentUserId: 'your_user_id',
+                                peerUserId: 'organizer_id_fallback',
+                                peerName: organizerName,
+                                chatId: generateChatId(
+                                    'your_user_id', 'organizer_id_fallback'),
                               ),
                             ),
                           );
@@ -393,123 +422,92 @@ SizedBox(height: 18,),
                       )
                     ],
                   ),
-                  SizedBox(height: 10,),
-                  Divider(
-                    color: Colors.grey.shade200,
-                  ),
+                   Divider(color: Colors.grey.shade300,height: 30,),
+                  const Text('Location',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 18),
                   SizedBox(
-                    height: 14,
-                  ),
-                  // Location Section
-                  Text('Location',
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  SizedBox(height: 18),
-                  Container(
                     height: 180,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
                     child: Stack(
                       children: [
-                        Container(
-                          height: 180,
-                          decoration: BoxDecoration(
+                        Positioned.fill(
+                          child: ClipRRect(
                             borderRadius: BorderRadius.circular(12),
+                            child: Image.network(
+                              'https://media.istockphoto.com/id/1306807452/vector/map-city-vector-illustration.jpg?s=612x612&w=0&k=20&c=8efOIy-Ft3trEzeDk3PY2WRjWws8mvKXgkLqCZ2cP5A=',
+                              fit: BoxFit.cover,
+                            ),
                           ),
-                          child: Stack(
-                            children: [
-                              // Background map image (you can keep only one if needed)
-                              Positioned.fill(
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: Image.network(
-                                    'https://media.istockphoto.com/id/1306807452/vector/map-city-vector-illustration.jpg?s=612x612&w=0&k=20&c=8efOIy-Ft3trEzeDk3PY2WRjWws8mvKXgkLqCZ2cP5A=',
-                                    fit: BoxFit.cover,
+                        ),
+                        Positioned.fill(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.45),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                        const Center(
+                          child: CircleAvatar(
+                            radius: 22,
+                            backgroundColor: Colors.pinkAccent,
+                            child: Icon(
+                              Icons.location_searching_outlined,
+                              color: Colors.white,
+                              size: 30,
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          top: 12,
+                          left: 12,
+                          child: GestureDetector(
+                            onTap: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                    content: Text('See Location Tapped')),
+                              );
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 9),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.2),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
                                   ),
+                                ],
+                              ),
+                              child: const Text(
+                                'See Location',
+                                style: TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 14,
                                 ),
                               ),
-
-                              // Semi-transparent overlay
-                              Positioned.fill(
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.45),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                              ),
-
-                              // Circle icon in center
-                              Center(
-                                child: CircleAvatar(
-                                  radius: 22,
-                                  backgroundColor: Colors.pinkAccent,
-                                  child: Icon(
-                                    Icons.location_searching_outlined,
-                                    color: Colors.white,
-                                    size: 30,
-                                  ),
-                                ),
-                              ),
-
-                              // "See Location" button at top-left
-                              Positioned(
-                                top: 12,
-                                left: 12,
-                                child: GestureDetector(
-                                  onTap: () {
-                                    // Handle button tap here
-                                  },
-                                  child: Container(
-                                    padding: EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(12),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black.withOpacity(0.2),
-                                          blurRadius: 4,
-                                          offset: Offset(0, 2),
-                                        ),
-                                      ],
-                                    ),
-                                    child: Text(
-                                      'See Location',
-                                      style: TextStyle(
-                                        color: Colors.black,
-                                        fontSize: 14,
-                                        //fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              )
-                            ],
+                            ),
                           ),
                         )
                       ],
                     ),
-                  )
-,
-                  SizedBox(height: 24),
-
-                  // Buy Ticket Button
-                  // In your EventDetailScreen (or wherever the "Buy Ticket" button is)
+                  ),
+                  const SizedBox(height: 24),
                   ElevatedButton(
                     onPressed: () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => OrderSummaryScreen(
-                            eventName: "Party with friends at night - 2022",
-                            eventDate: "THU 26 May",
-                            eventTime: "09:00",
-                            eventLocation: "Gandhinagar",
-                            eventImageUrl:
-                                'https://images.unsplash.com/photo-1504609813442-a8924e83f76e?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-                            ticketPrice:
-                                15.00, // Assuming a single ticket price
+                          builder: (_) => OrderSummaryScreen(
+                            eventName: eventTitle,
+                            eventDate: DateFormat('EEE d MMM').format(startTime),
+                            eventTime: DateFormat('hh:mm a').format(startTime),
+                            eventLocation: eventLocation,
+                            eventImageUrl: imageUrl,
+                            ticketPrice: price,
                           ),
                         ),
                       );
@@ -526,7 +524,7 @@ SizedBox(height: 18,),
                       style: TextStyle(fontSize: 18, color: Colors.white),
                     ),
                   ),
-                  SizedBox(height: 20,)
+                  const SizedBox(height: 20),
                 ],
               ),
             ),

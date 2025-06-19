@@ -21,6 +21,7 @@ class Event {
 
   Event({
     required this.id,
+
     required this.title,
     required this.content,
     required this.location,

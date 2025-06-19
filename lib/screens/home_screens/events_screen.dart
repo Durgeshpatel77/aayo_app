@@ -2,12 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import '../../models/create_event_model.dart';
+import '../../models/event_model.dart';
 import '../../providers/setting_screens_providers/event_provider.dart';
 import 'chat_list_page.dart';
 import '../event_detail_screens/events_details.dart';
 
 class Eventsscreen extends StatefulWidget {
-  const Eventsscreen({super.key});
+  // Remove the 'event' parameter from here
+  // final EventModel event; // or your model class
+
+  const Eventsscreen({super.key}); // Changed to a const constructor
 
   @override
   State<Eventsscreen> createState() => _EventsscreenState();
@@ -38,7 +43,6 @@ class _EventsscreenState extends State<Eventsscreen> {
       appBar: AppBar(
         title: const Text('Your Events'),
         centerTitle: true,
-        scrolledUnderElevation: 0,
         backgroundColor: Colors.white,
         actions: [
           IconButton(
@@ -79,8 +83,7 @@ class _EventsscreenState extends State<Eventsscreen> {
                 await Provider.of<EventCreationProvider>(context, listen: false)
                     .fetchUserPostsFromPrefs(type: 'event');
               },
-              child:
-              ListView.builder(
+              child: ListView.builder(
                 padding: EdgeInsets.all(screenWidth * 0.04),
                 itemCount: events.length,
                 itemBuilder: (context, index) {
@@ -98,14 +101,31 @@ class _EventsscreenState extends State<Eventsscreen> {
 
                   return GestureDetector(
                     onTap: () {
+                      final convertedEvent = Event(
+                        title: event.title,
+                        id: event.id,
+                        content: event.content,
+                        comments: List<String>.from(event.comments),
+                        createdAt: event.createdAt,
+                        endTime: event.eventDetails?.endTime ?? DateTime.now(),
+                        startTime: event.eventDetails?.startTime ?? DateTime.now(),
+                        image: event.media.isNotEmpty ? event.media.first : '',
+                        isFree: event.eventDetails?.isFree ?? true,
+                        likes: List<String>.from(event.likes),
+                        location: event.eventDetails?.city ?? "Unknown",
+                        price: event.eventDetails?.price ?? 0.0,
+                        type: event.type ?? "event", // fallback if null
+                      );
+
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                            builder: (_) => EventDetailScreen(eventName: title)),
+                          builder: (_) => EventDetailScreen(event: convertedEvent),
+                        ),
                       );
                     },
                     child: Container(
-                      margin: EdgeInsets.only(bottom: screenHeight * 0.010),
+                      margin: EdgeInsets.only(bottom: screenHeight * 0.025),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(color: Colors.grey,width: 0.5),
@@ -119,13 +139,13 @@ class _EventsscreenState extends State<Eventsscreen> {
                             child: event.media.isNotEmpty
                                 ? Image.network(
                               _buildFullImageUrl(event.media.first),
-                              width: screenWidth * 0.30,
-                              height: screenWidth * 0.30,
+                              width: screenWidth * 0.33,
+                              height: screenWidth * 0.38,
                               fit: BoxFit.cover,
                             )
                                 : Container(
-                              width: screenWidth * 0.30,
-                              height: screenWidth * 0.30,
+                              width: screenWidth * 0.33,
+                              height: screenWidth * 0.38,
                               color: Colors.grey.shade100,
                               child: const Icon(Icons.broken_image,
                                   size: 80, color: Colors.grey),
@@ -143,7 +163,7 @@ class _EventsscreenState extends State<Eventsscreen> {
                                     fontWeight: FontWeight.bold,
                                     color: Colors.black87,
                                   ),
-                                  maxLines: 1,
+                                  maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                                 SizedBox(height: screenHeight * 0.007),

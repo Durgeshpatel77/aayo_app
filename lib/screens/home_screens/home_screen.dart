@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/create_event_model.dart';
 import '../../models/event_model.dart';
 import '../../providers/home_screens_providers/home_provider.dart';
 import '../other_for_use/event_card_shimmer.dart';
@@ -434,6 +435,7 @@ class HomeTabContent extends StatelessWidget {
 }
 
 // ---- HomeScreen ----
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -451,27 +453,21 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!_initialized) {
       _initialized = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        // Fetch all data (including posts and events)
         Provider.of<HomeProvider>(context, listen: false).fetchAll();
       });
     }
   }
 
-  // Modified to take the full Event object
   void _onItemTapped(BuildContext context, Event item) {
     if (item.isEvent) {
-      // Navigate to EventDetailScreen
       Navigator.push(
         context,
-        MaterialPageRoute(
-            builder: (_) => EventDetailScreen(eventName: item.title)),
+        MaterialPageRoute(builder: (_) => EventDetailScreen(event: item)),
       );
     } else if (item.isPost) {
-      // Navigate to PostDetailScreen
       Navigator.push(
         context,
-        MaterialPageRoute(
-            builder: (_) => PostDetailScreen(post: item)), // Pass the entire post object
+        MaterialPageRoute(builder: (_) => PostDetailScreen(post: item)),
       );
     }
   }
@@ -479,19 +475,26 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Consumer<HomeProvider>(
-      builder: (context, homeProvider, child) { // Renamed from eventProvider for clarity
+      builder: (context, homeProvider, child) {
+        // You'll need a way to get an EventModel here if you choose this option.
+        // For demonstration, let's assume you have a dummy or the first event from your provider.
+        // This is highly dependent on your app's logic.
+        final Event? firstEvent = homeProvider.allEvents.isNotEmpty
+            ? homeProvider.allEvents.first // Assuming allEvents holds EventModel or can be converted
+            : null; // Or create a dummy EventModel
+
+// ... inside _HomeScreenState build method
         final allScreens = [
           HomeTabContent(
             allEvents: homeProvider.allEvents,
             isLoading: homeProvider.isLoading,
-            onItemTapped: (item) => _onItemTapped(context, item), // Pass callback to HomeTabContent
+            onItemTapped: (item) => _onItemTapped(context, item),
           ),
-          Eventsscreen(),
+          const Eventsscreen(), // Now it can be created without an argument
           AddPostScreen(),
           const Notificationscreen(),
           const UserProfileList(),
         ];
-
         return WillPopScope(
           onWillPop: () async {
             if (homeProvider.selectedIndex != 0) {
