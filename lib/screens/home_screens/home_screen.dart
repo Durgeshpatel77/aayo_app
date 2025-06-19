@@ -2,10 +2,13 @@
 
 // ... (existing imports - ensure correct path for UserProfileProvider)
 import 'package:aayo/screens/home_screens/post_detail_screens.dart';
+import 'package:aayo/screens/home_screens/single_user_profile_screen.dart';
 import 'package:aayo/screens/home_screens/userprofile_list.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,7 +16,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/create_event_model.dart';
 import '../../models/event_model.dart';
 import '../../providers/home_screens_providers/home_provider.dart';
-import '../../providers/home_screens_providers/user_provider_like.dart';
+import '../../providers/onording_login_screens_providers/user_profile_provider.dart';
 import '../other_for_use/event_card_shimmer.dart';
 import '../event_detail_screens/events_details.dart';
 import '../other_for_use/expandable_text.dart';
@@ -46,7 +49,7 @@ class _EventCardState extends State<EventCard> {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final userId = Provider.of<UserProfileProvider>(context, listen: false).userId;
+      final userId = Provider.of<FetchEditUserProvider>(context, listen: false).userId;
 
       setState(() {
         isLiked = userId != null && widget.event.likes.contains(userId);
@@ -57,7 +60,7 @@ class _EventCardState extends State<EventCard> {
 
   // Modified _toggleLike to interact with UserProfileProvider directly
   void _toggleLike() async {
-    final userProfileProvider = Provider.of<UserProfileProvider>(context, listen: false);
+    final userProfileProvider = Provider.of<FetchEditUserProvider>(context, listen: false);
     final currentUserId = userProfileProvider.userId;
 
     if (currentUserId == null) {
@@ -133,7 +136,7 @@ class _EventCardState extends State<EventCard> {
   @override
   Widget build(BuildContext context) {
     // Listen to UserProfileProvider to react to userId changes
-    final userProfileProvider = Provider.of<UserProfileProvider>(context);
+    final userProfileProvider = Provider.of<FetchEditUserProvider>(context);
     final currentUserId = userProfileProvider.userId;
 
     // Initialize `isLiked` based on the `widget.event.likes` list and the current user ID.
@@ -160,16 +163,27 @@ class _EventCardState extends State<EventCard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header (User Info)
-          InkWell(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => UserProfileList(),
-                ),
-              );
-            },
-            child: ListTile(
+              InkWell(
+                onTap: () {
+                  // Ensure widget.event.user has an 'id' or '_id' field
+                  // Based on your JSON, it's "_id" under the "user" object.
+                  // Assuming your Event model maps this to a field named 'id' in User.
+                  if (widget.event.organizerId != null && widget.event.organizerId.isNotEmpty) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => SingleUserProfileScreen(
+                          userId: widget.event.organizerId, // Pass the user's ID here
+                        ),
+                      ),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("User profile ID not available.")),
+                    );
+                  }
+                },
+                child: ListTile(
               leading: CircleAvatar(
                 backgroundImage: profileUrl.isNotEmpty
                     ? NetworkImage(profileUrl)
@@ -181,7 +195,29 @@ class _EventCardState extends State<EventCard> {
                     ? const Icon(Icons.person, color: Colors.white)
                     : null,
               ),
-              title: Text(
+              trailing: Container( // This Container creates the badge/tag effect
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  // Conditional background color based on event type
+                  color: widget.event.type == 'event' ? Colors.pink.shade100 : Colors.blue.shade100,
+                  borderRadius: BorderRadius.circular(15), // Rounded corners for a pill shape
+                  border: Border.all(
+                    // Conditional border color
+                    color: widget.event.type == 'event' ? Colors.pink : Colors.blue,
+                    width: 1,
+                  ),
+                ),
+                child: Text(
+                  widget.event.type.toUpperCase(), // Display type in uppercase
+                  style: TextStyle(
+                    fontSize: 10, // Smaller font size for a tag
+                    // Conditional text color
+                    color: widget.event.type == 'event' ? Colors.pink.shade800 : Colors.blue.shade800,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            title: Text(
                 widget.event.organizer,
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
@@ -234,7 +270,7 @@ class _EventCardState extends State<EventCard> {
 
           // Actions: Like, Comment, Share
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 5),
+            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 20),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -361,7 +397,8 @@ class _CommentSheetState extends State<CommentSheet> {
 }
 
 // ---- HomeTabContent (No changes needed, including for your reference) ----
-class HomeTabContent extends StatelessWidget {
+
+class HomeTabContent extends StatefulWidget {
   final List<Event> allEvents;
   final bool isLoading;
   final void Function(Event) onItemTapped;
@@ -374,11 +411,56 @@ class HomeTabContent extends StatelessWidget {
   });
 
   @override
+  State<HomeTabContent> createState() => _HomeTabContentState();
+}
+
+class _HomeTabContentState extends State<HomeTabContent> {
+  String? _currentCity;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchCurrentLocation();
+  }
+
+  Future<void> _fetchCurrentLocation() async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) return;
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied ||
+            permission == LocationPermission.deniedForever) return;
+      }
+
+      Position position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high);
+
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+
+      if (placemarks.isNotEmpty) {
+        final place = placemarks.first;
+        setState(() {
+          _currentCity = '${place.locality}, ${place.administrativeArea}';
+        });
+      }
+    } catch (e) {
+      debugPrint('Failed to fetch location: $e');
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return RefreshIndicator(
       color: Colors.pink,
       onRefresh: () async {
         await Provider.of<HomeProvider>(context, listen: false).fetchAll();
+        await _fetchCurrentLocation(); // Refresh location too
       },
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -391,18 +473,17 @@ class HomeTabContent extends StatelessWidget {
               children: [
                 const Icon(Icons.location_on, color: Colors.pink),
                 const SizedBox(width: 8),
-                const Text("Ahmedabad, Gujarat",
-                    style:
-                    TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                Text(
+                  _currentCity ?? 'Fetching location...',
+                  maxLines: 1,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
                 const Spacer(),
                 IconButton(
-                  onPressed: () {
-                    Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (ctx) => const Notificationscreen()));
-                  },
                   icon: const Icon(Icons.notifications_none),
+                  onPressed: () {
+                    // TODO: Navigate to notification screen
+                  },
                 ),
               ],
             ),
@@ -413,8 +494,9 @@ class HomeTabContent extends StatelessWidget {
               decoration: InputDecoration(
                 hintText: "Search Events and Posts",
                 prefixIcon: const Icon(Icons.search),
-                border:
-                OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 filled: true,
                 fillColor: Colors.grey[100],
               ),
@@ -423,24 +505,18 @@ class HomeTabContent extends StatelessWidget {
 
             const Padding(
               padding: EdgeInsets.only(bottom: 10.0),
-              child: Text("People You Might Know",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            ),
-            Column(children: []),
-            const SizedBox(height: 20),
-
-            const Padding(
-              padding: EdgeInsets.only(bottom: 10.0),
-              child: Text("All Posts and Events",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              child: Text(
+                "All Posts and Events",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
             ),
 
             Column(
-              children: isLoading
+              children: widget.isLoading
                   ? List.generate(5, (_) => const EventCardShimmer())
-                  : allEvents.map((event) {
+                  : widget.allEvents.map((event) {
                 return GestureDetector(
-                  onTap: () => onItemTapped(event),
+                  onTap: () => widget.onItemTapped(event),
                   child: EventCard(event: event),
                 );
               }).toList(),
@@ -465,7 +541,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   DateTime? _lastBackPressTime;
   bool _initialized = false;
-  late UserProfileProvider _userProfileProvider;
+  late FetchEditUserProvider _userProfileProvider;
   bool isLiked = false;
   int likeCount = 0;
 
@@ -473,7 +549,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _userProfileProvider = Provider.of<UserProfileProvider>(context, listen: false);
+    _userProfileProvider = Provider.of<FetchEditUserProvider>(context, listen: false);
     _userProfileProvider.addListener(_onUserProviderChange);
   }
 

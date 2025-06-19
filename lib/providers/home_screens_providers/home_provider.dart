@@ -27,7 +27,7 @@ class HomeProvider extends ChangeNotifier {
       final events = await _fetchByType('event');
       final posts = await _fetchByType('post');
 
-      _allEvents = [...events, ...posts,]..shuffle();
+      _allEvents = [...events, ...posts]..shuffle();
     } catch (e, s) {
       debugPrint('HomeProvider fetch error: $e\n$s');
     }
@@ -37,7 +37,7 @@ class HomeProvider extends ChangeNotifier {
   }
 
   Future<List<Event>> _fetchByType(String type) async {
-    final url = Uri.parse("http://srv861272.hstgr.cloud:8000/api/post?type=$type");
+    final url = Uri.parse("$_base?type=$type");
 
     final response = await http.get(url);
     debugPrint("API RESPONSE ($type): ${response.statusCode} ${response.body}");
@@ -57,12 +57,10 @@ class HomeProvider extends ChangeNotifier {
     }
   }
 
-  // NEW: Method to update the likes for a specific event/post by its ID
+  /// ✅ Update the likes for a specific post/event
   void updateEventLikes(String eventId, List<String> newLikes) {
     _allEvents = _allEvents.map((event) {
       if (event.id == eventId) {
-        // Create a new Event object with the updated likes list.
-        // This is necessary because 'likes' is likely final in your Event model.
         return Event(
           id: event.id,
           title: event.title,
@@ -73,18 +71,55 @@ class HomeProvider extends ChangeNotifier {
           isFree: event.isFree,
           organizerId: event.organizerId,
           price: event.price,
-          likes: newLikes, // <-- This is the updated list
-          comments: event.comments,
+          likes: newLikes,
           image: event.image,
           media: event.media,
           organizer: event.organizer,
           organizerProfile: event.organizerProfile,
-          createdAt: event.createdAt,
-          type: event.type,
+          createdAt: event.createdAt, type: '',
         );
       }
-      return event; // Return unchanged event if not the target
+      return event;
     }).toList();
-    notifyListeners(); // Notify listeners to rebuild widgets that depend on allEvents
+    notifyListeners();
+  }
+
+  /// ✅ NEW: Add a comment to a post or event by its ID
+  Future<void> addCommentToPost({
+    required String postId,
+    required String userId,
+    required String content,
+  }) async {
+    final url = Uri.parse("$_base/comment/$postId");
+
+    final body = {
+      "user": userId,
+      "content": content,
+    };
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(body),
+      );
+
+      if (response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        final updatedPost = Event.fromJson(data['data']);
+
+        // Replace the old post with updated one
+        _allEvents = _allEvents.map((event) {
+          return event.id == postId ? updatedPost : event;
+        }).toList();
+
+        notifyListeners();
+      } else {
+        throw Exception("Failed to post comment: ${response.statusCode}");
+      }
+    } catch (e) {
+      debugPrint("Error posting comment: $e");
+      rethrow;
+    }
   }
 }

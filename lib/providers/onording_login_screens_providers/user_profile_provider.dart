@@ -1,58 +1,120 @@
-// user_profile_provider.dart
 import 'dart:convert';
-import 'dart:io'; // For File operations
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// UserProvider manages user data, including fetching from and updating to backend.
-/// It also provides local updates to user profile fields using `notifyListeners()`,
-/// ensuring UI reflects changes immediately.
 class FetchEditUserProvider with ChangeNotifier {
-  // Internal user data stored as a map
+  String? _userId;
   Map<String, dynamic> _userData = {};
+  final String _baseUrl = 'http://srv861272.hstgr.cloud:8000';
 
-  // Public getter to access user data
+  // -------------------- Getters --------------------
+  String? get userId => _userId;
   Map<String, dynamic> get userData => _userData;
 
-  /// 🔄 Fetch user data from backend using stored MongoDB _id
-  /// @param `firebaseUid`: The Firebase user ID (or other identifier) to find the backend ID.
+  String? get name => _userData['name'];
+  String? get email => _userData['email'];
+
+  String? get profileImage {
+    final path = _userData['profile'] ?? '';
+    if (path.isEmpty) return null;
+    if (path.startsWith('http')) return path;
+    return '$_baseUrl/$path';
+  }
+
+  // -------------------- User ID Storage --------------------
+  Future<void> loadUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    _userId = prefs.getString('backendUserId');
+    debugPrint('📦 Loaded User ID: $_userId');
+    notifyListeners();
+  }
+
+  void setUserId(String id) {
+    _userId = id;
+    _saveUserId(id);
+    notifyListeners();
+  }
+
+  Future<void> _saveUserId(String id) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('backendUserId', id);
+  }
+
+  Future<void> clearUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('backendUserId');
+    _userId = null;
+    _userData = {};
+    notifyListeners();
+  }
+
+  // -------------------- Fetch Current User --------------------
   Future<void> fetchUser(String firebaseUid) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      // We expect 'backendUserId' (MongoDB _id) to be stored after Google sign-in.
-      final userId = prefs.getString('backendUserId');
+    final prefs = await SharedPreferences.getInstance();
+    final id = prefs.getString('backendUserId');
+    if (id == null) throw Exception('No backend user ID found');
 
-      if (userId == null || userId.isEmpty) {
-        debugPrint('User ID not found in SharedPreferences, attempting to register...');
-        // If backendUserId is not found, it means the user might be new or not fully registered.
-        // In a real app, you'd likely register them here or ensure registration during GoogleSignIn.
-        // For now, we'll throw an error as this provider expects the backend ID to exist.
-        throw Exception('Backend user ID not found. Please ensure user is registered in backend.');
-      }
-
-      final url = Uri.parse('http://srv861272.hstgr.cloud:8000/api/user/$userId');
-      debugPrint('📥 Fetching user with backend ID: $userId');
-
-      final response = await http.get(url);
-
-      if (response.statusCode == 200) {
-        final result = json.decode(response.body);
-        _userData = result['data']; // Save fetched user data
-        notifyListeners(); // Update UI
-        debugPrint('✅ User fetched successfully: ${_userData['name']}');
-      } else {
-        debugPrint('❌ Failed to fetch user. Status: ${response.statusCode}, Body: ${response.body}');
-        throw Exception('Failed to load user: ${response.statusCode}');
-      }
-    } catch (e) {
-      debugPrint('⚠️ Exception in fetchUser: $e');
-      rethrow;
+    final res = await http.get(Uri.parse('$_baseUrl/api/user/$id'));
+    if (res.statusCode == 200) {
+      final result = json.decode(res.body);
+      _userData = result['data'];
+      notifyListeners();
+    } else {
+      throw Exception('Failed to fetch user');
     }
   }
 
-  /// 📝 Update user data locally before sending to server.
-  /// Useful when editing form fields and previewing UI changes.
+  // -------------------- Fetch User by ID (for profile views) --------------------
+  Future<Map<String, dynamic>> fetchUserById(String userId) async {
+    final url = Uri.parse('$_baseUrl/api/user/$userId');
+    final response = await http.get(url);
+    if (response.statusCode == 200) {
+      final result = json.decode(response.body);
+      return result['data'];
+    } else {
+      throw Exception('Failed to fetch user by ID');
+    }
+  }
+
+  // -------------------- Like Toggle --------------------
+  Future<Map<String, dynamic>> toggleLike({
+    required String postId,
+    required String userId,
+  }) async {
+    final url = Uri.parse('$_baseUrl/api/post/like/$postId');
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'user': userId}),
+      );
+
+      final decoded = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && decoded['success'] == true) {
+        return {
+          'success': true,
+          'likes': List<String>.from(decoded['data']['likes'] ?? []),
+          'message': decoded['message'],
+        };
+      } else {
+        return {
+          'success': false,
+          'message': decoded['message'] ?? 'Failed to toggle like',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: $e',
+      };
+    }
+  }
+
+  // -------------------- Local Update --------------------
   void updateUserLocal({
     String? name,
     String? email,
@@ -60,7 +122,7 @@ class FetchEditUserProvider with ChangeNotifier {
     String? about,
     String? gender,
     String? country,
-    String? profileImageUrl, // Add this for local profile image updates
+    String? profileImageUrl,
   }) {
     if (name != null) _userData['name'] = name;
     if (email != null) _userData['email'] = email;
@@ -68,87 +130,60 @@ class FetchEditUserProvider with ChangeNotifier {
     if (about != null) _userData['about'] = about;
     if (gender != null) _userData['gender'] = gender;
     if (country != null) _userData['country'] = country;
-    // Update 'profile' field for profile photo, assuming it's the primary field for photo
     if (profileImageUrl != null) _userData['profile'] = profileImageUrl;
-    notifyListeners(); // Trigger UI update
-    debugPrint('Local user data updated.');
+    notifyListeners();
   }
 
-  /// 🖼️ Uploads a profile image to the server and returns its path.
-  /// @param `imageFile`: The File object of the image to upload.
-  /// @returns The URL/path of the uploaded image on the server, or null if upload fails.
+  // -------------------- Upload Image --------------------
   Future<String?> uploadProfileImage(File imageFile) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getString('backendUserId'); // MongoDB _id from login
-      final uri = Uri.parse('http://srv861272.hstgr.cloud:8000/api/user/$userId');
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getString('backendUserId');
+    if (userId == null) return null;
 
-      var request = http.MultipartRequest('PUT', uri);
-      request.files.add(await http.MultipartFile.fromPath(
-        'profile', // Must match Multer field name
-        imageFile.path,
-        filename: imageFile.path.split('/').last,
-      ));
+    final uri = Uri.parse('$_baseUrl/api/user/$userId');
 
-      var response = await request.send();
+    final request = http.MultipartRequest('PUT', uri);
+    request.files.add(await http.MultipartFile.fromPath(
+      'profile',
+      imageFile.path,
+    ));
 
-      if (response.statusCode == 200) {
-        final responseBody = await response.stream.bytesToString();
-        final decoded = json.decode(responseBody);
-        final profilePath = decoded['data']?['profile']; // ✅ corrected access
+    final res = await request.send();
 
-        debugPrint('✅ Image uploaded successfully. Path: $profilePath');
-        return profilePath;
-      } else {
-        debugPrint('❌ Image upload failed: ${response.statusCode}, ${await response.stream.bytesToString()}');
-        return null;
-      }
-    } catch (e) {
-      debugPrint('⚠️ Error during image upload: $e');
+    if (res.statusCode == 200) {
+      final body = await res.stream.bytesToString();
+      final decoded = jsonDecode(body);
+      return decoded['data']['profile'];
+    } else {
       return null;
     }
   }
 
-  /// 📤 Pushes updated user data to the backend server using PUT API
-  /// This method now assumes `_userData` already contains the latest local changes,
-  /// including any newly uploaded image path.
+  // -------------------- Push Data to Server --------------------
   Future<void> updateUserOnServer() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getString('backendUserId'); // MongoDB _id from login
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getString('backendUserId');
+    if (userId == null) throw Exception('No backend user ID');
 
-      if (userId == null || userId.isEmpty) {
-        throw Exception('Backend user ID not found in SharedPreferences');
-      }
+    final url = Uri.parse('$_baseUrl/api/user/$userId');
 
-      final url = Uri.parse('http://srv861272.hstgr.cloud:8000/api/user/$userId');
-      debugPrint('📤 Updating user with backend ID: $userId');
+    // Convert interests list to string if needed
+    if (_userData.containsKey('interests') && _userData['interests'] is List) {
+      _userData['interests'] = (_userData['interests'] as List).join(',');
+    }
 
-      // Convert interests to comma-separated string if it's a list.
-      // This is a common requirement for some backend setups.
-      // Ensure 'interests' is handled correctly if it's part of the update data.
-      if (_userData.containsKey('interests') && _userData['interests'] is List) {
-        _userData['interests'] = (_userData['interests'] as List).join(',');
-      }
-      final response = await http.put(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode(_userData), // Send the entire updated _userData map
-      );
+    final response = await http.put(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode(_userData),
+    );
 
-      if (response.statusCode == 200) {
-        debugPrint('✅ User successfully updated on server.');
-        final result = json.decode(response.body);
-        // Update _userData with the server's response to ensure full sync
-        _userData = result['data'];
-        notifyListeners(); // Notify listeners to update UI with the new data
-      } else {
-        debugPrint('❌ Update failed: ${response.statusCode}, ${response.body}');
-        throw Exception('Failed to update user on server');
-      }
-    } catch (e) {
-      debugPrint('⚠️ Exception in updateUserOnServer: $e');
-      rethrow;
+    if (response.statusCode == 200) {
+      final result = json.decode(response.body);
+      _userData = result['data'];
+      notifyListeners();
+    } else {
+      throw Exception('Failed to update user');
     }
   }
 }

@@ -7,8 +7,8 @@ import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart'; // Import image_picker
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:http/http.dart' as http; // Import http package (still needed if other HTTP calls are made here)
-import 'dart:convert'; // For json decoding (still needed if other JSON parsing is done here)
+import 'package:http/http.dart' as http; // Import http package
+import 'dart:convert'; // For json decoding
 
 
 import '../../models/create_event_model.dart';
@@ -28,8 +28,17 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   String _ticketType = 'Free'; // default value
   String _ticketPrice = '';
 
-  // Removed _useVenueList boolean as it's no longer needed for a toggle
-  String? _selectedVenueName; // To store the selected venue's name from the list page
+  // Single source of truth for the event's location (manual or current)
+  String? selectedLocation;
+  double? _selectedLatitude;
+  double? _selectedLongitude;
+  String? _selectedCity;
+
+  // State variables for Venue selection
+  bool _useManualVenueEntry = false; // true for manual text input, false for venue list
+  String? _selectedVenueName; // Stores venue name from VenueListPage
+  final TextEditingController _manualVenueNameController = TextEditingController(); // Controller for manual venue input
+
 
   final TextEditingController _eventNameController = TextEditingController();
   final TextEditingController _eventDescriptionController = TextEditingController();
@@ -40,27 +49,37 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   DateTime? _endDate;
   TimeOfDay? _endTime;
 
-  String? selectedLocation; // Will hold the full address/name of the selected location/venue
-  double? _selectedLatitude;
-  double? _selectedLongitude;
-  String? _selectedCity;
+  // Loading state variables
+  bool _isCreatingEvent = false;
+  bool _isFetchingLocation = false;
+  bool _isPickingImage = false;
+
 
   // --- Image Picking Function ---
   Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    setState(() {
+      _isPickingImage = true;
+    });
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(source: ImageSource.gallery);
 
-    if (pickedFile != null) {
+      if (pickedFile != null) {
+        setState(() {
+          _pickedEventImage = File(pickedFile.path);
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Event cover image picked!')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Image selection cancelled.')),
+        );
+      }
+    } finally {
       setState(() {
-        _pickedEventImage = File(pickedFile.path);
+        _isPickingImage = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Event cover image picked!')),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Image selection cancelled.')),
-      );
     }
   }
 
@@ -200,10 +219,26 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     return DateFormat.jm().format(dt); // e.g., 11:00 PM
   }
 
+  // New combined functions for selecting both date and time
+  Future<void> _selectStartDateTime(BuildContext context) async {
+    await _selectStartDate(context); // Select date first
+    if (_startDate != null) { // Only proceed to time if date was picked
+      await _selectStartTime(context); // Then select time
+    }
+  }
+
+  Future<void> _selectEndDateTime(BuildContext context) async {
+    await _selectEndDate(context); // Select date first
+    if (_endDate != null) { // Only proceed to time if date was picked
+      await _selectEndTime(context); // Then select time
+    }
+  }
+
   @override
   void dispose() {
     _eventNameController.dispose();
     _eventDescriptionController.dispose();
+    _manualVenueNameController.dispose();
     super.dispose();
   }
 
@@ -275,48 +310,56 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
 
   //take permission when you enter 1st time
   Future<void> _getCurrentLocation() async {
-    bool serviceEnabled;
-    LocationPermission permission;
+    setState(() {
+      _isFetchingLocation = true;
+    });
+    try {
+      bool serviceEnabled;
+      LocationPermission permission;
 
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      _showMessage('Location services are disabled.');
-      return;
-    }
-
-    permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        _showMessage('Location permissions are denied.');
+      serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        _showMessage('Location services are disabled.');
         return;
       }
+
+      permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          _showMessage('Location permissions are denied.');
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        _showMessage('Location permissions are permanently denied.');
+        return;
+      }
+
+      Position position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high);
+
+      List<Placemark> placemarks =
+      await placemarkFromCoordinates(position.latitude, position.longitude);
+
+      Placemark place = placemarks[0];
+      String address =
+          '${place.street}, ${place.locality}, ${place.administrativeArea}, ${place.country}';
+
+      setState(() {
+        selectedLocation = address;
+        _selectedLatitude = position.latitude;
+        _selectedLongitude = position.longitude;
+        _selectedCity = place.locality; // Get city from placemark
+      });
+
+      _showMessage('Selected Current Location: $address');
+    } finally {
+      setState(() {
+        _isFetchingLocation = false;
+      });
     }
-
-    if (permission == LocationPermission.deniedForever) {
-      _showMessage('Location permissions are permanently denied.');
-      return;
-    }
-
-    Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high);
-
-    List<Placemark> placemarks =
-    await placemarkFromCoordinates(position.latitude, position.longitude);
-
-    Placemark place = placemarks[0];
-    String address =
-        '${place.street}, ${place.locality}, ${place.administrativeArea}, ${place.country}';
-
-    setState(() {
-      selectedLocation = address;
-      _selectedLatitude = position.latitude;
-      _selectedLongitude = position.longitude;
-      _selectedCity = place.locality; // Get city from placemark
-      _selectedVenueName = null; // Clear selected venue name if current location is used
-    });
-
-    _showMessage('Selected: $address');
   }
 
   // after click on manually show dialog box from hire
@@ -434,9 +477,8 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
         _selectedLongitude = double.tryParse(result['lon']);
         // Try to extract city from the address details
         _selectedCity = result['address']?['city'] ?? result['address']?['town'] ?? result['address']?['village'] ?? "Unknown";
-        _selectedVenueName = null; // Clear selected venue name if manual location is used
       });
-      _showMessage("Selected: ${result['display_name']}");
+      _showMessage("Selected Manual Location: ${result['display_name']}");
     }
   }
 
@@ -450,10 +492,8 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     if (result != null && result is Map<String, dynamic>) {
       setState(() {
         _selectedVenueName = result['name'] as String?;
-        selectedLocation = result['address'] as String?; // Use venue address as main location
-        _selectedLatitude = result['latitude'] as double?;
-        _selectedLongitude = result['longitude'] as double?;
-        _selectedCity = result['city'] as String?;
+        // Also clear manual venue entry if list is used.
+        _manualVenueNameController.clear();
       });
       _showMessage('Selected Venue: ${_selectedVenueName}');
     }
@@ -489,29 +529,33 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
               child: GestureDetector(
-                onTap: _pickImage,
+                onTap: _isPickingImage ? null : _pickImage, // Disable tap while loading
                 child: Container(
                   height: 200,
                   width: double.infinity,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: Colors.pink.shade400, width: 1),
-                    image: _pickedEventImage != null
-                        ? DecorationImage(
-                      image: FileImage(_pickedEventImage!),
-                      fit: BoxFit.cover,
-                    )
-                        : null,
                   ),
-                  child: _pickedEventImage == null
-                      ? Center(
-                    child: Icon(
-                      Icons.camera_alt_outlined,
-                      size: 50,
-                      color: Colors.pink.shade400,
-                    ),
-                  )
-                      : null,
+                  child: Stack( // Use Stack to overlay the loading indicator
+                    alignment: Alignment.center,
+                    children: [
+                      if (_pickedEventImage != null)
+                        Positioned.fill(
+                          child: Image.file(_pickedEventImage!, fit: BoxFit.cover),
+                        )
+                      else
+                        Center(
+                          child: Icon(
+                            Icons.camera_alt_outlined,
+                            size: 50,
+                            color: Colors.pink.shade400,
+                          ),
+                        ),
+                      if (_isPickingImage)
+                        const CircularProgressIndicator(color: Colors.pink), // Centered loading indicator
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -544,9 +588,8 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                     context: context,
                     date: _startDate,
                     time: _startTime,
-                    onSelectDate: () => _selectStartDate(context),
-                    onSelectTime: () => _selectStartTime(context),
-                    text: 'Select Start Date & time',
+                    onSelectDateTime: () => _selectStartDateTime(context), // Use new combined function
+                    text: 'Select Start Date & Time',
                   ),
                   const SizedBox(height: 20),
 
@@ -554,8 +597,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                     context: context,
                     date: _endDate,
                     time: _endTime,
-                    onSelectDate: () => _selectEndDate(context),
-                    onSelectTime: () => _selectEndTime(context),
+                    onSelectDateTime: () => _selectEndDateTime(context), // Use new combined function
                     text: 'Select End Date & Time',
                   ),
                 ],
@@ -563,23 +605,15 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
             ),
             const SizedBox(height: 20),
 
-            // --- Add Event Location - Both Manual/Current and Venue List Options ---
+            // --- Add Event Location - Manual/Current is REQUIRED ---
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Event Location',
-                    style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.black),
-                  ),
-                  const SizedBox(height: 10),
-                  // Option 1: Manual/Current Location
+                  // Option 1: Manual/Current Location (REQUIRED for submission)
                   GestureDetector(
-                    onTap: _handleLocationTap,
+                    onTap: _isFetchingLocation ? null : _handleLocationTap, // Disable tap while loading
                     child: Container(
                       padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -598,9 +632,9 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  (selectedLocation?.isNotEmpty ?? false) && _selectedVenueName == null // Display manual/current only if no venue is selected
+                                  (selectedLocation?.isNotEmpty ?? false)
                                       ? selectedLocation!
-                                      : 'Tap to select manual or current location',
+                                      : 'Tap to select manual or current location (Required)',
                                   style: const TextStyle(
                                     color: Colors.black,
                                     fontSize: 16,
@@ -615,23 +649,64 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                               ],
                             ),
                           ),
-                          Icon(Icons.chevron_right, color: Colors.grey[400]),
+                          if (_isFetchingLocation)
+                            const SizedBox(
+                              width: 20, // Adjust size as needed
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(Colors.pink)),
+                            )
+                          else
+                            Icon(Icons.chevron_right, color: Colors.grey[400]),
                         ],
                       ),
                     ),
                   ),
-                  const SizedBox(height: 15), // Space between location options
+                  const SizedBox(height: 10), // Spacing for venue options
+                  // Toggle for manual venue entry vs. list selection
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Manually enter Venue Name',
+                        style: TextStyle(fontSize: 16, color: Colors.black),
+                      ),
+                      Switch(
+                        value: _useManualVenueEntry,
+                        onChanged: (bool value) {
+                          setState(() {
+                            _useManualVenueEntry = value;
+                            if (_useManualVenueEntry) {
+                              _selectedVenueName = null; // Clear list selection if switching to manual
+                            } else {
+                              _manualVenueNameController.clear(); // Clear manual entry if switching to list
+                            }
+                          });
+                        },
+                        activeColor: Colors.pink,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
 
-                  // Option 2: Select Venue from List
-                  GestureDetector(
+                  // Conditional display based on toggle
+                  _useManualVenueEntry
+                      ?
+                  TextfieldEditprofiile(
+                    controller: _manualVenueNameController,
+                    hintText: 'Enter venue name (type...)',
+                    maxLength: 30,
+                    prefixIcon: Icons.meeting_room_outlined,
+                  )
+                      : GestureDetector(
                     onTap: _navigateToVenueList,
                     child: Container(
-                      padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 14),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(width: 1, color: Colors.pink.shade400),
+                        border: Border.all(
+                            width: 1, color: Colors.pink.shade400),
                       ),
                       child: Row(
                         children: [
@@ -650,7 +725,8 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                               ),
                             ),
                           ),
-                          Icon(Icons.chevron_right, color: Colors.grey[400]),
+                          Icon(Icons.chevron_right,
+                              color: Colors.grey[400]),
                         ],
                       ),
                     ),
@@ -807,8 +883,8 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                       padding: const EdgeInsets.only(
                           left: 8.0), // space between buttons
                       child: ElevatedButton(
-                        onPressed: () async {
-                          // Validation logic considering either manual location or venue list
+                        onPressed: _isCreatingEvent ? null : () async { // Disable button while loading
+                          // Validation logic
                           if (_eventNameController.text.isEmpty ||
                               _startDate == null ||
                               _startTime == null ||
@@ -821,14 +897,13 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                             return;
                           }
 
-                          // Location validation logic: ensure selectedLocation and coordinates are set
+                          // Location validation: manual location is required
                           if (selectedLocation == null || _selectedLatitude == null || _selectedLongitude == null || _selectedCity == null) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Please select an event location or venue.')),
+                              const SnackBar(content: Text('Please select a manual or current event location.')),
                             );
                             return;
                           }
-
 
                           final bool isFreeEvent = _ticketType == 'Free';
                           final double? price = isFreeEvent ? 0.0 : double.tryParse(_ticketPrice);
@@ -840,34 +915,51 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                             return;
                           }
 
-                          // Call the provider's createEvent method
-                          final eventProvider = Provider.of<EventCreationProvider>(context, listen: false);
-
-                          bool success = await eventProvider.createEvent(
-                            eventName: _eventNameController.text,
-                            startDate: _startDate!,
-                            startTime: _startTime!,
-                            endDate: _endDate!,
-                            endTime: _endTime!,
-                            location: selectedLocation!, // This will hold manual location or venue address
-                            city: _selectedCity!,
-                            latitude: _selectedLatitude!,
-                            longitude: _selectedLongitude!,
-                            description: _eventDescriptionController.text,
-                            ticketType: _ticketType,
-                            ticketPrice: price,
-                            pickedImage: _pickedEventImage, // Pass image to provider if you handle upload there
-                          );
-
-                          if (success) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Event created successfully!')),
-                            );
-                            Navigator.pop(context); // Go back after successful creation
+                          // Determine the venue name to send (if any)
+                          String? finalVenueName;
+                          if (_useManualVenueEntry) {
+                            finalVenueName = _manualVenueNameController.text.isEmpty ? null : _manualVenueNameController.text;
                           } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Failed to create event. ${eventProvider.errorMessage}')),
+                            finalVenueName = _selectedVenueName;
+                          }
+
+                          setState(() {
+                            _isCreatingEvent = true;
+                          });
+                          try {
+                            // Call the provider's createEvent method using the manual/current location
+                            final eventProvider = Provider.of<EventCreationProvider>(context, listen: false);
+
+                            bool success = await eventProvider.createEvent(
+                              eventName: _eventNameController.text,
+                              startDate: _startDate!,
+                              startTime: _startTime!,
+                              endDate: _endDate!,
+                              endTime: _endTime!,
+                              location: selectedLocation!, // Always use the manual/current location
+                              city: _selectedCity!,
+                              latitude: _selectedLatitude!,
+                              longitude: _selectedLongitude!,
+                              description: _eventDescriptionController.text,
+                              ticketType: _ticketType,
+                              ticketPrice: price,
+                              pickedImage: _pickedEventImage, // Pass image to provider if you handle upload there
                             );
+
+                            if (success) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Event created successfully!')),
+                              );
+                              Navigator.pop(context); // Go back after successful creation
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Failed to create event. ${eventProvider.errorMessage}')),
+                              );
+                            }
+                          } finally {
+                            setState(() {
+                              _isCreatingEvent = false;
+                            });
                           }
                         },
                         style: ElevatedButton.styleFrom(
@@ -878,10 +970,11 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        child: const Text(
+                        child: _isCreatingEvent
+                            ? const CircularProgressIndicator(color: Colors.white)
+                            : const Text(
                           'Create Event',
-                          style: TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold),
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                         ),
                       ),
                     ),
@@ -901,12 +994,24 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     required BuildContext context,
     required DateTime? date,
     required TimeOfDay? time,
-    required VoidCallback onSelectDate,
-    required VoidCallback onSelectTime,
+    required VoidCallback onSelectDateTime, // New combined callback
     required String text,
     bool showTimeZone = false,
     String timeZone = '',
   }) {
+    String displayText = text;
+    if (date != null && time != null) {
+      // Format both date and time into a single string
+      final now = DateTime.now();
+      final dt = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+      displayText = '${DateFormat('dd/MM/yyyy').format(dt)} - ${_formatTime(time)}';
+    } else if (date != null) {
+      displayText = DateFormat('dd/MM/yyyy').format(date);
+    } else if (time != null) {
+      displayText = _formatTime(time);
+    }
+
+
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
       decoration: BoxDecoration(
@@ -914,48 +1019,33 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: Colors.pink.shade400, width: 1),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          GestureDetector(
-            onTap: onSelectDate, // Tap on icon or text to select date
-            child: Row(
-              children: [
-                const Icon(Icons.calendar_today, size: 20,color: Colors.pink,),
-                const SizedBox(width: 8),
-                Text(
-                  date != null
-                      ? '${DateFormat('dd/MM/yyyy').format(date)}' // Format date only
-                      : text.split('&').first.trim(), // Display 'Select Start Date'
-                  style: const TextStyle(fontSize: 15),
-                ),
-              ],
+      child: GestureDetector( // Single GestureDetector for the entire row
+        onTap: onSelectDateTime, // Combined tap to trigger both pickers
+        child: Row(
+          children: [
+            const Icon(Icons.calendar_today, size: 20, color: Colors.pink), // Single calendar icon
+            const SizedBox(width: 8),
+            Expanded( // Use Expanded to prevent overflow for long text
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    displayText,
+                    style: const TextStyle(fontSize: 15),
+                  ),
+                  if (showTimeZone && timeZone.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'Time Zone: $timeZone',
+                      style: const TextStyle(fontSize: 13, color: Colors.grey),
+                    ),
+                  ],
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 10), // Space between date and time pickers
-          GestureDetector(
-            onTap: onSelectTime, // Tap on icon or text to select time
-            child: Row(
-              children: [
-                const Icon(Icons.access_time, color:Colors.pink,size: 20),
-                const SizedBox(width: 8),
-                Text(
-                  time != null
-                      ? _formatTime(time) // Format time only
-                      : text.split('&').last.trim(), // Display '& time' or 'Time'
-                  style: const TextStyle(fontSize: 15),
-                ),
-              ],
-            ),
-          ),
-          if (showTimeZone && timeZone.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text(
-              'Time Zone: $timeZone',
-              style: const TextStyle(fontSize: 13, color: Colors.grey),
-            ),
+            Icon(Icons.chevron_right, color: Colors.grey[400]), // Add a chevron for indication
           ],
-        ],
+        ),
       ),
     );
   }
