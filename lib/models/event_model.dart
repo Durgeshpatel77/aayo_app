@@ -1,6 +1,8 @@
 // lib/models/event_model.dart
 
-import 'package:flutter/material.dart'; // Import for debugPrint
+import 'package:flutter/material.dart';
+
+import 'comment_model.dart'; // Import for debugPrint
 
 class Event {
   final String id;
@@ -13,7 +15,7 @@ class Event {
   final String organizerId;
   final double price;
   final List<String> likes;
-  final List<dynamic> comments; // <-- Add this line if missing
+  final List<CommentModel> comments;
   final String image;
   final List<String> media;
   final String organizer;
@@ -73,6 +75,8 @@ class Event {
           .toList();
     }
 
+    final commentsJson = json['comments'] as List<dynamic>? ?? [];
+
     return Event(
       id: json['_id'] ?? '',
       title: json['title'] ?? '',
@@ -83,10 +87,8 @@ class Event {
       isFree: eventDetails['isFree'] ?? true,
       organizerId: user['_id'] as String? ?? '',
       price: (eventDetails['price'] ?? 0).toDouble(),
-      // --- CORRECTED LINES: Parse likes and comments as List<Map<String, dynamic>> ---
       likes: (json['likes'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
-      comments: json['comments'] ?? [], // safe fallback
-      // --- END CORRECTED LINES ---
+      comments: commentsJson.map((c) => CommentModel.fromJson(c)).toList(),
       image: json['image'] ?? '',
       media: parsedMedia,
       organizer: user['name'] ?? 'Unknown User',

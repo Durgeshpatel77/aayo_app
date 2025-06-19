@@ -118,17 +118,16 @@ class _EventCardState extends State<EventCard> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (_) => CommentSheet(
-        initialComments: widget.event.comments
-            .map((c) => c is Map ? (c['content'] ?? '').toString() : c.toString())
-            .toList(),
-        postId: widget.event.id,
-        onAddComment: (comment) {
-          setState(() {
-            commentCount += 1;
-          });
-        },
-      ),
+      builder: (_) =>
+          CommentSheet(
+            initialComments: widget.event.comments, // Already a List<CommentModel>
+            postId: widget.event.id,
+            onAddComment: (commentText) {
+              setState(() {
+                commentCount += 1;
+              });
+            },
+          ),
     );
   }
 

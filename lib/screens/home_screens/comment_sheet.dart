@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../models/comment_model.dart';
 import '../../providers/home_screens_providers/home_provider.dart';
 import '../../providers/onording_login_screens_providers/user_profile_provider.dart';
+import '../other_for_use/utils.dart';
 
 class CommentSheet extends StatefulWidget {
-  final List<String> initialComments;
+  final List<CommentModel> initialComments;
   final void Function(String) onAddComment;
-  final String postId; // ✅ ADD THIS
+  final String postId;
 
   const CommentSheet({
     required this.initialComments,
     required this.onAddComment,
-    required this.postId, // ✅ AND THIS
+    required this.postId,
     super.key,
   });
 
@@ -21,7 +23,7 @@ class CommentSheet extends StatefulWidget {
 
 class _CommentSheetState extends State<CommentSheet> {
   final TextEditingController _controller = TextEditingController();
-  late List<String> _comments;
+  late List<CommentModel> _comments;
 
   @override
   void initState() {
@@ -31,27 +33,39 @@ class _CommentSheetState extends State<CommentSheet> {
 
   Future<void> _submit() async {
     final text = _controller.text.trim();
-    final userId =
-        Provider.of<FetchEditUserProvider>(context, listen: false).userId;
+    if (text.isEmpty) return;
 
-    if (text.isEmpty || userId == null) return;
+    final userProvider =
+    Provider.of<FetchEditUserProvider>(context, listen: false);
+    final userId = userProvider.userId;
+
+    if (userId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Login required to comment.")),
+      );
+      return;
+    }
 
     try {
-      await Provider.of<HomeProvider>(context, listen: false).addCommentToPost(
+      final commentJson =
+      await Provider.of<HomeProvider>(context, listen: false)
+          .addCommentToPost(
         postId: widget.postId,
         userId: userId,
         content: text,
       );
 
+      final newComment = CommentModel.fromJson(commentJson);
+
       setState(() {
-        _comments.add(text);
+        _comments.add(newComment);
         _controller.clear();
       });
 
       widget.onAddComment(text);
-    } catch (_) {
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to add comment')),
+        SnackBar(content: Text("Failed to add comment: $e")),
       );
     }
   }
@@ -72,13 +86,30 @@ class _CommentSheetState extends State<CommentSheet> {
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
           const SizedBox(height: 10),
           SizedBox(
-            height: 250,
+            height: 300,
             child: ListView.builder(
               itemCount: _comments.length,
               itemBuilder: (context, index) {
+                final c = _comments[index];
                 return ListTile(
-                  leading: const Icon(Icons.person),
-                  title: Text(_comments[index]),
+                  leading: CircleAvatar(
+                    backgroundImage: c.userProfile.isNotEmpty
+                        ? NetworkImage(c.userProfile)
+                        : const AssetImage('images/onbording/unkown.jpg')
+                    as ImageProvider,
+                  ),
+                  title: Text(c.userName),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(c.content),
+                      Text(
+                        timeAgo(c.createdAt),
+                        style: const TextStyle(
+                            fontSize: 12, color: Colors.grey),
+                      ),
+                    ],
+                  ),
                 );
               },
             ),

@@ -11,7 +11,9 @@ class HomeProvider extends ChangeNotifier {
   int _selectedIndex = 0;
 
   bool get isLoading => _loading;
+
   List<Event> get allEvents => _allEvents;
+
   int get selectedIndex => _selectedIndex;
 
   void setSelectedIndex(int i) {
@@ -50,10 +52,12 @@ class HomeProvider extends ChangeNotifier {
         final List<dynamic> posts = data['posts'];
         return posts.map((item) => Event.fromJson(item)).toList();
       } else {
-        throw Exception("Unexpected response format for type '$type' — 'posts' not found");
+        throw Exception(
+            "Unexpected response format for type '$type' — 'posts' not found");
       }
     } else {
-      throw Exception("HTTP error ${response.statusCode} while fetching '$type'");
+      throw Exception(
+          "HTTP error ${response.statusCode} while fetching '$type'");
     }
   }
 
@@ -87,41 +91,28 @@ class HomeProvider extends ChangeNotifier {
   }
 
   /// ✅ NEW: Add a comment to a post or event by its ID
-  Future<void> addCommentToPost({
+  Future<Map<String, dynamic>> addCommentToPost({
     required String postId,
     required String userId,
     required String content,
   }) async {
-    final url = Uri.parse("$_base/comment/$postId");
+    final url = Uri.parse('$_base/comment/$postId');
 
-    final body = {
-      "user": userId,
-      "content": content,
-    };
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'user': userId,
+        'content': content,
+      }),
+    );
 
-    try {
-      final response = await http.post(
-        url,
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(body),
-      );
-
-      if (response.statusCode == 201) {
-        final data = jsonDecode(response.body);
-        final updatedPost = Event.fromJson(data['data']);
-
-        // Replace the old post with updated one
-        _allEvents = _allEvents.map((event) {
-          return event.id == postId ? updatedPost : event;
-        }).toList();
-
-        notifyListeners();
-      } else {
-        throw Exception("Failed to post comment: ${response.statusCode}");
-      }
-    } catch (e) {
-      debugPrint("Error posting comment: $e");
-      rethrow;
+    final json = jsonDecode(response.body);
+    if (response.statusCode != 201 || json['success'] != true) {
+      throw Exception(json['message'] ?? 'Failed to comment');
     }
+
+    // ✅ Return the newly added comment
+    return json['data']['comments'].last;
   }
 }

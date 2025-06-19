@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import '../../models/comment_model.dart';
 import '../../models/create_event_model.dart';
 import '../../models/event_model.dart';
 import '../../providers/setting_screens_providers/event_provider.dart';
@@ -110,12 +111,14 @@ class _EventsscreenState extends State<Eventsscreen> {
                         startTime: event.eventDetails?.startTime ?? DateTime.now(),
                         image: event.media.isNotEmpty ? event.media.first : '',
                         isFree: event.eventDetails?.isFree ?? true,
-                        likes: event.likes.map((e) => e is String ? e : e['_id'].toString()).toList(),
+                        likes: event.likes.map((e) => e.toString()).toList(),
                         location: event.eventDetails?.city ?? "Unknown",
                         price: event.eventDetails?.price ?? 0.0,
                         type: event.type ?? "event",
                         organizerId: (event.user as UserInfo).id,
-                        comments: event.likes.map((e) => e is String ? e : e['_id'].toString()).toList(),
+                        comments: event.comments
+                            .map((e) => CommentModel.fromJson(e as Map<String, dynamic>))
+                            .toList(),
                       );
 
                       Navigator.push(

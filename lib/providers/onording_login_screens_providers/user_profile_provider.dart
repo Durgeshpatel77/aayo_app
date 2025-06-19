@@ -15,6 +15,14 @@ class FetchEditUserProvider with ChangeNotifier {
 
   String? get name => _userData['name'];
   String? get email => _userData['email'];
+  String? get userName => _userData['name'];
+
+  String? get profileImageUrl {
+    final path = _userData['profile'] ?? '';
+    if (path.isEmpty) return null;
+    if (path.startsWith('http')) return path;
+    return '$_baseUrl/$path';
+  }
 
   String? get profileImage {
     final path = _userData['profile'] ?? '';
