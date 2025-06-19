@@ -114,7 +114,8 @@ class _EventsscreenState extends State<Eventsscreen> {
                         location: event.eventDetails?.city ?? "Unknown",
                         price: event.eventDetails?.price ?? 0.0,
                         type: event.type ?? "event",
-                        organizerId: (event.user as UserInfo).id, // Accessing from the nested UserInfo object
+                        organizerId: (event.user as UserInfo).id,
+                        comments: event.likes.map((e) => e is String ? e : e['_id'].toString()).toList(),
                       );
 
                       Navigator.push(

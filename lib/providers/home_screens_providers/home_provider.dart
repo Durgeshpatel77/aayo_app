@@ -76,7 +76,9 @@ class HomeProvider extends ChangeNotifier {
           media: event.media,
           organizer: event.organizer,
           organizerProfile: event.organizerProfile,
-          createdAt: event.createdAt, type: '',
+          createdAt: event.createdAt,
+          type: event.type,
+          comments: event.comments,
         );
       }
       return event;

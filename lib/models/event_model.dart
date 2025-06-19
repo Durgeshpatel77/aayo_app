@@ -13,6 +13,7 @@ class Event {
   final String organizerId;
   final double price;
   final List<String> likes;
+  final List<dynamic> comments; // <-- Add this line if missing
   final String image;
   final List<String> media;
   final String organizer;
@@ -31,6 +32,7 @@ class Event {
     required this.organizerId,
     required this.price,
     required this.likes,
+    required this.comments, // <-- Add this line
     required this.image,
     this.media = const [],
     this.organizer = '',
@@ -83,7 +85,7 @@ class Event {
       price: (eventDetails['price'] ?? 0).toDouble(),
       // --- CORRECTED LINES: Parse likes and comments as List<Map<String, dynamic>> ---
       likes: (json['likes'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
-
+      comments: json['comments'] ?? [], // safe fallback
       // --- END CORRECTED LINES ---
       image: json['image'] ?? '',
       media: parsedMedia,

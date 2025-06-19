@@ -21,12 +21,12 @@ import '../other_for_use/event_card_shimmer.dart';
 import '../event_detail_screens/events_details.dart';
 import '../other_for_use/expandable_text.dart';
 import '../other_for_use/utils.dart';
+import 'comment_sheet.dart';
 import 'create_post_screen.dart';
 import 'events_screen.dart';
 import 'notification_screen.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-
 
 // ---- EventCard ----
 class EventCard extends StatefulWidget {
@@ -49,7 +49,8 @@ class _EventCardState extends State<EventCard> {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final userId = Provider.of<FetchEditUserProvider>(context, listen: false).userId;
+      final userId =
+          Provider.of<FetchEditUserProvider>(context, listen: false).userId;
 
       setState(() {
         isLiked = userId != null && widget.event.likes.contains(userId);
@@ -60,7 +61,8 @@ class _EventCardState extends State<EventCard> {
 
   // Modified _toggleLike to interact with UserProfileProvider directly
   void _toggleLike() async {
-    final userProfileProvider = Provider.of<FetchEditUserProvider>(context, listen: false);
+    final userProfileProvider =
+        Provider.of<FetchEditUserProvider>(context, listen: false);
     final currentUserId = userProfileProvider.userId;
 
     if (currentUserId == null) {
@@ -85,7 +87,8 @@ class _EventCardState extends State<EventCard> {
         final updatedLikes = List<String>.from(response['likes'] ?? []);
         homeProvider.updateEventLikes(widget.event.id, updatedLikes);
 
-        final updatedEvent = homeProvider.allEvents.firstWhere((e) => e.id == widget.event.id);
+        final updatedEvent =
+            homeProvider.allEvents.firstWhere((e) => e.id == widget.event.id);
         setState(() {
           isLiked = updatedEvent.likes.contains(currentUserId);
           likeCount = updatedEvent.likes.length;
@@ -96,7 +99,8 @@ class _EventCardState extends State<EventCard> {
           likeCount += isLiked ? 1 : -1;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(response['message'] ?? 'Failed to update like.')),
+          SnackBar(
+              content: Text(response['message'] ?? 'Failed to update like.')),
         );
       }
     } catch (e) {
@@ -115,10 +119,12 @@ class _EventCardState extends State<EventCard> {
       context: context,
       isScrollControlled: true,
       builder: (_) => CommentSheet(
-        initialComments: comments,
+        initialComments: widget.event.comments
+            .map((c) => c is Map ? (c['content'] ?? '').toString() : c.toString())
+            .toList(),
+        postId: widget.event.id,
         onAddComment: (comment) {
           setState(() {
-            comments.add(comment);
             commentCount += 1;
           });
         },
@@ -142,15 +148,15 @@ class _EventCardState extends State<EventCard> {
     // Initialize `isLiked` based on the `widget.event.likes` list and the current user ID.
     // This will correctly update the heart icon when the userId loads or changes.
 
-
     final String imageUrl = widget.event.media.isNotEmpty
         ? getFullImageUrl(widget.event.media.first)
-        : (widget.event.image.isNotEmpty ? getFullImageUrl(widget.event.image) : '');
+        : (widget.event.image.isNotEmpty
+            ? getFullImageUrl(widget.event.image)
+            : '');
 
     final String profileUrl = widget.event.organizerProfile.isNotEmpty
         ? getFullImageUrl(widget.event.organizerProfile)
         : 'https://randomuser.me/api/portraits/men/75.jpg';
-
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 10),
@@ -163,47 +169,58 @@ class _EventCardState extends State<EventCard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header (User Info)
-              InkWell(
-                onTap: () {
-                  // Ensure widget.event.user has an 'id' or '_id' field
-                  // Based on your JSON, it's "_id" under the "user" object.
-                  // Assuming your Event model maps this to a field named 'id' in User.
-                  if (widget.event.organizerId != null && widget.event.organizerId.isNotEmpty) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => SingleUserProfileScreen(
-                          userId: widget.event.organizerId, // Pass the user's ID here
-                        ),
-                      ),
-                    );
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("User profile ID not available.")),
-                    );
-                  }
-                },
-                child: ListTile(
+          InkWell(
+            onTap: () {
+              // Ensure widget.event.user has an 'id' or '_id' field
+              // Based on your JSON, it's "_id" under the "user" object.
+              // Assuming your Event model maps this to a field named 'id' in User.
+              if (widget.event.organizerId != null &&
+                  widget.event.organizerId.isNotEmpty) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => SingleUserProfileScreen(
+                      userId:
+                          widget.event.organizerId, // Pass the user's ID here
+                    ),
+                  ),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                      content: Text("User profile ID not available.")),
+                );
+              }
+            },
+            child: ListTile(
               leading: CircleAvatar(
                 backgroundImage: profileUrl.isNotEmpty
                     ? NetworkImage(profileUrl)
-                    : const AssetImage('images/onbording/unkown.jpg') as ImageProvider,
+                    : const AssetImage('images/onbording/unkown.jpg')
+                        as ImageProvider,
                 onBackgroundImageError: (exception, stackTrace) {
-                  debugPrint('Error loading profile image for ${widget.event.organizer}: $exception');
+                  debugPrint(
+                      'Error loading profile image for ${widget.event.organizer}: $exception');
                 },
                 child: profileUrl.isEmpty
                     ? const Icon(Icons.person, color: Colors.white)
                     : null,
               ),
-              trailing: Container( // This Container creates the badge/tag effect
+              trailing: Container(
+                // This Container creates the badge/tag effect
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   // Conditional background color based on event type
-                  color: widget.event.type == 'event' ? Colors.pink.shade100 : Colors.blue.shade100,
-                  borderRadius: BorderRadius.circular(15), // Rounded corners for a pill shape
+                  color: widget.event.type == 'event'
+                      ? Colors.pink.shade100
+                      : Colors.blue.shade100,
+                  borderRadius: BorderRadius.circular(
+                      15), // Rounded corners for a pill shape
                   border: Border.all(
                     // Conditional border color
-                    color: widget.event.type == 'event' ? Colors.pink : Colors.blue,
+                    color: widget.event.type == 'event'
+                        ? Colors.pink
+                        : Colors.blue,
                     width: 1,
                   ),
                 ),
@@ -212,12 +229,14 @@ class _EventCardState extends State<EventCard> {
                   style: TextStyle(
                     fontSize: 10, // Smaller font size for a tag
                     // Conditional text color
-                    color: widget.event.type == 'event' ? Colors.pink.shade800 : Colors.blue.shade800,
+                    color: widget.event.type == 'event'
+                        ? Colors.pink.shade800
+                        : Colors.blue.shade800,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
-            title: Text(
+              title: Text(
                 widget.event.organizer,
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
@@ -232,7 +251,6 @@ class _EventCardState extends State<EventCard> {
               children: [
                 const SizedBox(height: 5),
                 ExpandableText(content: widget.event.content),
-
               ],
             ),
           ),
@@ -262,7 +280,7 @@ class _EventCardState extends State<EventCard> {
                     ),
                   ),
                   errorWidget: (context, url, error) =>
-                  const Icon(Icons.broken_image),
+                      const Icon(Icons.broken_image),
                   fadeInDuration: const Duration(milliseconds: 300),
                 ),
               ),
@@ -287,7 +305,8 @@ class _EventCardState extends State<EventCard> {
                             color: isLiked ? Colors.redAccent : Colors.grey,
                           ),
                           const SizedBox(width: 4),
-                          Text(likeCount.toString(), style: const TextStyle(fontSize: 16)),
+                          Text(likeCount.toString(),
+                              style: const TextStyle(fontSize: 16)),
                         ],
                       ),
                     ),
@@ -327,75 +346,6 @@ class _EventCardState extends State<EventCard> {
 }
 
 // ---- CommentSheet (No changes needed, including for your reference) ----
-class CommentSheet extends StatefulWidget {
-  final List<String> initialComments;
-  final void Function(String) onAddComment;
-
-  const CommentSheet({
-    required this.initialComments,
-    required this.onAddComment,
-    super.key,
-  });
-
-  @override
-  State<CommentSheet> createState() => _CommentSheetState();
-}
-
-class _CommentSheetState extends State<CommentSheet> {
-  final TextEditingController _controller = TextEditingController();
-  late List<String> _comments;
-
-  @override
-  void _submit() {
-    final text = _controller.text.trim();
-    if (text.isNotEmpty) {
-      widget.onAddComment(text);
-      setState(() => _comments.add(text));
-      _controller.clear();
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-        left: 16,
-        right: 16,
-        top: 16,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text("Comments",
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-          const SizedBox(height: 10),
-          Expanded(
-            child: ListView.builder(
-              itemCount: _comments.length,
-              itemBuilder: (context, index) {
-                return ListTile(
-                  leading: const Icon(Icons.person),
-                  title: Text(_comments[index]),
-                );
-              },
-            ),
-          ),
-          TextField(
-            controller: _controller,
-            decoration: InputDecoration(
-              hintText: "Add a comment...",
-              suffixIcon:
-              IconButton(icon: const Icon(Icons.send_outlined), onPressed: _submit),
-              border: const OutlineInputBorder(),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 // ---- HomeTabContent (No changes needed, including for your reference) ----
 
 class HomeTabContent extends StatefulWidget {
@@ -476,7 +426,8 @@ class _HomeTabContentState extends State<HomeTabContent> {
                 Text(
                   _currentCity ?? 'Fetching location...',
                   maxLines: 1,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 const Spacer(),
                 IconButton(
@@ -515,11 +466,11 @@ class _HomeTabContentState extends State<HomeTabContent> {
               children: widget.isLoading
                   ? List.generate(5, (_) => const EventCardShimmer())
                   : widget.allEvents.map((event) {
-                return GestureDetector(
-                  onTap: () => widget.onItemTapped(event),
-                  child: EventCard(event: event),
-                );
-              }).toList(),
+                      return GestureDetector(
+                        onTap: () => widget.onItemTapped(event),
+                        child: EventCard(event: event),
+                      );
+                    }).toList(),
             ),
             const SizedBox(height: 12),
           ],
@@ -549,7 +500,8 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _userProfileProvider = Provider.of<FetchEditUserProvider>(context, listen: false);
+    _userProfileProvider =
+        Provider.of<FetchEditUserProvider>(context, listen: false);
     _userProfileProvider.addListener(_onUserProviderChange);
   }
 
@@ -559,7 +511,8 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!_initialized) {
       _initialized = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        debugPrint('HomeScreen: didChangeDependencies - Initializing data fetch and user ID load.');
+        debugPrint(
+            'HomeScreen: didChangeDependencies - Initializing data fetch and user ID load.');
         // Initial fetch of events
         Provider.of<HomeProvider>(context, listen: false).fetchAll();
         // Load user ID. This will trigger _onUserProviderChange if the ID changes/is loaded.
@@ -572,7 +525,8 @@ class _HomeScreenState extends State<HomeScreen> {
     // This method is called whenever notifyListeners() is called in UserProfileProvider
     // If the userId has just become available (i.e., user logged in or ID loaded from storage), refresh events
     final homeProvider = Provider.of<HomeProvider>(context, listen: false);
-    debugPrint('HomeScreen: _onUserProviderChange - User ID changed to: ${_userProfileProvider.userId}');
+    debugPrint(
+        'HomeScreen: _onUserProviderChange - User ID changed to: ${_userProfileProvider.userId}');
     if (_userProfileProvider.userId != null) {
       // Fetch all events again to get updated like status for the loaded user
       homeProvider.fetchAll();
