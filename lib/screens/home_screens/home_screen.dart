@@ -1,6 +1,6 @@
-// lib/screens/home_screens/home_tab_content.dart
+// lib/screens/home_screens/home_tab_content.dart (home_screen.dart)
 
-// ... (existing imports)
+// ... (existing imports - ensure correct path for UserProfileProvider)
 import 'package:aayo/screens/home_screens/post_detail_screens.dart';
 import 'package:aayo/screens/home_screens/userprofile_list.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -8,17 +8,22 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/create_event_model.dart';
 import '../../models/event_model.dart';
 import '../../providers/home_screens_providers/home_provider.dart';
+import '../../providers/home_screens_providers/user_provider_like.dart';
 import '../other_for_use/event_card_shimmer.dart';
 import '../event_detail_screens/events_details.dart';
 import '../other_for_use/expandable_text.dart';
 import '../other_for_use/utils.dart';
 import 'create_post_screen.dart';
 import 'events_screen.dart';
-import 'notification_screen.dart'; // Existing event detail screen
+import 'notification_screen.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+
 
 // ---- EventCard ----
 class EventCard extends StatefulWidget {
@@ -39,16 +44,67 @@ class _EventCardState extends State<EventCard> {
   @override
   void initState() {
     super.initState();
-    likeCount = widget.event.likes.length;
-    commentCount = widget.event.comments.length;
-    comments = List.from(widget.event.comments);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final userId = Provider.of<UserProfileProvider>(context, listen: false).userId;
+
+      setState(() {
+        isLiked = userId != null && widget.event.likes.contains(userId);
+        likeCount = widget.event.likes.length;
+      });
+    });
   }
 
-  void _toggleLike() {
+  // Modified _toggleLike to interact with UserProfileProvider directly
+  void _toggleLike() async {
+    final userProfileProvider = Provider.of<UserProfileProvider>(context, listen: false);
+    final currentUserId = userProfileProvider.userId;
+
+    if (currentUserId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("You must be logged in to like this.")),
+      );
+      return;
+    }
+
+    final homeProvider = Provider.of<HomeProvider>(context, listen: false);
+
     setState(() {
-      isLiked = !isLiked;
-      likeCount += isLiked ? 1 : -1;
+      likeCount = widget.event.likes.length;
     });
+    try {
+      final response = await userProfileProvider.toggleLike(
+        postId: widget.event.id,
+        userId: currentUserId,
+      );
+
+      if (response['success']) {
+        final updatedLikes = List<String>.from(response['likes'] ?? []);
+        homeProvider.updateEventLikes(widget.event.id, updatedLikes);
+
+        final updatedEvent = homeProvider.allEvents.firstWhere((e) => e.id == widget.event.id);
+        setState(() {
+          isLiked = updatedEvent.likes.contains(currentUserId);
+          likeCount = updatedEvent.likes.length;
+        });
+      } else {
+        setState(() {
+          isLiked = !isLiked;
+          likeCount += isLiked ? 1 : -1;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(response['message'] ?? 'Failed to update like.')),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        isLiked = !isLiked;
+        likeCount += isLiked ? 1 : -1;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString()}')),
+      );
+    }
   }
 
   void _showCommentDialog() {
@@ -76,13 +132,22 @@ class _EventCardState extends State<EventCard> {
 
   @override
   Widget build(BuildContext context) {
+    // Listen to UserProfileProvider to react to userId changes
+    final userProfileProvider = Provider.of<UserProfileProvider>(context);
+    final currentUserId = userProfileProvider.userId;
+
+    // Initialize `isLiked` based on the `widget.event.likes` list and the current user ID.
+    // This will correctly update the heart icon when the userId loads or changes.
+
+
     final String imageUrl = widget.event.media.isNotEmpty
         ? getFullImageUrl(widget.event.media.first)
-        : (widget.event.image.isNotEmpty ? getFullImageUrl(widget.event.image) : ''); // Prioritize media, then image
+        : (widget.event.image.isNotEmpty ? getFullImageUrl(widget.event.image) : '');
 
     final String profileUrl = widget.event.organizerProfile.isNotEmpty
         ? getFullImageUrl(widget.event.organizerProfile)
-        : 'https://randomuser.me/api/portraits/men/75.jpg'; // Fallback for profile
+        : 'https://randomuser.me/api/portraits/men/75.jpg';
+
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 10),
@@ -97,7 +162,6 @@ class _EventCardState extends State<EventCard> {
           // Header (User Info)
           InkWell(
             onTap: () {
-              // Navigate to UserProfileList when tapping on the user info
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -122,7 +186,7 @@ class _EventCardState extends State<EventCard> {
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               subtitle: Text(timeAgo(widget.event.createdAt)),
-          ),
+            ),
           ),
           // Event/Post Title & Content
           Padding(
@@ -130,7 +194,6 @@ class _EventCardState extends State<EventCard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                //ExpandableText(content: widget.event.title),
                 const SizedBox(height: 5),
                 ExpandableText(content: widget.event.content),
 
@@ -144,7 +207,7 @@ class _EventCardState extends State<EventCard> {
             AspectRatio(
               aspectRatio: 0.9,
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(0), // Keep as 0 for full width
+                borderRadius: BorderRadius.circular(0),
                 child: CachedNetworkImage(
                   imageUrl: imageUrl,
                   fit: BoxFit.cover,
@@ -169,44 +232,7 @@ class _EventCardState extends State<EventCard> {
               ),
             ),
 
-          // Like Row with avatars and like text
-          // Like Row with avatars and like text
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Row(
-              children: [
-                const CircleAvatar(
-                  radius: 12,
-                  backgroundImage: NetworkImage(
-                      'https://cdn.pixabay.com/photo/2013/05/13/06/18/forest-110900_1280.jpg'),
-                ),
-                const SizedBox(width: 4),
-                const CircleAvatar(
-                  radius: 12,
-                  backgroundImage: NetworkImage(
-                      'https://cdn.pixabay.com/photo/2023/09/21/14/17/italy-8266783_1280.jpg'),
-                ),
-                const SizedBox(width: 8),
-                Text.rich(
-                  TextSpan(
-                    children: [
-                      const TextSpan(text: "Liked by "),
-                      TextSpan(
-                        text: "krilibooo",
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      const TextSpan(text: " and "),
-                      TextSpan(
-                        text: "dianafreya",
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                  style: const TextStyle(fontSize: 14),
-                ),
-              ],
-            ),
-          ),          // Actions: Like, Comment, Share
+          // Actions: Like, Comment, Share
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 5),
             child: Row(
@@ -250,7 +276,7 @@ class _EventCardState extends State<EventCard> {
   Widget _iconText(IconData icon, String text,
       {VoidCallback? onTap, Color color = Colors.grey}) {
     return GestureDetector(
-      onTap: onTap, // Use the provided onTap directly
+      onTap: onTap,
       child: Row(
         children: [
           Icon(icon, size: 24, color: color),
@@ -264,8 +290,7 @@ class _EventCardState extends State<EventCard> {
   }
 }
 
-// ---- CommentSheet (No changes needed) ----
-// ... (Your existing CommentSheet code here)
+// ---- CommentSheet (No changes needed, including for your reference) ----
 class CommentSheet extends StatefulWidget {
   final List<String> initialComments;
   final void Function(String) onAddComment;
@@ -285,11 +310,6 @@ class _CommentSheetState extends State<CommentSheet> {
   late List<String> _comments;
 
   @override
-  void initState() {
-    super.initState();
-    _comments = List.from(widget.initialComments);
-  }
-
   void _submit() {
     final text = _controller.text.trim();
     if (text.isNotEmpty) {
@@ -314,7 +334,7 @@ class _CommentSheetState extends State<CommentSheet> {
           const Text("Comments",
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
           const SizedBox(height: 10),
-          Expanded( // Use Expanded for the ListView.builder for scrollability
+          Expanded(
             child: ListView.builder(
               itemCount: _comments.length,
               itemBuilder: (context, index) {
@@ -340,11 +360,10 @@ class _CommentSheetState extends State<CommentSheet> {
   }
 }
 
-// ---- HomeTabContent ----
+// ---- HomeTabContent (No changes needed, including for your reference) ----
 class HomeTabContent extends StatelessWidget {
-  final List<Event> allEvents; // Now this list can contain both events and posts
+  final List<Event> allEvents;
   final bool isLoading;
-  // This callback now takes an Event object instead of just a name
   final void Function(Event) onItemTapped;
 
   const HomeTabContent({
@@ -392,7 +411,7 @@ class HomeTabContent extends StatelessWidget {
             // Search
             TextField(
               decoration: InputDecoration(
-                hintText: "Search Events and Posts", // Updated hint text
+                hintText: "Search Events and Posts",
                 prefixIcon: const Icon(Icons.search),
                 border:
                 OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -407,21 +426,21 @@ class HomeTabContent extends StatelessWidget {
               child: Text("People You Might Know",
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             ),
-            Column(children: []), // Placeholder for user profiles
+            Column(children: []),
             const SizedBox(height: 20),
 
             const Padding(
               padding: EdgeInsets.only(bottom: 10.0),
-              child: Text("All Posts and Events", // Updated header text
+              child: Text("All Posts and Events",
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             ),
 
             Column(
               children: isLoading
                   ? List.generate(5, (_) => const EventCardShimmer())
-                  : allEvents.map((event) { // Iterate through all events/posts
+                  : allEvents.map((event) {
                 return GestureDetector(
-                  onTap: () => onItemTapped(event), // Pass the full event object
+                  onTap: () => onItemTapped(event),
                   child: EventCard(event: event),
                 );
               }).toList(),
@@ -446,6 +465,17 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   DateTime? _lastBackPressTime;
   bool _initialized = false;
+  late UserProfileProvider _userProfileProvider;
+  bool isLiked = false;
+  int likeCount = 0;
+
+  @override
+  @override
+  void initState() {
+    super.initState();
+    _userProfileProvider = Provider.of<UserProfileProvider>(context, listen: false);
+    _userProfileProvider.addListener(_onUserProviderChange);
+  }
 
   @override
   void didChangeDependencies() {
@@ -453,9 +483,30 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!_initialized) {
       _initialized = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        debugPrint('HomeScreen: didChangeDependencies - Initializing data fetch and user ID load.');
+        // Initial fetch of events
         Provider.of<HomeProvider>(context, listen: false).fetchAll();
+        // Load user ID. This will trigger _onUserProviderChange if the ID changes/is loaded.
+        _userProfileProvider.loadUserId();
       });
     }
+  }
+
+  void _onUserProviderChange() {
+    // This method is called whenever notifyListeners() is called in UserProfileProvider
+    // If the userId has just become available (i.e., user logged in or ID loaded from storage), refresh events
+    final homeProvider = Provider.of<HomeProvider>(context, listen: false);
+    debugPrint('HomeScreen: _onUserProviderChange - User ID changed to: ${_userProfileProvider.userId}');
+    if (_userProfileProvider.userId != null) {
+      // Fetch all events again to get updated like status for the loaded user
+      homeProvider.fetchAll();
+    }
+  }
+
+  @override
+  void dispose() {
+    _userProfileProvider.removeListener(_onUserProviderChange);
+    super.dispose();
   }
 
   void _onItemTapped(BuildContext context, Event item) {
@@ -476,21 +527,13 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Consumer<HomeProvider>(
       builder: (context, homeProvider, child) {
-        // You'll need a way to get an EventModel here if you choose this option.
-        // For demonstration, let's assume you have a dummy or the first event from your provider.
-        // This is highly dependent on your app's logic.
-        final Event? firstEvent = homeProvider.allEvents.isNotEmpty
-            ? homeProvider.allEvents.first // Assuming allEvents holds EventModel or can be converted
-            : null; // Or create a dummy EventModel
-
-// ... inside _HomeScreenState build method
         final allScreens = [
           HomeTabContent(
             allEvents: homeProvider.allEvents,
             isLoading: homeProvider.isLoading,
             onItemTapped: (item) => _onItemTapped(context, item),
           ),
-          const Eventsscreen(), // Now it can be created without an argument
+          const Eventsscreen(),
           AddPostScreen(),
           const Notificationscreen(),
           const UserProfileList(),

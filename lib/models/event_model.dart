@@ -1,4 +1,5 @@
 // lib/models/event_model.dart
+
 import 'package:flutter/material.dart'; // Import for debugPrint
 
 class Event {
@@ -9,25 +10,26 @@ class Event {
   final DateTime startTime;
   final DateTime endTime;
   final bool isFree;
+  final String organizerId;
   final double price;
   final List<String> likes;
-  final List<String> comments;
+  final List<String> comments; // --- CHANGED TYPE ---
   final String image;
   final List<String> media;
   final String organizer;
   final String organizerProfile;
   final DateTime createdAt;
-  final String type; // NEW: To distinguish between 'post' and 'event'
+  final String type;
 
   Event({
     required this.id,
-
     required this.title,
     required this.content,
     required this.location,
     required this.startTime,
     required this.endTime,
     required this.isFree,
+    required this.organizerId,
     required this.price,
     required this.likes,
     required this.comments,
@@ -36,17 +38,15 @@ class Event {
     this.organizer = '',
     this.organizerProfile = '',
     required this.createdAt,
-    required this.type, // NEW
+    required this.type,
   });
 
   factory Event.fromJson(Map<String, dynamic> json) {
     final eventDetails = json['eventDetails'] ?? {};
     final user = json['user'] ?? {};
 
-    // Determine the type explicitly from the JSON
-    final String parsedType = json['type'] ?? 'post'; // Default to 'post' if not specified
+    final String parsedType = json['type'] ?? 'post';
 
-    // Build the full profile URL
     const String baseUrl = 'http://srv861272.hstgr.cloud:8000';
     String userProfilePath = user['profile'] ?? '';
     String fullOrganizerProfileUrl;
@@ -58,10 +58,9 @@ class Event {
         fullOrganizerProfileUrl = '$baseUrl/$userProfilePath';
       }
     } else {
-      fullOrganizerProfileUrl = 'https://randomuser.me/api/portraits/men/75.jpg'; // Default fallback
+      fullOrganizerProfileUrl = 'https://randomuser.me/api/portraits/men/75.jpg';
     }
 
-    // Parse media, handling both string and map structures
     List<String> parsedMedia = [];
     if (json['media'] is List) {
       parsedMedia = (json['media'] as List<dynamic>)
@@ -82,20 +81,22 @@ class Event {
       startTime: DateTime.tryParse(eventDetails['startTime'] ?? '') ?? DateTime.now(),
       endTime: DateTime.tryParse(eventDetails['endTime'] ?? '') ?? DateTime.now(),
       isFree: eventDetails['isFree'] ?? true,
+      organizerId: user['_id'] as String? ?? '',
       price: (eventDetails['price'] ?? 0).toDouble(),
+      // --- CORRECTED LINES: Parse likes and comments as List<Map<String, dynamic>> ---
       likes: (json['likes'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
-      comments: (json['comments'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
-      image: json['image'] ?? '', // Primary image field
-      media: parsedMedia, // All media items
+      comments : (json['comments'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+
+      // --- END CORRECTED LINES ---
+      image: json['image'] ?? '',
+      media: parsedMedia,
       organizer: user['name'] ?? 'Unknown User',
       organizerProfile: fullOrganizerProfileUrl,
       createdAt: DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
-      type: parsedType, // Assign the parsed type
+      type: parsedType,
     );
   }
 
-  // Getter to explicitly check if it's an event
   bool get isEvent => type == 'event';
-  // Getter to explicitly check if it's a post
   bool get isPost => type == 'post';
 }

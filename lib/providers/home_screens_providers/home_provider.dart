@@ -1,3 +1,4 @@
+// lib/providers/home_screens_providers/home_provider.dart
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -55,5 +56,35 @@ class HomeProvider extends ChangeNotifier {
       throw Exception("HTTP error ${response.statusCode} while fetching '$type'");
     }
   }
-}
 
+  // NEW: Method to update the likes for a specific event/post by its ID
+  void updateEventLikes(String eventId, List<String> newLikes) {
+    _allEvents = _allEvents.map((event) {
+      if (event.id == eventId) {
+        // Create a new Event object with the updated likes list.
+        // This is necessary because 'likes' is likely final in your Event model.
+        return Event(
+          id: event.id,
+          title: event.title,
+          content: event.content,
+          location: event.location,
+          startTime: event.startTime,
+          endTime: event.endTime,
+          isFree: event.isFree,
+          organizerId: event.organizerId,
+          price: event.price,
+          likes: newLikes, // <-- This is the updated list
+          comments: event.comments,
+          image: event.image,
+          media: event.media,
+          organizer: event.organizer,
+          organizerProfile: event.organizerProfile,
+          createdAt: event.createdAt,
+          type: event.type,
+        );
+      }
+      return event; // Return unchanged event if not the target
+    }).toList();
+    notifyListeners(); // Notify listeners to rebuild widgets that depend on allEvents
+  }
+}
