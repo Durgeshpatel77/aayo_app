@@ -13,9 +13,10 @@ class VenueDetailPage extends StatelessWidget {
   Widget build(BuildContext context) {
     _transformationController = TransformationController();
 
-    final detail = venue['venueDetails'] ?? {};
+    final detail = venue; // Access top-level directly
     final content = venue['content']??{};
     final images = venue['media'] as List?;
+    final capacity = venue['capacity'] ?? 0;
     final imageUrl = images != null && images.isNotEmpty
         ? _fullImageUrl(images[0])
         : null;
@@ -170,7 +171,19 @@ class VenueDetailPage extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 16),
-              
+
+// Capacity
+                        Row(
+                          children: [
+                            const Icon(Icons.people_outline, size: 18, color: Colors.grey),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Capacity: $capacity people',
+                              style: const TextStyle(fontSize: 14, color: Colors.black54),
+                            ),
+                          ],
+                        ),
+              SizedBox(height: 20,),
                         // Description
                         ExpandableText(content: venue['content']??'No description available.',textColor: Colors.black87,),
 

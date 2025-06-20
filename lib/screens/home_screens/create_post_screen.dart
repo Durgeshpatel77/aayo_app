@@ -37,14 +37,13 @@ class _AddPostScreenState extends State<AddPostScreen> {
     return Consumer<AddPostProvider>(
       builder: (context, addPostProvider, child) {
         return Scaffold(
-          backgroundColor: Colors.grey[100],
+          backgroundColor: Colors.white,
           appBar: AppBar(
             title: const Text('Create Post'),
             centerTitle: true,
             backgroundColor: Colors.white,
             elevation: 0,
           ),
-
           body: SingleChildScrollView(
             padding: EdgeInsets.all(screenWidth * 0.04),
             child: Column(
@@ -57,22 +56,10 @@ class _AddPostScreenState extends State<AddPostScreen> {
                   child: Column(
                     children: [
                       TextField(
-                        controller: addPostProvider.titleController,
-                        maxLength: 30,
-                        decoration: const InputDecoration(
-                          hintText: "Post Title",
-                          counterText: "",
-                          border: InputBorder.none,
-                        ),
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                        onChanged: (_) => addPostProvider.notifyListeners(),
-                      ),
-                      const Divider(),
-                      TextField(
                         controller: addPostProvider.postController,
                         maxLines: 5,
                         decoration: const InputDecoration(
-                          hintText: "What's on your mind?",
+                          hintText: "What's in your mind?",
                           border: InputBorder.none,
                         ),
                         onChanged: (_) => addPostProvider.notifyListeners(),
@@ -192,13 +179,7 @@ class _AddPostScreenState extends State<AddPostScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.08),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        border: Border.all(color: Colors.grey,width: 0.6)
       ),
       padding: const EdgeInsets.all(16),
       child: child,
@@ -252,27 +233,29 @@ class UserInfoHeader extends StatelessWidget {
       profileImageProvider = const NetworkImage('https://randomuser.me/api/portraits/men/75.jpg');
     }
 
-    return Row(
-      children: [
-        CircleAvatar(
-          backgroundImage: profileImageProvider,
-          radius: 24,
-        ),
-        SizedBox(width: screenWidth * 0.03),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              userName,
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: screenWidth * 0.045),
-            ),
-            Text(
-              userData['role'] ?? "Event Organizer",
-              style: TextStyle(color: Colors.grey[600], fontSize: screenWidth * 0.035),
-            ),
-          ],
-        ),
-      ],
+    return Container(
+      child: Row(
+        children: [
+          CircleAvatar(
+            backgroundImage: profileImageProvider,
+            radius: 24,
+          ),
+          SizedBox(width: screenWidth * 0.03),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                userName,
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: screenWidth * 0.045),
+              ),
+              Text(
+                userData['role'] ?? "Event Organizer",
+                style: TextStyle(color: Colors.grey[600], fontSize: screenWidth * 0.035),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

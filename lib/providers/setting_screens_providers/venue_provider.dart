@@ -16,6 +16,8 @@ class VenueProvider extends ChangeNotifier {
   final addressController  = TextEditingController();
   final cityController     = TextEditingController();
   final descriptionController = TextEditingController();
+  final  capacityController = TextEditingController();
+
 
   /// ---------------- Image, location & form helpers ----------------
   final ImagePicker _picker = ImagePicker();
@@ -226,21 +228,29 @@ class VenueProvider extends ChangeNotifier {
     _venueFetchError = null;
     notifyListeners();
 
-    final url = Uri.parse('http://srv861272.hstgr.cloud:8000/api/post?type=venue');
+    final url = Uri.parse('http://srv861272.hstgr.cloud:8000/api/post/venue');
+
     try {
       final res = await http.get(url);
+      debugPrint('📥 Venue Response Code: ${res.statusCode}'); // ✅ Log status
+
       if (res.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(res.body);
-        if (data['success'] == true && data['data'] != null) {
-          _venues = List<Map<String, dynamic>>.from(data['data']['posts']);
+
+        if (data['success'] == true && data['data'] != null && data['data']['venues'] != null) {
+          _venues = List<Map<String, dynamic>>.from(data['data']['venues']);
+          debugPrint('🏠 Total venues loaded: ${_venues.length}');
         } else {
           _venueFetchError = 'Failed: ${data['message'] ?? 'Unknown error'}';
+          debugPrint('⚠️ Parsing error: $_venueFetchError');
         }
       } else {
         _venueFetchError = 'HTTP ${res.statusCode}';
+        debugPrint('❌ Server returned error: $_venueFetchError');
       }
     } catch (e) {
       _venueFetchError = 'Error: $e';
+      debugPrint('🔥 Exception during venue fetch: $e');
     } finally {
       _isLoadingVenues = false;
       notifyListeners();
@@ -261,8 +271,8 @@ class VenueProvider extends ChangeNotifier {
         latitude  == null                ||
         longitude == null                ||
         pickedVenueImage == null         ||
-        selectedFacilities.isEmpty) {
-      _snack(context, 'Please fill all fields, pick image, location & facilities.');
+        selectedFacilities.isEmpty ||
+        capacityController.text.isEmpty) {      _snack(context, 'Please fill all fields, pick image, location & facilities.');
       return;
     }
 
@@ -291,6 +301,7 @@ class VenueProvider extends ChangeNotifier {
           'longitude'   : longitude.toString(),
           'description' : descriptionController.text,
           'facilities'  : selectedFacilities.join(', '),
+          'capacity'    : capacityController.text,
         })
         ..files.add(await http.MultipartFile.fromPath('media', pickedVenueImage!.path));
 
@@ -328,6 +339,7 @@ class VenueProvider extends ChangeNotifier {
     latitude  = null;
     longitude = null;
     selectedFacilities.clear();
+    capacityController.clear();
     notifyListeners();
   }
 

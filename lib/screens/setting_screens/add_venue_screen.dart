@@ -223,6 +223,14 @@ class _AddVenueScreenState extends State<AddVenueScreen> {
             ),
             const SizedBox(height: 20),
             TextfieldEditprofiile(
+              controller: venueProvider.capacityController,
+              hintText: 'Enter capacity',
+              prefixIcon: Icons.people_outline,
+              keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 20),
+
+            TextfieldEditprofiile(
               controller: venueProvider.descriptionController,
               hintText: 'Enter venue description',
               prefixIcon: Icons.description,

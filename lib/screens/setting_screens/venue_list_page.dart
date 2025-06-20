@@ -95,11 +95,9 @@ class _VenueListPageState extends State<VenueListPage> {
           ),
           itemBuilder: (_, idx) {
             final v = provider.venues[idx];
-            final detail = v['venueDetails'] ?? {};
-            final images = v['media'] as List?;
-            final imgUrl = images != null && images.isNotEmpty
-                ? _fullImageUrl(images[0])
-                : '';
+            final detail = v; // ✅ FIXED: no venueDetails field
+            final images = (v['media'] is List) ? List.from(v['media']) : <String>[];
+            final imgUrl = images.isNotEmpty ? _fullImageUrl(images[0]) : '';
 
             return GestureDetector(
               onTap: () {

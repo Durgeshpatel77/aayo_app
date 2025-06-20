@@ -572,7 +572,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                     controller: _eventNameController,
                     hintText: 'Enter event name',
                     maxLength: 30,
-                    prefixIcon: Icons.person,
+                    prefixIcon: Icons.celebration,
                   ),
                 ],
               ),
