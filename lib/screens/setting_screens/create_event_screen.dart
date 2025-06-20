@@ -634,7 +634,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                                 Text(
                                   (selectedLocation?.isNotEmpty ?? false)
                                       ? selectedLocation!
-                                      : 'Tap to select manual or current location (Required)',
+                                      : 'Tap to select manual or current location',
                                   style: const TextStyle(
                                     color: Colors.black,
                                     fontSize: 16,

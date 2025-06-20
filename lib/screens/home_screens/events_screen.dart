@@ -71,10 +71,10 @@ class _EventsscreenState extends State<Eventsscreen> {
             );
           } else {
             final events = eventProvider.allEvents;
-            if (events.isEmpty) {
+            if (!eventProvider.isFetchingEvents && events.isEmpty) {
               return const Center(
-                child: Text("No events found.",
-                    style: TextStyle(fontSize: 16)),
+                child: Text("No events available.",
+                    style: TextStyle(fontSize: 16, color: Colors.grey)),
               );
             }
 

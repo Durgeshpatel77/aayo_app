@@ -13,6 +13,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../models/comment_model.dart';
 import '../../models/create_event_model.dart';
 import '../../models/event_model.dart';
 import '../../providers/home_screens_providers/home_provider.dart';
@@ -41,7 +42,7 @@ class EventCard extends StatefulWidget {
 class _EventCardState extends State<EventCard> {
   bool isLiked = false;
   int likeCount = 0;
-  int commentCount = 0;
+  int get commentCount => widget.event.comments.length;
   late List<String> comments;
 
   @override
@@ -122,9 +123,17 @@ class _EventCardState extends State<EventCard> {
           CommentSheet(
             initialComments: widget.event.comments, // Already a List<CommentModel>
             postId: widget.event.id,
-            onAddComment: (commentText) {
+            onAddComment: (commentContent) {
               setState(() {
-                commentCount += 1;
+                widget.event.comments.add(
+                  CommentModel(
+                    id: DateTime.now().toString(),
+                    content: commentContent,
+                    createdAt: DateTime.now(),
+                    userName: "You",
+                    userProfile: "", // You can pass actual profile if needed
+                  ),
+                );
               });
             },
           ),
@@ -394,6 +403,7 @@ class _HomeTabContentState extends State<HomeTabContent> {
 
       if (placemarks.isNotEmpty) {
         final place = placemarks.first;
+        if (!mounted) return;
         setState(() {
           _currentCity = '${place.locality}, ${place.administrativeArea}';
         });
@@ -464,12 +474,23 @@ class _HomeTabContentState extends State<HomeTabContent> {
             Column(
               children: widget.isLoading
                   ? List.generate(5, (_) => const EventCardShimmer())
+                  : widget.allEvents.isEmpty
+                  ? [
+                const SizedBox(height: 250),
+                const Center(
+                  child: Text(
+                    "No events or posts available.",
+                    style: TextStyle(fontSize: 16, color: Colors.grey),
+                    textAlign: TextAlign.center,
+                  ),
+                )
+              ]
                   : widget.allEvents.map((event) {
-                      return GestureDetector(
-                        onTap: () => widget.onItemTapped(event),
-                        child: EventCard(event: event),
-                      );
-                    }).toList(),
+                return GestureDetector(
+                  onTap: () => widget.onItemTapped(event),
+                  child: EventCard(event: event),
+                );
+              }).toList(),
             ),
             const SizedBox(height: 12),
           ],

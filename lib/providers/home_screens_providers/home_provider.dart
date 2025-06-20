@@ -25,15 +25,23 @@ class HomeProvider extends ChangeNotifier {
     _loading = true;
     notifyListeners();
 
+    List<Event> combined = [];
+
     try {
       final events = await _fetchByType('event');
-      final posts = await _fetchByType('post');
-
-      _allEvents = [...events, ...posts]..shuffle();
-    } catch (e, s) {
-      debugPrint('HomeProvider fetch error: $e\n$s');
+      combined.addAll(events);
+    } catch (e) {
+      debugPrint('❌ Failed to fetch events: $e');
     }
 
+    try {
+      final posts = await _fetchByType('post');
+      combined.addAll(posts);
+    } catch (e) {
+      debugPrint('❌ Failed to fetch posts: $e');
+    }
+
+    _allEvents = combined..shuffle();
     _loading = false;
     notifyListeners();
   }
