@@ -10,7 +10,6 @@ import '../setting_screens/create_event_screen.dart';
 
 class AddPostScreen extends StatefulWidget {
   const AddPostScreen({super.key});
-
   @override
   State<AddPostScreen> createState() => _AddPostScreenState();
 }
@@ -24,7 +23,8 @@ class _AddPostScreenState extends State<AddPostScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null && user.uid.isNotEmpty) {
-        Provider.of<FetchEditUserProvider>(context, listen: false).fetchUser(user.uid);
+        Provider.of<FetchEditUserProvider>(context, listen: false)
+            .fetchUser(user.uid);
       }
     });
   }
@@ -35,7 +35,7 @@ class _AddPostScreenState extends State<AddPostScreen> {
     final screenHeight = MediaQuery.of(context).size.height;
 
     return Consumer<AddPostProvider>(
-      builder: (context, addPostProvider, child) {
+      builder: (context, addPostProvider, _) {
         return Scaffold(
           backgroundColor: Colors.white,
           appBar: AppBar(
@@ -53,18 +53,14 @@ class _AddPostScreenState extends State<AddPostScreen> {
                 const SizedBox(height: 20),
 
                 _buildCardContainer(
-                  child: Column(
-                    children: [
-                      TextField(
-                        controller: addPostProvider.postController,
-                        maxLines: 5,
-                        decoration: const InputDecoration(
-                          hintText: "What's in your mind?",
-                          border: InputBorder.none,
-                        ),
-                        onChanged: (_) => addPostProvider.notifyListeners(),
-                      ),
-                    ],
+                  child: TextField(
+                    controller: addPostProvider.postController,
+                    maxLines: 5,
+                    decoration: const InputDecoration(
+                      hintText: "What's on your mind?",
+                      border: InputBorder.none,
+                    ),
+                    onChanged: (_) => addPostProvider.notifyListeners(),
                   ),
                 ),
 
@@ -91,8 +87,12 @@ class _AddPostScreenState extends State<AddPostScreen> {
                             radius: 16,
                             child: IconButton(
                               padding: EdgeInsets.zero,
-                              icon: const Icon(Icons.close, color: Colors.white, size: 16),
-                              onPressed: () => addPostProvider.clearImage(),
+                              icon: const Icon(
+                                Icons.close,
+                                color: Colors.white,
+                                size: 16,
+                              ),
+                              onPressed: addPostProvider.clearImage,
                             ),
                           ),
                         ),
@@ -116,17 +116,31 @@ class _AddPostScreenState extends State<AddPostScreen> {
                   runSpacing: 10,
                   children: [
                     _buildMediaButton(
-                        Icons.photo, "Gallery",
-                            () => addPostProvider.pickImage(ImageSource.gallery),
-                        screenWidth, screenHeight),
+                      Icons.photo,
+                      "Gallery",
+                          () => addPostProvider.pickImage(ImageSource.gallery),
+                      screenWidth,
+                      screenHeight,
+                    ),
                     _buildMediaButton(
-                        Icons.camera_alt, "Camera",
-                            () => addPostProvider.pickImage(ImageSource.camera),
-                        screenWidth, screenHeight),
+                      Icons.camera_alt,
+                      "Camera",
+                          () => addPostProvider.pickImage(ImageSource.camera),
+                      screenWidth,
+                      screenHeight,
+                    ),
                     _buildMediaButton(
-                        Icons.event, "Event",
-                            () => Navigator.push(context, MaterialPageRoute(builder: (context) => const CreateEventScreen())),
-                        screenWidth, screenHeight),
+                      Icons.event,
+                      "Event",
+                          () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const CreateEventScreen(),
+                        ),
+                      ),
+                      screenWidth,
+                      screenHeight,
+                    ),
                   ],
                 ),
 
@@ -136,17 +150,21 @@ class _AddPostScreenState extends State<AddPostScreen> {
                   child: ElevatedButton(
                     onPressed: addPostProvider.isPostEnabled
                         ? () async {
-                      final message = await addPostProvider.createPost();
+                      final message =
+                      await addPostProvider.createPost();
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(message ?? 'Post Shared Successfully!'),
-                        ),
+                        SnackBar(content: Text(message!)),
                       );
                     }
                         : null,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: addPostProvider.isPostEnabled ? Colors.pink : Colors.grey,
-                      padding: EdgeInsets.symmetric(horizontal: 30, vertical: 14),
+                      backgroundColor: addPostProvider.isPostEnabled
+                          ? Colors.pink
+                          : Colors.grey,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 30,
+                        vertical: 14,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -162,7 +180,10 @@ class _AddPostScreenState extends State<AddPostScreen> {
                     )
                         : const Text(
                       'Post',
-                      style: TextStyle(fontSize: 16, color: Colors.white),
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ),
@@ -174,38 +195,40 @@ class _AddPostScreenState extends State<AddPostScreen> {
     );
   }
 
-  Widget _buildCardContainer({required Widget child}) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey,width: 0.6)
-      ),
-      padding: const EdgeInsets.all(16),
-      child: child,
-    );
-  }
+  Widget _buildCardContainer({required Widget child}) => Container(
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: Colors.grey, width: 0.6),
+    ),
+    padding: const EdgeInsets.all(16),
+    child: child,
+  );
 
-  Widget _buildMediaButton(IconData icon, String label, VoidCallback onTap, double screenWidth, double screenHeight) {
-    return ElevatedButton.icon(
-      onPressed: onTap,
-      icon: Icon(icon, size: screenWidth * 0.045),
-      label: Text(label, style: TextStyle(fontSize: screenWidth * 0.03)),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.pink.shade50,
-        foregroundColor: Colors.pink,
-        elevation: 0,
-        padding: EdgeInsets.symmetric(
-          horizontal: screenWidth * 0.035,
-          vertical: screenHeight * 0.015,
+  Widget _buildMediaButton(
+      IconData icon,
+      String label,
+      VoidCallback onTap,
+      double screenWidth,
+      double screenHeight,
+      ) =>
+      ElevatedButton.icon(
+        onPressed: onTap,
+        icon: Icon(icon, size: screenWidth * 0.045),
+        label: Text(label, style: TextStyle(fontSize: screenWidth * 0.03)),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.pink.shade50,
+          foregroundColor: Colors.pink,
+          elevation: 0,
+          padding: EdgeInsets.symmetric(
+            horizontal: screenWidth * 0.035,
+            vertical: screenHeight * 0.015,
+          ),
+          shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
-  }
+      );
 }
-
-// ----------------- UserInfoHeader ------------------
 class UserInfoHeader extends StatelessWidget {
   const UserInfoHeader({super.key});
 

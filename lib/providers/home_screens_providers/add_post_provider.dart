@@ -1,65 +1,107 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 class AddPostProvider with ChangeNotifier {
   final TextEditingController _postController = TextEditingController();
-  final TextEditingController _titleController = TextEditingController(); // NEW: Title Controller
+  final TextEditingController _titleController = TextEditingController();
   File? _selectedImage;
   bool _isLoading = false;
-  static const String _apiBaseUrl = 'http://srv861272.hstgr.cloud:8000'; // Your API base URL
 
-  // Getters for UI to access state
+  static const String _apiBaseUrl = 'http://srv861272.hstgr.cloud:8000';
+
   TextEditingController get postController => _postController;
-  TextEditingController get titleController => _titleController; // NEW: Getter for title
+  TextEditingController get titleController => _titleController;
   File? get selectedImage => _selectedImage;
   bool get isLoading => _isLoading;
 
-  // Derived state to enable/disable post button
   bool get isPostEnabled =>
       (_postController.text.trim().isNotEmpty ||
-          _titleController.text.trim().isNotEmpty || // NEW: Check title too
+          _titleController.text.trim().isNotEmpty ||
           _selectedImage != null) &&
           !_isLoading;
 
-  // Method to pick image
+  /// ✅ 1. PICK & CROP IMAGE
   Future<void> pickImage(ImageSource source) async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: source);
-    if (pickedFile != null) {
-      _selectedImage = File(pickedFile.path);
-    } else {
-      _selectedImage = null; // Clear if no image was picked
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(source: source);
+
+      if (pickedFile == null) return;
+
+      final croppedFile = await ImageCropper().cropImage(
+        sourcePath: pickedFile.path,
+        compressFormat: ImageCompressFormat.jpg,
+        compressQuality: 50,
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: 'Edit & Crop Image',
+            toolbarColor: Colors.deepPurple,
+            toolbarWidgetColor: Colors.white,
+            backgroundColor: Colors.black,
+            activeControlsWidgetColor: Colors.deepPurpleAccent,
+            dimmedLayerColor: Colors.black54,
+            cropFrameColor: Colors.white,
+            cropGridColor: Colors.white24,
+            statusBarColor: Colors.deepPurple,
+            initAspectRatio: CropAspectRatioPreset.original,
+            lockAspectRatio: false,
+            aspectRatioPresets: [
+              CropAspectRatioPreset.original,
+              CropAspectRatioPreset.square,
+              CropAspectRatioPreset.ratio4x3,
+              CropAspectRatioPreset.ratio16x9,
+            ],
+            hideBottomControls: false,
+            showCropGrid: true,
+          ),
+          IOSUiSettings(
+            title: 'Edit & Crop',
+            cancelButtonTitle: 'Cancel',
+            doneButtonTitle: 'Done',
+            rotateButtonsHidden: false,
+            rotateClockwiseButtonHidden: false,
+            aspectRatioLockEnabled: false,
+          ),
+        ],
+      );
+
+      if (croppedFile == null) return;
+
+      _selectedImage = File(croppedFile.path);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('🛑 Error in pickImage: $e');
+      // Optional: UI feedback
     }
-    notifyListeners(); // Notify UI to rebuild
   }
 
-  // Method to clear selected image
+  /// ✅ 2. CLEAR SELECTED IMAGE
   void clearImage() {
-    _selectedImage = null;
-    notifyListeners(); // Notify UI to rebuild
-  }
-
-  // Method to clear post content and image after successful post
-  void clearPost() {
-    _postController.clear();
-    _titleController.clear(); // NEW: Clear title as well
     _selectedImage = null;
     notifyListeners();
   }
 
-  // Logic for creating the post API call
+  /// ✅ 3. CLEAR POST INPUTS
+  void clearPost() {
+    _postController.clear();
+    _titleController.clear();
+    _selectedImage = null;
+    notifyListeners();
+  }
+
+  /// ✅ 4. CREATE POST
   Future<String?> createPost() async {
     if (!isPostEnabled) {
-      return "Please add a title or content, or select an image to post."; // Updated message
+      return "Please add a title or content, or select an image to post.";
     }
 
     _isLoading = true;
-    notifyListeners(); // Notify UI to show loading indicator
+    notifyListeners();
 
     String? errorMessage;
 
@@ -68,70 +110,58 @@ class AddPostProvider with ChangeNotifier {
       final backendUserId = prefs.getString('backendUserId');
 
       if (backendUserId == null || backendUserId.isEmpty) {
-        errorMessage = 'User not logged in. Cannot create post.';
-        return errorMessage;
+        return 'User not logged in. Cannot create post.';
       }
 
       const String apiUrl = '$_apiBaseUrl/api/post';
       var request = http.MultipartRequest('POST', Uri.parse(apiUrl));
 
       request.fields['user'] = backendUserId;
-      // Use the actual title from the controller, fall back if empty
-      request.fields['title'] = _titleController.text.trim().isNotEmpty ? _titleController.text.trim() : 'New Post';
+      request.fields['title'] = _titleController.text.trim().isNotEmpty
+          ? _titleController.text.trim()
+          : 'New Post';
       request.fields['content'] = _postController.text.trim();
 
       if (_selectedImage != null) {
         request.files.add(await http.MultipartFile.fromPath(
-          'media', // This MUST match the field name your backend expects for files
+          'media',
           _selectedImage!.path,
           filename: _selectedImage!.path.split('/').last,
         ));
       }
 
-      debugPrint('Sending post request to: $apiUrl');
-      debugPrint('Request fields: ${request.fields}');
-      if (_selectedImage != null) {
-        debugPrint('Image file attached: ${_selectedImage!.path}');
-      }
-
       var response = await request.send();
       final responseBody = await http.Response.fromStream(response);
 
-      debugPrint('Post API response status: ${responseBody.statusCode}');
-      debugPrint('Post API response body: ${responseBody.body}');
-
       if (response.statusCode == 201) {
-        clearPost(); // Clear post data on success
-        errorMessage = null; // Indicate success
+        clearPost();
+        errorMessage = null;
       } else {
         final error = json.decode(responseBody.body);
-        errorMessage = 'Failed to share post: ${error['message'] ?? response.statusCode}';
+        errorMessage =
+        'Failed to share post: ${error['message'] ?? response.statusCode}';
       }
     } catch (e) {
       debugPrint('Error creating post: $e');
       errorMessage = 'An error occurred: $e';
     } finally {
       _isLoading = false;
-      notifyListeners(); // Always notify to update loading state
+      notifyListeners();
     }
-    return errorMessage; // Return null on success, error message on failure
+
+    return errorMessage;
   }
 
+  /// ✅ 5. FETCH POSTS FOR LOGGED-IN USER
   Future<List<String>> fetchMyPostImages() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getString('backendUserId');
 
-      if (userId == null) {
-        throw Exception('User not logged in');
-      }
+      if (userId == null) throw Exception('User not logged in');
 
-      final url = Uri.parse('http://srv861272.hstgr.cloud:8000/api/post?type=post');
+      final url = Uri.parse('$_apiBaseUrl/api/post?type=post');
       final response = await http.get(url);
-
-      debugPrint('📤 Request URL: $url');
-      debugPrint('📥 Status Code: ${response.statusCode}');
-      debugPrint('📥 Body: ${response.body}');
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonBody = json.decode(response.body);
@@ -142,7 +172,7 @@ class AddPostProvider with ChangeNotifier {
             .map<String>((post) {
           final media = post['media'];
           if (media is List && media.isNotEmpty) {
-            return 'http://srv861272.hstgr.cloud:8000/${media[0]}';
+            return '$_apiBaseUrl/${media[0]}';
           }
           return '';
         })
@@ -156,19 +186,15 @@ class AddPostProvider with ChangeNotifier {
       rethrow;
     }
   }
+
+  /// ✅ 6. FETCH POSTS FOR SPECIFIC USER
   Future<List<String>> fetchUserPostImages(String userId) async {
     try {
-      final url = 'http://srv861272.hstgr.cloud:8000/api/post?type=post&user=$userId';
+      final url = '$_apiBaseUrl/api/post?type=post&user=$userId';
       final response = await http.get(
         Uri.parse(url),
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: {'Content-Type': 'application/json'},
       );
-
-      debugPrint('📡 Request URL: $url');
-      debugPrint('📥 Response status: ${response.statusCode}');
-      debugPrint('📥 Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonResponse = json.decode(response.body);
@@ -178,7 +204,7 @@ class AddPostProvider with ChangeNotifier {
             .map<String>((post) {
           final media = post['media'];
           if (media is List && media.isNotEmpty) {
-            return 'http://srv861272.hstgr.cloud:8000/${media[0]}';
+            return '$_apiBaseUrl/${media[0]}';
           }
           return '';
         })
@@ -194,10 +220,11 @@ class AddPostProvider with ChangeNotifier {
     }
   }
 
+  /// ✅ CLEAN UP
   @override
   void dispose() {
     _postController.dispose();
-    _titleController.dispose(); // NEW: Dispose title controller
+    _titleController.dispose();
     super.dispose();
   }
 }

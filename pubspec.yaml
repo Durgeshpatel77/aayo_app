@@ -63,6 +63,7 @@ dependencies:
   firebase_storage: ^12.4.7
   shimmer: ^3.0.0
   cached_network_image: ^3.4.1
+  image_cropper: ^9.1.0
 flutter_launcher_icons:
   android: true
   ios: true
