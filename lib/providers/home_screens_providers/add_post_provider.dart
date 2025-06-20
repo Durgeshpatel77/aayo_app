@@ -117,6 +117,46 @@ class AddPostProvider with ChangeNotifier {
     return errorMessage; // Return null on success, error message on failure
   }
 
+  Future<List<String>> fetchMyPostImages() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getString('backendUserId');
+
+      if (userId == null) {
+        throw Exception('User not logged in');
+      }
+
+      final url = Uri.parse('http://srv861272.hstgr.cloud:8000/api/post?type=post');
+      final response = await http.get(url);
+
+      debugPrint('📤 Request URL: $url');
+      debugPrint('📥 Status Code: ${response.statusCode}');
+      debugPrint('📥 Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonBody = json.decode(response.body);
+        final posts = jsonBody['data']['posts'] as List<dynamic>;
+
+        return posts
+            .where((post) => post['user']?['_id'] == userId)
+            .map<String>((post) {
+          final media = post['media'];
+          if (media is List && media.isNotEmpty) {
+            return 'http://srv861272.hstgr.cloud:8000/${media[0]}';
+          }
+          return '';
+        })
+            .where((url) => url.isNotEmpty)
+            .toList();
+      } else {
+        throw Exception('Failed to fetch posts: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('❌ Error fetching post images: $e');
+      rethrow;
+    }
+  }
+
   @override
   void dispose() {
     _postController.dispose();

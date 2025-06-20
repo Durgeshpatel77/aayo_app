@@ -667,7 +667,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text(
-                        'Manually enter Venue Name',
+                        'Do you have venue ?',
                         style: TextStyle(fontSize: 16, color: Colors.black),
                       ),
                       Switch(

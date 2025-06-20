@@ -41,7 +41,8 @@ class HomeProvider extends ChangeNotifier {
       debugPrint('❌ Failed to fetch posts: $e');
     }
 
-    _allEvents = combined..shuffle();
+    _allEvents = combined
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt)); // ⬅️ Newest first
     _loading = false;
     notifyListeners();
   }

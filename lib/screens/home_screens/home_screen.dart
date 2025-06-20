@@ -214,36 +214,24 @@ class _EventCardState extends State<EventCard> {
                     ? const Icon(Icons.person, color: Colors.white)
                     : null,
               ),
-              trailing: Container(
-                // This Container creates the badge/tag effect
+              trailing: widget.event.type == 'event'
+                  ? Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  // Conditional background color based on event type
-                  color: widget.event.type == 'event'
-                      ? Colors.pink.shade100
-                      : Colors.blue.shade100,
-                  borderRadius: BorderRadius.circular(
-                      15), // Rounded corners for a pill shape
-                  border: Border.all(
-                    // Conditional border color
-                    color: widget.event.type == 'event'
-                        ? Colors.pink
-                        : Colors.blue,
-                    width: 1,
-                  ),
+                  color: Colors.pink.shade100,
+                  borderRadius: BorderRadius.circular(15),
+                  border: Border.all(color: Colors.pink, width: 1),
                 ),
                 child: Text(
-                  widget.event.type.toUpperCase(), // Display type in uppercase
+                  'EVENT',
                   style: TextStyle(
-                    fontSize: 10, // Smaller font size for a tag
-                    // Conditional text color
-                    color: widget.event.type == 'event'
-                        ? Colors.pink.shade800
-                        : Colors.blue.shade800,
+                    fontSize: 10,
+                    color: Colors.pink.shade800,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-              ),
+              )
+                  : null,
               title: Text(
                 widget.event.organizer,
                 style: const TextStyle(fontWeight: FontWeight.bold),
@@ -269,7 +257,7 @@ class _EventCardState extends State<EventCard> {
             AspectRatio(
               aspectRatio: 0.9,
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(0),
+                borderRadius: BorderRadius.circular(30), // 👈 Rounded corners
                 child: CachedNetworkImage(
                   imageUrl: imageUrl,
                   fit: BoxFit.cover,
@@ -288,7 +276,7 @@ class _EventCardState extends State<EventCard> {
                     ),
                   ),
                   errorWidget: (context, url, error) =>
-                      const Icon(Icons.broken_image),
+                  const Icon(Icons.broken_image, size: 40),
                   fadeInDuration: const Duration(milliseconds: 300),
                 ),
               ),
@@ -565,7 +553,8 @@ class _HomeScreenState extends State<HomeScreen> {
         context,
         MaterialPageRoute(builder: (_) => EventDetailScreen(event: item)),
       );
-    } else if (item.isPost) {
+    }
+    else if (item.isPost) {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => PostDetailScreen(post: item)),

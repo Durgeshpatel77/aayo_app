@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/profile_stats.dart';
 import '../../providers/onording_login_screens_providers/user_profile_provider.dart'; // Adjust path
 // The following imports are commented out as they might not be directly relevant
 // for a *single user profile* view and are primarily from the current user's profile.
