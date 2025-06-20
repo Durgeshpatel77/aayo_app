@@ -156,6 +156,43 @@ class AddPostProvider with ChangeNotifier {
       rethrow;
     }
   }
+  Future<List<String>> fetchUserPostImages(String userId) async {
+    try {
+      final url = 'http://srv861272.hstgr.cloud:8000/api/post?type=post&user=$userId';
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      );
+
+      debugPrint('📡 Request URL: $url');
+      debugPrint('📥 Response status: ${response.statusCode}');
+      debugPrint('📥 Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonResponse = json.decode(response.body);
+        final List<dynamic> posts = jsonResponse['data']['posts'];
+
+        return posts
+            .map<String>((post) {
+          final media = post['media'];
+          if (media is List && media.isNotEmpty) {
+            return 'http://srv861272.hstgr.cloud:8000/${media[0]}';
+          }
+          return '';
+        })
+            .where((url) => url.isNotEmpty)
+            .toList();
+      } else {
+        throw Exception('❌ Failed to fetch user posts: ${response.body}');
+      }
+    } catch (e, stack) {
+      debugPrint('🛑 fetchUserPostImages error: $e');
+      debugPrint('📍 Stack trace:\n$stack');
+      rethrow;
+    }
+  }
 
   @override
   void dispose() {
