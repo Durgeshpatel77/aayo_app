@@ -135,7 +135,8 @@ class _SingleUserProfileScreenState extends State<SingleUserProfileScreen>
 
     if (_errorMessage.isNotEmpty) {
       return Scaffold(
-        appBar: AppBar(title: const Text("Error")),
+        appBar: AppBar(title: const Text("Error"),scrolledUnderElevation: 0,),
+
         body: Center(child: Text(_errorMessage)),
       );
     }
@@ -166,6 +167,7 @@ class _SingleUserProfileScreenState extends State<SingleUserProfileScreen>
         title: Text(userName, style: const TextStyle(color: Colors.black)),
         centerTitle: true,
         backgroundColor: Colors.white,
+        scrolledUnderElevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
           onPressed: () => Navigator.of(context).pop(),
@@ -258,12 +260,13 @@ class _SingleUserProfileScreenState extends State<SingleUserProfileScreen>
               TabBar(
                 controller: _tabController,
                 indicatorColor: Colors.pink,
+                indicatorWeight: 2,
                 labelColor: Colors.pink,
                 unselectedLabelColor: Colors.grey,
                 tabs: const [
-                  Tab(text: "Photos"),
-                  Tab(text: "Schedule Activities"),
-                  Tab(text: "Past Activities"),
+                  Tab(icon: Icon(Icons.grid_on)),
+                  Tab(icon: Icon(Icons.calendar_today_outlined)),
+                  Tab(icon: Icon(Icons.history)),
                 ],
               ),
               SizedBox(
@@ -271,36 +274,38 @@ class _SingleUserProfileScreenState extends State<SingleUserProfileScreen>
                 child: TabBarView(
                   controller: _tabController,
                   children: [
+                    // Grid tab
                     Padding(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(8),
                       child: _userPostPhotos.isEmpty
                           ? const Center(child: Text("No posts available."))
-                          : StaggeredGrid.count(
-                        crossAxisCount: 3,
-                        mainAxisSpacing: 10,
-                        crossAxisSpacing: 10,
-                        children: List.generate(_userPostPhotos.length, (index) {
-                          return StaggeredGridTile.count(
-                            crossAxisCellCount: 1,
-                            mainAxisCellCount: index.isEven ? 1.2 : 1.5,
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: Image.network(
-                                _userPostPhotos[index],
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) =>
-                                const Icon(Icons.broken_image),
-                              ),
+                          : GridView.builder(
+                        physics: const NeverScrollableScrollPhysics(), // prevent internal scrolling
+                        shrinkWrap: true, // let it size based on content
+                        itemCount: _userPostPhotos.length,
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          mainAxisSpacing: 6,
+                          crossAxisSpacing: 6,
+                          childAspectRatio: 1, // square tiles
+                        ),
+                        itemBuilder: (context, index) {
+                          return ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: Image.network(
+                              _userPostPhotos[index],
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => const Icon(Icons.broken_image),
                             ),
                           );
-                        }),
+                        },
                       ),
                     ),
                     const Center(child: Text("Scheduled Activities")),
                     const Center(child: Text("Past Activities")),
                   ],
                 ),
-              ),
+              )
             ],
           ),
         ),

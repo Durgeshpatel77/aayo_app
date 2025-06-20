@@ -23,6 +23,7 @@ class CommentSheet extends StatefulWidget {
 
 class _CommentSheetState extends State<CommentSheet> {
   final TextEditingController _controller = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   late List<CommentModel> _comments;
 
   @override
@@ -63,6 +64,13 @@ class _CommentSheetState extends State<CommentSheet> {
       });
 
       widget.onAddComment(text);
+
+      await Future.delayed(const Duration(milliseconds: 100));
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Failed to add comment: $e")),
@@ -72,9 +80,10 @@ class _CommentSheetState extends State<CommentSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Padding(
       padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+        bottom: MediaQuery.of(context).viewInsets.bottom,
         left: 16,
         right: 16,
         top: 16,
@@ -82,49 +91,100 @@ class _CommentSheetState extends State<CommentSheet> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text("Comments",
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          Container(
+            height: 4,
+            width: 40,
+            margin: const EdgeInsets.only(bottom: 10),
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+          const Text(
+            "Comments",
+            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 18),
+          ),
           const SizedBox(height: 10),
           SizedBox(
             height: 300,
-            child: ListView.builder(
+            child: ListView.separated(
+              controller: _scrollController,
               itemCount: _comments.length,
+              separatorBuilder: (context, _) => Divider(color: Colors.grey[300]),
               itemBuilder: (context, index) {
-                final c = _comments[index];
+                final c = _comments[_comments.length - 1 - index];
                 return ListTile(
                   leading: CircleAvatar(
+                    radius: 18,
                     backgroundImage: c.userProfile.isNotEmpty
                         ? NetworkImage(c.userProfile)
                         : const AssetImage('images/onbording/unkown.jpg')
                     as ImageProvider,
                   ),
-                  title: Text(c.userName),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(c.content),
-                      Text(
-                        timeAgo(c.createdAt),
-                        style: const TextStyle(
-                            fontSize: 12, color: Colors.grey),
-                      ),
-                    ],
+                  title: RichText(
+                    text: TextSpan(
+                      children: [
+                        TextSpan(
+                          text: "${c.userName} ",
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                        ),
+                        TextSpan(
+                          text: c.content,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: Colors.black,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
+                  subtitle: Text(
+                    timeAgo(c.createdAt),
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 0, vertical: 4),
                 );
               },
             ),
           ),
-          TextField(
-            controller: _controller,
-            decoration: InputDecoration(
-              hintText: "Add a comment...",
-              suffixIcon: IconButton(
-                  icon: const Icon(Icons.send_outlined), onPressed: _submit),
-              border: const OutlineInputBorder(),
-            ),
+          const Divider(height: 1),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _controller,
+                  decoration: InputDecoration(
+                    contentPadding: const EdgeInsets.symmetric(
+                        vertical: 10, horizontal: 16),
+                    hintText: "Add a comment...",
+                    hintStyle: TextStyle(color: Colors.grey[600]),
+                    filled: true,
+                    fillColor: Colors.grey[100],
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(25),
+                      borderSide: BorderSide.none,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(25),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                  textInputAction: TextInputAction.send,
+                  onSubmitted: (_) => _submit(),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                icon: const Icon(Icons.send, color: Colors.blue),
+                onPressed: _submit,
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 }
+
