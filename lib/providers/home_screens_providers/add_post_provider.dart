@@ -54,9 +54,6 @@ class AddPostProvider with ChangeNotifier {
             title: 'Edit & Crop',
             cancelButtonTitle: 'Cancel',
             doneButtonTitle: 'Done',
-            rotateButtonsHidden: false,
-            rotateClockwiseButtonHidden: false,
-            aspectRatioLockEnabled: false,
           ),
         ],
       );
