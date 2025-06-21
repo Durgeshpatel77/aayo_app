@@ -16,11 +16,7 @@
         <!-- Required for SafeArea compliance -->
         <item name="android:fitsSystemWindows">true</item>
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>
-        <item name="android:statusBarColor">#D81B60</item> <!-- Match toolbar -->
 
         <!-- UCrop specific colors -->
-        <item name="colorPrimary">#FF4081</item>
-        <item name="colorPrimaryDark">#D81B60</item>
-        <item name="colorAccent">#FFFFFF</item>
-    </style>
+       </style>
 </resources>

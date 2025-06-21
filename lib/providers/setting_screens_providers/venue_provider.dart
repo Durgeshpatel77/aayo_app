@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
+import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -51,10 +52,47 @@ class VenueProvider extends ChangeNotifier {
    * ============================================================
    */
   Future<void> pickImage(BuildContext context) async {
-    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      pickedVenueImage = File(pickedFile.path);
+    try {
+      final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+
+      if (pickedFile == null) return;
+
+      // ✅ Crop the selected image
+      final croppedFile = await ImageCropper().cropImage(
+        sourcePath: pickedFile.path,
+        compressFormat: ImageCompressFormat.jpg,
+        compressQuality: 50,
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: 'Crop Image',
+
+            lockAspectRatio: true,
+            initAspectRatio: CropAspectRatioPreset.square,
+        aspectRatioPresets: [
+          CropAspectRatioPreset.square,
+        ],
+        hideBottomControls: true,
+        showCropGrid: true, // ✅ Show grid
+        cropGridStrokeWidth: 2, // ✅ Make lines thicker
+        cropFrameStrokeWidth: 2,
+      ),
+          IOSUiSettings(
+            title: 'Crop Image',
+            cancelButtonTitle: 'Cancel',
+            doneButtonTitle: 'Done',
+          ),
+        ],
+      );
+
+      if (croppedFile == null) return;
+
+      pickedVenueImage = File(croppedFile.path);
       notifyListeners();
+    } catch (e) {
+      debugPrint('❌ Error picking or cropping image: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to pick or crop image')),
+      );
     }
   }
 
