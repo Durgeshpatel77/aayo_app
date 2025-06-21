@@ -39,25 +39,16 @@ class AddPostProvider with ChangeNotifier {
         compressQuality: 50,
         uiSettings: [
           AndroidUiSettings(
-            toolbarTitle: 'Edit & Crop Image',
-            toolbarColor: Colors.deepPurple,
-            toolbarWidgetColor: Colors.white,
-            backgroundColor: Colors.black,
-            activeControlsWidgetColor: Colors.deepPurpleAccent,
-            dimmedLayerColor: Colors.black54,
-            cropFrameColor: Colors.white,
-            cropGridColor: Colors.white24,
-            statusBarColor: Colors.deepPurple,
-            initAspectRatio: CropAspectRatioPreset.original,
-            lockAspectRatio: false,
+            toolbarTitle: 'Crop Image',
+            lockAspectRatio: true,
+            initAspectRatio: CropAspectRatioPreset.square,
             aspectRatioPresets: [
-              CropAspectRatioPreset.original,
               CropAspectRatioPreset.square,
-              CropAspectRatioPreset.ratio4x3,
-              CropAspectRatioPreset.ratio16x9,
             ],
-            hideBottomControls: false,
-            showCropGrid: true,
+            hideBottomControls: true,
+            showCropGrid: true, // ✅ Show grid
+            cropGridStrokeWidth: 2, // ✅ Make lines thicker
+            cropFrameStrokeWidth: 2,
           ),
           IOSUiSettings(
             title: 'Edit & Crop',

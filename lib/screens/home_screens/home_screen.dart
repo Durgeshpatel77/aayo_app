@@ -255,9 +255,9 @@ class _EventCardState extends State<EventCard> {
           // Event/Post Image (conditional)
           if (imageUrl.isNotEmpty)
             AspectRatio(
-              aspectRatio: 0.9,
+              aspectRatio: 4 / 5,
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(30), // 👈 Rounded corners
+                borderRadius: BorderRadius.circular(16),
                 child: CachedNetworkImage(
                   imageUrl: imageUrl,
                   fit: BoxFit.cover,
@@ -521,7 +521,7 @@ class _HomeScreenState extends State<HomeScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         debugPrint(
             'HomeScreen: didChangeDependencies - Initializing data fetch and user ID load.');
-        // Initial fetch of events
+        // Initial fetch of eventsFhom
         Provider.of<HomeProvider>(context, listen: false).fetchAll();
         // Load user ID. This will trigger _onUserProviderChange if the ID changes/is loaded.
         _userProfileProvider.loadUserId();
@@ -595,9 +595,21 @@ class _HomeScreenState extends State<HomeScreen> {
             }
             return true;
           },
-          child: Scaffold(
+          child:
+          Scaffold(
             backgroundColor: Colors.white,
-            body: SafeArea(child: allScreens[homeProvider.selectedIndex]),
+            body: SafeArea(
+              child: Container(
+                color: Colors.grey.shade100, // optional background color
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: allScreens[homeProvider.selectedIndex],
+                    ),
+                  ],
+                ),
+              ),
+            ),
             bottomNavigationBar: BottomNavigationBar(
               currentIndex: homeProvider.selectedIndex,
               onTap: homeProvider.setSelectedIndex,

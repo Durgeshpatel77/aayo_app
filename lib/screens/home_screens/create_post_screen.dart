@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -42,7 +43,7 @@ class _AddPostScreenState extends State<AddPostScreen> {
             title: const Text('Create Post'),
             centerTitle: true,
             backgroundColor: Colors.white,
-            elevation: 0,
+            scrolledUnderElevation: 0,
           ),
           body: SingleChildScrollView(
             padding: EdgeInsets.all(screenWidth * 0.04),
@@ -51,7 +52,6 @@ class _AddPostScreenState extends State<AddPostScreen> {
               children: [
                 const UserInfoHeader(),
                 const SizedBox(height: 20),
-
                 _buildCardContainer(
                   child: TextField(
                     controller: addPostProvider.postController,
@@ -60,24 +60,38 @@ class _AddPostScreenState extends State<AddPostScreen> {
                       hintText: "What's on your mind?",
                       border: InputBorder.none,
                     ),
-                    onChanged: (_) => addPostProvider.notifyListeners(),
+                    onChanged: (_) {},
                   ),
                 ),
-
                 const SizedBox(height: 16),
-
                 if (addPostProvider.selectedImage != null)
                   _buildCardContainer(
                     child: Stack(
                       children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.file(
-                            addPostProvider.selectedImage!,
-                            width: double.infinity,
-                            height: _imageDisplayHeight,
-                            fit: BoxFit.cover,
-                          ),
+                        FutureBuilder<Size>(
+                          future: _getImageSize(addPostProvider.selectedImage!),
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState ==
+                                    ConnectionState.done &&
+                                snapshot.hasData) {
+                              final aspectRatio =
+                                  snapshot.data!.width / snapshot.data!.height;
+                              return AspectRatio(
+                                aspectRatio: aspectRatio,
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Image.file(
+                                    addPostProvider.selectedImage!,
+                                    width: double.infinity,
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              );
+                            } else {
+                              return const Center(
+                                  child: CircularProgressIndicator());
+                            }
+                          },
                         ),
                         Positioned(
                           top: 8,
@@ -99,7 +113,6 @@ class _AddPostScreenState extends State<AddPostScreen> {
                       ],
                     ),
                   ),
-
                 const SizedBox(height: 20),
                 Text(
                   "Add Media or Event",
@@ -110,7 +123,6 @@ class _AddPostScreenState extends State<AddPostScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-
                 Wrap(
                   spacing: 12,
                   runSpacing: 10,
@@ -118,21 +130,21 @@ class _AddPostScreenState extends State<AddPostScreen> {
                     _buildMediaButton(
                       Icons.photo,
                       "Gallery",
-                          () => addPostProvider.pickImage(ImageSource.gallery),
+                      () => addPostProvider.pickImage(ImageSource.gallery),
                       screenWidth,
                       screenHeight,
                     ),
                     _buildMediaButton(
                       Icons.camera_alt,
                       "Camera",
-                          () => addPostProvider.pickImage(ImageSource.camera),
+                      () => addPostProvider.pickImage(ImageSource.camera),
                       screenWidth,
                       screenHeight,
                     ),
                     _buildMediaButton(
                       Icons.event,
                       "Event",
-                          () => Navigator.push(
+                      () => Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (_) => const CreateEventScreen(),
@@ -143,19 +155,17 @@ class _AddPostScreenState extends State<AddPostScreen> {
                     ),
                   ],
                 ),
-
                 const SizedBox(height: 30),
                 Align(
                   alignment: Alignment.centerRight,
                   child: ElevatedButton(
                     onPressed: addPostProvider.isPostEnabled
                         ? () async {
-                      final message =
-                      await addPostProvider.createPost();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(message!)),
-                      );
-                    }
+                            final message = await addPostProvider.createPost();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(message!)),
+                            );
+                          }
                         : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: addPostProvider.isPostEnabled
@@ -171,20 +181,20 @@ class _AddPostScreenState extends State<AddPostScreen> {
                     ),
                     child: addPostProvider.isLoading
                         ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
-                      ),
-                    )
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
                         : const Text(
-                      'Post',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.white,
-                      ),
-                    ),
+                            'Post',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.white,
+                            ),
+                          ),
                   ),
                 ),
               ],
@@ -196,22 +206,22 @@ class _AddPostScreenState extends State<AddPostScreen> {
   }
 
   Widget _buildCardContainer({required Widget child}) => Container(
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: Colors.grey, width: 0.6),
-    ),
-    padding: const EdgeInsets.all(16),
-    child: child,
-  );
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey, width: 0.6),
+        ),
+        padding: const EdgeInsets.all(16),
+        child: child,
+      );
 
   Widget _buildMediaButton(
-      IconData icon,
-      String label,
-      VoidCallback onTap,
-      double screenWidth,
-      double screenHeight,
-      ) =>
+    IconData icon,
+    String label,
+    VoidCallback onTap,
+    double screenWidth,
+    double screenHeight,
+  ) =>
       ElevatedButton.icon(
         onPressed: onTap,
         icon: Icon(icon, size: screenWidth * 0.045),
@@ -225,10 +235,11 @@ class _AddPostScreenState extends State<AddPostScreen> {
             vertical: screenHeight * 0.015,
           ),
           shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
 }
+
 class UserInfoHeader extends StatelessWidget {
   const UserInfoHeader({super.key});
 
@@ -250,10 +261,12 @@ class UserInfoHeader extends StatelessWidget {
       if (uri != null && uri.scheme.isNotEmpty && uri.host.isNotEmpty) {
         profileImageProvider = NetworkImage(userProfileImageUrl);
       } else {
-        profileImageProvider = NetworkImage('$_apiBaseUrl/$userProfileImageUrl');
+        profileImageProvider =
+            NetworkImage('$_apiBaseUrl/$userProfileImageUrl');
       }
     } else {
-      profileImageProvider = const NetworkImage('https://randomuser.me/api/portraits/men/75.jpg');
+      profileImageProvider =
+          const NetworkImage('https://randomuser.me/api/portraits/men/75.jpg');
     }
 
     return Container(
@@ -269,11 +282,13 @@ class UserInfoHeader extends StatelessWidget {
             children: [
               Text(
                 userName,
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: screenWidth * 0.045),
+                style: TextStyle(
+                    fontWeight: FontWeight.bold, fontSize: screenWidth * 0.045),
               ),
               Text(
                 userData['role'] ?? "Event Organizer",
-                style: TextStyle(color: Colors.grey[600], fontSize: screenWidth * 0.035),
+                style: TextStyle(
+                    color: Colors.grey[600], fontSize: screenWidth * 0.035),
               ),
             ],
           ),
@@ -281,4 +296,18 @@ class UserInfoHeader extends StatelessWidget {
       ),
     );
   }
+}
+
+Future<Size> _getImageSize(File file) async {
+  final image = FileImage(file);
+  final completer = Completer<Size>();
+  image.resolve(const ImageConfiguration()).addListener(
+    ImageStreamListener((ImageInfo info, _) {
+      completer.complete(Size(
+        info.image.width.toDouble(),
+        info.image.height.toDouble(),
+      ));
+    }),
+  );
+  return completer.future;
 }
