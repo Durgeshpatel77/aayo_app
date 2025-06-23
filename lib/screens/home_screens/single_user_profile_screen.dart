@@ -1,178 +1,113 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../models/profile_stats.dart';
-import '../../providers/onording_login_screens_providers/user_profile_provider.dart';
 import '../../providers/home_screens_providers/add_post_provider.dart';
-import '../other_for_use/utils.dart';
-import '../home_screens/userprofile_list.dart';
+import '../../providers/onording_login_screens_providers/user_profile_provider.dart';
 
 class SingleUserProfileScreen extends StatefulWidget {
   final String userId;
 
-  const SingleUserProfileScreen({Key? key, required this.userId}) : super(key: key);
+  const SingleUserProfileScreen({super.key, required this.userId});
 
   @override
   State<SingleUserProfileScreen> createState() => _SingleUserProfileScreenState();
 }
 
-class _SingleUserProfileScreenState extends State<SingleUserProfileScreen>
-    with SingleTickerProviderStateMixin {
+class _SingleUserProfileScreenState extends State<SingleUserProfileScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   Map<String, dynamic> _userProfileData = {};
-  bool _isLoading = true;
-  String _errorMessage = '';
   List<String> _userPostPhotos = [];
-
-  final List<String> _connectionAvatars = [
-    'https://randomuser.me/api/portraits/men/32.jpg',
-    'https://randomuser.me/api/portraits/women/44.jpg',
-    'https://randomuser.me/api/portraits/men/50.jpg',
-    'https://randomuser.me/api/portraits/women/60.jpg',
-  ];
+  bool _isLoading = true;
+  bool isFollowing = false;
+  String? backendUserId;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _fetchUserProfileData();
+    _init();
+  }
+
+  Future<void> _init() async {
+    final prefs = await SharedPreferences.getInstance();
+    backendUserId = prefs.getString('backendUserId');
+    await _fetchUserProfileData();
     _fetchUserPostImages();
   }
 
   Future<void> _fetchUserProfileData() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = '';
-    });
+    setState(() => _isLoading = true);
     try {
-      final userProvider = Provider.of<FetchEditUserProvider>(context, listen: false);
-      final fetchedData = await userProvider.fetchUserById(widget.userId);
+      final provider = Provider.of< FetchEditUserProvider>(context, listen: false);
+      final data = await provider.fetchUserById(widget.userId);
+      final followers = data['followers'] as List<dynamic>? ?? [];
+
       setState(() {
-        _userProfileData = fetchedData;
+        _userProfileData = data;
+        isFollowing = backendUserId != null && followers.contains(backendUserId);
         _isLoading = false;
       });
     } catch (e) {
-      setState(() {
-        _errorMessage = 'Failed to load profile: $e';
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to load profile')));
     }
   }
 
   Future<void> _fetchUserPostImages() async {
     try {
-      final postProvider = Provider.of<AddPostProvider>(context, listen: false);
-      final images = await postProvider.fetchUserPostImages(widget.userId);
-      setState(() {
-        _userPostPhotos = images;
-      });
-    } catch (e) {
-      debugPrint("Error fetching user post images: $e");
-    }
+      final provider = Provider.of<AddPostProvider>(context, listen: false);
+      final images = await provider.fetchUserPostImages(widget.userId);
+      setState(() => _userPostPhotos = images);
+    } catch (_) {}
   }
 
-  String getFullImageUrl(String relativePath) {
+  String _fullImageUrl(String path) {
     const baseUrl = 'http://srv861272.hstgr.cloud:8000';
-    if (relativePath.startsWith('http')) return relativePath;
-    if (!relativePath.startsWith('/')) relativePath = '/$relativePath';
-    return '$baseUrl$relativePath';
+    if (path.startsWith('http')) return path;
+    return '$baseUrl/${path.startsWith('/') ? path.substring(1) : path}';
   }
 
-  void _showFullScreenImage(ImageProvider imageProvider, String tag) {
-    showDialog(
-      context: context,
-      barrierColor: Colors.black.withOpacity(0.85),
-      builder: (_) {
-        return Center(
-          child: Hero(
-            tag: tag,
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () => Navigator.of(context).pop(),
-                child: ClipOval(
-                  child: Container(
-                    width: 300,
-                    height: 300,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      image: DecorationImage(
-                        image: imageProvider,
-                        fit: BoxFit.cover,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.5),
-                          blurRadius: 20,
-                          spreadRadius: 2,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
+  Future<void> _toggleFollow() async {
+    final provider = Provider.of<FetchEditUserProvider>(context, listen: false);
+    final result = await provider.toggleFollow(widget.userId);
 
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
+    if (!mounted) return;
+
+    if (result['success']) {
+      final newFollowers = result['targetFollowers'] as List<dynamic>;
+      setState(() {
+        _userProfileData['followers'] = newFollowers;
+        isFollowing = backendUserId != null && newFollowers.contains(backendUserId);
+      });
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['message'])));
   }
 
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    if (_errorMessage.isNotEmpty) {
-      return Scaffold(
-        appBar: AppBar(title: const Text("Error"),scrolledUnderElevation: 0,),
+    final name = _userProfileData['name'] ?? 'Unknown';
+    final about = _userProfileData['about'] ?? 'No bio available.';
+    final profilePath = _userProfileData['profile'] ?? '';
+    final followers = _userProfileData['followers'] as List? ?? [];
+    final following = _userProfileData['following'] as List? ?? [];
 
-        body: Center(child: Text(_errorMessage)),
-      );
-    }
-
-    final userName = _userProfileData['name'] ?? 'Unknown User';
-    final userAbout = _userProfileData['about'] ?? 'No bio available.';
-    final profileImagePath = _userProfileData['profile'];
-
-    ImageProvider profileImage;
-    String heroTag;
-
-    if (profileImagePath != null && profileImagePath.isNotEmpty) {
-      final uri = Uri.tryParse(profileImagePath);
-      if (uri != null && uri.hasAbsolutePath) {
-        profileImage = NetworkImage(profileImagePath);
-        heroTag = profileImagePath;
-      } else {
-        profileImage = NetworkImage(getFullImageUrl(profileImagePath));
-        heroTag = getFullImageUrl(profileImagePath);
-      }
-    } else {
-      profileImage = const AssetImage('images/default_avatar.png');
-      heroTag = 'default_avatar_tag';
-    }
+    final profileImage = profilePath.isNotEmpty
+        ? NetworkImage(_fullImageUrl(profilePath))
+        : const AssetImage('images/default_avatar.png') as ImageProvider;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(userName, style: const TextStyle(color: Colors.black)),
+        title: Text(name, style: const TextStyle(color: Colors.black)),
         centerTitle: true,
         backgroundColor: Colors.white,
-        scrolledUnderElevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
         elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.black),
       ),
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -180,54 +115,42 @@ class _SingleUserProfileScreenState extends State<SingleUserProfileScreen>
           child: Column(
             children: [
               const SizedBox(height: 20),
-              InkWell(
-                onTap: () => _showFullScreenImage(profileImage, heroTag),
-                child: Hero(
-                  tag: heroTag,
-                  child: CircleAvatar(
-                    radius: 60,
-                    backgroundColor: Colors.pink,
-                    child: CircleAvatar(
-                      radius: 57,
-                      backgroundImage: profileImage,
-                      child: profileImage is AssetImage
-                          ? Text(userName[0].toUpperCase(), style: const TextStyle(fontSize: 40, color: Colors.white))
-                          : null,
-                    ),
-                  ),
+              CircleAvatar(
+                radius: 60,
+                backgroundColor: Colors.pink,
+                child: CircleAvatar(
+                  radius: 57,
+                  backgroundImage: profileImage,
                 ),
               ),
               const SizedBox(height: 10),
-              Text(userName, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              Text(name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 20),
+
+              // Followers / Following
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  StatWidget(avatarUrls: _connectionAvatars, count: "136", label: "Connections"),
-                  Container(height: 40, width: 1, color: Colors.grey.shade300),
-                  StatWidget(
-                    avatarUrls: [
-                      'https://randomuser.me/api/portraits/men/1.jpg',
-                      'https://randomuser.me/api/portraits/women/2.jpg',
-                    ],
-                    count: "20",
-                    label: "Activities Attended",
-                  ),
+                  _buildStat(followers.length, 'Followers'),
+                  Container(height: 40, width: 1, color: Colors.grey[300]),
+                  _buildStat(following.length, 'Following'),
                 ],
               ),
               const SizedBox(height: 20),
+
+              // Follow / Message
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
                   children: [
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: () {},
+                        onPressed: _toggleFollow,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.pink,
+                          backgroundColor: isFollowing ? Colors.grey : Colors.pink,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
-                        child: const Text("Follow", style: TextStyle(color: Colors.white)),
+                        child: Text(isFollowing ? 'Unfollow' : 'Follow', style: const TextStyle(color: Colors.white)),
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -238,34 +161,36 @@ class _SingleUserProfileScreenState extends State<SingleUserProfileScreen>
                           side: const BorderSide(color: Colors.pink),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
-                        child: const Text("Message", style: TextStyle(color: Colors.pink)),
+                        child: const Text('Message', style: TextStyle(color: Colors.pink)),
                       ),
                     ),
                   ],
                 ),
               ),
+
               const SizedBox(height: 24),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text("About", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
-                    Text(userAbout, style: TextStyle(color: Colors.grey[700])),
+                    Text(about, style: const TextStyle(color: Colors.black54)),
                   ],
                 ),
               ),
               const SizedBox(height: 24),
+
+              // Tabs
               TabBar(
                 controller: _tabController,
                 indicatorColor: Colors.pink,
-                indicatorWeight: 2,
                 labelColor: Colors.pink,
                 unselectedLabelColor: Colors.grey,
                 tabs: const [
                   Tab(icon: Icon(Icons.grid_on)),
-                  Tab(icon: Icon(Icons.calendar_today_outlined)),
+                  Tab(icon: Icon(Icons.calendar_today)),
                   Tab(icon: Icon(Icons.history)),
                 ],
               ),
@@ -274,32 +199,23 @@ class _SingleUserProfileScreenState extends State<SingleUserProfileScreen>
                 child: TabBarView(
                   controller: _tabController,
                   children: [
-                    // Grid tab
-                    Padding(
-                      padding: const EdgeInsets.all(8),
-                      child: _userPostPhotos.isEmpty
-                          ? const Center(child: Text("No posts available."))
-                          : GridView.builder(
-                        physics: const NeverScrollableScrollPhysics(), // prevent internal scrolling
-                        shrinkWrap: true, // let it size based on content
-                        itemCount: _userPostPhotos.length,
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 3,
-                          mainAxisSpacing: 6,
-                          crossAxisSpacing: 6,
-                          childAspectRatio: 1, // square tiles
-                        ),
-                        itemBuilder: (context, index) {
-                          return ClipRRect(
-                            borderRadius: BorderRadius.circular(4),
-                            child: Image.network(
-                              _userPostPhotos[index],
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => const Icon(Icons.broken_image),
-                            ),
-                          );
-                        },
+                    _userPostPhotos.isEmpty
+                        ? const Center(child: Text("No posts available."))
+                        : GridView.builder(
+                      itemCount: _userPostPhotos.length,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 3,
+                        crossAxisSpacing: 2,
+                        mainAxisSpacing: 2,
                       ),
+                      itemBuilder: (context, index) {
+                        return Image.network(
+                          _userPostPhotos[index],
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const Icon(Icons.broken_image),
+                        );
+                      },
                     ),
                     const Center(child: Text("Scheduled Activities")),
                     const Center(child: Text("Past Activities")),
@@ -312,4 +228,12 @@ class _SingleUserProfileScreenState extends State<SingleUserProfileScreen>
       ),
     );
   }
+
+  Widget _buildStat(int count, String label) => Column(
+    children: [
+      Text(count.toString(), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+      const SizedBox(height: 4),
+      Text(label, style: const TextStyle(color: Colors.pink)),
+    ],
+  );
 }

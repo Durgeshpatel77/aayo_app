@@ -8,6 +8,8 @@ class FetchEditUserProvider with ChangeNotifier {
   String? _userId;
   Map<String, dynamic> _userData = {};
   final String _baseUrl = 'http://srv861272.hstgr.cloud:8000';
+  List<String> _currentUserFollowing = [];
+  List<dynamic> get currentUserFollowing => _currentUserFollowing;
 
   // -------------------- Getters --------------------
   String? get userId => _userId;
@@ -68,6 +70,10 @@ class FetchEditUserProvider with ChangeNotifier {
     if (res.statusCode == 200) {
       final result = json.decode(res.body);
       _userData = result['data'];
+
+      // ✅ Extract and assign 'following' to the provider field
+      _currentUserFollowing = List<String>.from(_userData['following'] ?? []);
+
       notifyListeners();
     } else {
       throw Exception('Failed to fetch user');
@@ -194,4 +200,48 @@ class FetchEditUserProvider with ChangeNotifier {
       throw Exception('Failed to update user');
     }
   }
+
+  //-------------------- fetch followers ----------------------
+  Future<Map<String, dynamic>> toggleFollow(String targetUserId) async {
+    final url = Uri.parse('$_baseUrl/api/user/follow/$targetUserId');
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final backendUserId = prefs.getString('backendUserId');
+
+      if (backendUserId == null) throw Exception('User not logged in');
+
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'followingId': backendUserId}),
+      );
+
+      final decoded = json.decode(response.body);
+
+      if (response.statusCode == 200 && decoded['success'] == true) {
+        // ✅ Don't use decoded['data'] to update your own profile
+        // Instead, just re-fetch your own user profile
+
+        await fetchUser(backendUserId); // refresh your data
+
+        return {
+          'success': true,
+          'message': decoded['message'] ?? 'Follow/unfollow successful',
+          'targetUser': decoded['data'], // optional: use this to update their profile if needed
+        };
+      }
+
+      return {
+        'success': false,
+        'message': decoded['message'] ?? 'Follow/unfollow failed',
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Unexpected error: $e',
+      };
+    }
+  }
+
 }

@@ -1,5 +1,6 @@
 import 'dart:io'; // For File type for image picking
 import 'package:flutter/material.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart'; // For image picking
 import 'package:provider/provider.dart'; // For accessing UserProvider
 import 'package:shared_preferences/shared_preferences.dart'; // For initial userId
@@ -88,12 +89,40 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   // _pickImage: Handles the image selection from the gallery.
   Future<void> _pickImage() async {
-    final XFile? image = await ImagePicker().pickImage(source: ImageSource.gallery);
-    if (image != null) {
-      setState(() {
-        _pickedProfileImage = File(image.path); // Set the picked image file for preview
-      });
-    }
+    final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
+    if (pickedFile == null) return;
+
+    // Crop the image
+    final croppedFile = await ImageCropper().cropImage(
+      sourcePath: pickedFile.path,
+      compressFormat: ImageCompressFormat.jpg,
+      compressQuality: 50,
+      uiSettings: [
+        AndroidUiSettings(
+          toolbarTitle: 'Crop Image',
+          lockAspectRatio: true,
+          initAspectRatio: CropAspectRatioPreset.square,
+          aspectRatioPresets: [
+            CropAspectRatioPreset.square,
+          ],
+          hideBottomControls: true,
+          showCropGrid: true, // ✅ Show grid
+          cropGridStrokeWidth: 2, // ✅ Make lines thicker
+          cropFrameStrokeWidth: 2,
+        ),
+        IOSUiSettings(
+          title: 'Crop Image',
+          cancelButtonTitle: 'Cancel',
+          doneButtonTitle: 'Done',
+        ),
+      ],
+    );
+
+    if (croppedFile == null) return;
+
+    setState(() {
+      _pickedProfileImage = File(croppedFile.path);
+    });
   }
 
   // _saveProfileChanges: Orchestrates the saving process, including image upload
