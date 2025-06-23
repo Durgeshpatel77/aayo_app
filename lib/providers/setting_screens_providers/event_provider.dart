@@ -7,12 +7,14 @@ import 'package:http/http.dart' as http;
 import 'package:image_cropper/image_cropper.dart';
 import 'package:intl/intl.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart'; // Import image_picker
 import 'package:geolocator/geolocator.dart'; // Import geolocator
 
 
 import '../../models/create_event_model.dart';
+import '../home_screens_providers/add_post_provider.dart';
 
 class EventCreationProvider with ChangeNotifier {
   final List<EventModel> _allEvents = [];
@@ -708,4 +710,5 @@ class EventCreationProvider with ChangeNotifier {
     }
     return result; // Return the result to the UI for displaying messages
   }
+
 }

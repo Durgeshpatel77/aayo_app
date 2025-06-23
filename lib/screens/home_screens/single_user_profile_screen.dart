@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../models/create_event_model.dart';
 import '../../providers/home_screens_providers/add_post_provider.dart';
 import '../../providers/onording_login_screens_providers/user_profile_provider.dart';
+import '../../providers/setting_screens_providers/event_provider.dart';
 
 class SingleUserProfileScreen extends StatefulWidget {
   final String userId;
@@ -17,6 +19,7 @@ class SingleUserProfileScreen extends StatefulWidget {
 class _SingleUserProfileScreenState extends State<SingleUserProfileScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   Map<String, dynamic> _userProfileData = {};
+  List<EventModel> _userEventPosts = [];
   List<String> _userPostPhotos = [];
   bool _isLoading = true;
   bool isFollowing = false;
@@ -33,7 +36,9 @@ class _SingleUserProfileScreenState extends State<SingleUserProfileScreen> with 
     final prefs = await SharedPreferences.getInstance();
     backendUserId = prefs.getString('backendUserId');
     await _fetchUserProfileData();
-    _fetchUserPostImages();
+    await _fetchUserPostImages();
+    await _fetchUserEvents(); // ✅ add this
+
   }
 
   Future<void> _fetchUserProfileData() async {
@@ -69,6 +74,20 @@ class _SingleUserProfileScreenState extends State<SingleUserProfileScreen> with 
       setState(() => _userPostPhotos = images);
     } catch (_) {}
   }
+  Future<void> _fetchUserEvents() async {
+    try {
+      final eventsProvider = Provider.of<EventCreationProvider>(context, listen: false);
+      await eventsProvider.fetchUserPostsFromPrefs(type: 'event');
+      final allEvents = eventsProvider.allEvents;
+
+      final userEvents = allEvents.where((e) => e.user.id == widget.userId).toList();
+
+      setState(() => _userEventPosts = userEvents);
+    } catch (e) {
+      debugPrint('Failed to fetch user events: $e');
+    }
+  }
+
 
   String _fullImageUrl(String path) {
     const baseUrl = 'http://srv861272.hstgr.cloud:8000';

@@ -168,7 +168,7 @@ class AddPostProvider with ChangeNotifier {
       debugPrint('❌ fetchMyPosts error: $e');
       return [];
     }
-  }
+}
   /// ✅ 6. FETCH POSTS FOR SPECIFIC USER
   Future<List<String>> fetchUserPostImages(String userId) async {
     try {

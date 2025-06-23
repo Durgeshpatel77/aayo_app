@@ -3,9 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/create_event_model.dart';
 import '../../models/event_model.dart';
 import '../../providers/home_screens_providers/add_post_provider.dart';
 import '../../providers/onording_login_screens_providers/user_profile_provider.dart';
+import '../../providers/setting_screens_providers/event_provider.dart';
+import '../event_detail_screens/events_details.dart';
 import '../login_and_onbording_screens/edit_profile_screen.dart';
 import '../setting_screens/setting_screen.dart';
 import 'create_post_screen.dart';
@@ -21,6 +24,8 @@ class _UserProfileListState extends State<UserProfileList> with SingleTickerProv
   late TabController _tabController;
   User? _currentUser;
   List<Event> _userPostPhotos = [];
+  List<EventModel> _userEvents = [];
+
 
   @override
   void initState() {
@@ -45,12 +50,20 @@ class _UserProfileListState extends State<UserProfileList> with SingleTickerProv
   Future<void> _fetchPostImages() async {
     try {
       final postProvider = Provider.of<AddPostProvider>(context, listen: false);
+      final eventsProvider = Provider.of<EventCreationProvider>(context, listen: false);
+
       final posts = await postProvider.fetchMyPosts();
-      setState(() => _userPostPhotos = posts);
+      await eventsProvider.fetchUserPostsFromPrefs(type: 'event');
+
+      setState(() {
+        _userPostPhotos = posts;
+        _userEvents = eventsProvider.allEvents;
+      });
     } catch (e) {
-      debugPrint('Failed to fetch posts: $e');
+      debugPrint('Failed to fetch posts or events: $e');
     }
   }
+
 
   @override
   void dispose() {
@@ -89,7 +102,7 @@ class _UserProfileListState extends State<UserProfileList> with SingleTickerProv
               title: const Text('My Profile'),
               centerTitle: true,
               backgroundColor: Colors.white,
-              elevation: 0,
+              scrolledUnderElevation: 0,
               automaticallyImplyLeading: false,
               actions: [
                 IconButton(
@@ -269,7 +282,57 @@ class _UserProfileListState extends State<UserProfileList> with SingleTickerProv
                 );
               },
             ),
-            const Center(child: Text('Scheduled Activities')),
+            _userEvents.where((e) => e.media.isNotEmpty).isEmpty
+                ? const Center(child: Text('No event media found'))
+                : GridView.builder(
+              physics: const NeverScrollableScrollPhysics(),
+              shrinkWrap: true,
+              itemCount: _userEvents.length,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                crossAxisSpacing: 2,
+                mainAxisSpacing: 2,
+              ),
+              itemBuilder: (_, i) {
+                final event = _userEvents[i];
+                if (event.media.isEmpty) return const SizedBox.shrink();
+                return GestureDetector(
+                  onTap: () {
+                    final convertedEvent = Event(
+                      id: event.id,
+                      title: event.title,
+                      content: event.content,
+                      location: event.eventDetails?.location ?? '',
+                      startTime: event.eventDetails?.startTime ?? DateTime.now(),
+                      endTime: event.eventDetails?.endTime ?? DateTime.now(),
+                      isFree: event.eventDetails?.isFree ?? true,
+                      price: event.eventDetails?.price ?? 0,
+                      organizerId: event.user.id,
+                      likes: event.likes.map((e) => e.toString()).toList(),
+                      comments: [], // You can map this if needed
+                      image: 'http://srv861272.hstgr.cloud:8000/${event.media.first}',
+                      media: event.media.map((url) => 'http://srv861272.hstgr.cloud:8000/$url').toList(),
+                      organizer: event.user.name,
+                      organizerProfile: event.user.profile ?? '',
+                      createdAt: event.createdAt,
+                      type: event.type,
+                    );
+
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => EventDetailScreen(event: convertedEvent),
+                      ),
+                    );
+                  },
+                  child: Image.network(
+                    'http://srv861272.hstgr.cloud:8000/${event.media.first}',
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const Icon(Icons.broken_image),
+                  ),
+                );
+              },
+            ),
             const Center(child: Text('Past Activities')),
           ],
         ),

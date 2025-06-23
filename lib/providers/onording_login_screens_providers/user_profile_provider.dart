@@ -199,7 +199,6 @@ class FetchEditUserProvider with ChangeNotifier {
 
   //-------------------- fetch followers ----------------------
   Future<Map<String, dynamic>> toggleFollow(String targetUserId) async {
-    final url = Uri.parse('$_baseUrl/api/user/follow/$targetUserId');
 
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -209,8 +208,8 @@ class FetchEditUserProvider with ChangeNotifier {
         debugPrint('❌ backendUserId not found in SharedPreferences');
         throw Exception('backendUserId not found in SharedPreferences');
       }
-
-      final body = {'followingId': backendUserId};
+      final url = Uri.parse('$_baseUrl/api/user/follow/$backendUserId');
+      final body = {'followingId': targetUserId};
 
       debugPrint('📤 Sending POST to: $url');
       debugPrint('🧾 Request Body: ${jsonEncode(body)}');
