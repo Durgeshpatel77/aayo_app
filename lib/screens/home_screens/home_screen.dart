@@ -39,15 +39,16 @@ class EventCard extends StatefulWidget {
   State<EventCard> createState() => _EventCardState();
 }
 
-class _EventCardState extends State<EventCard> {
+class _EventCardState extends State<EventCard>    {
   bool isLiked = false;
   int likeCount = 0;
-  int get commentCount => widget.event.comments.length;
-  late List<String> comments;
+  late int _commentCount;
 
   @override
   void initState() {
     super.initState();
+
+    _commentCount = widget.event.comments.length; // ✅ initialize count
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final userId =
@@ -60,10 +61,9 @@ class _EventCardState extends State<EventCard> {
     });
   }
 
-  // Modified _toggleLike to interact with UserProfileProvider directly
   void _toggleLike() async {
     final userProfileProvider =
-        Provider.of<FetchEditUserProvider>(context, listen: false);
+    Provider.of<FetchEditUserProvider>(context, listen: false);
     final currentUserId = userProfileProvider.userId;
 
     if (currentUserId == null) {
@@ -78,6 +78,7 @@ class _EventCardState extends State<EventCard> {
     setState(() {
       likeCount = widget.event.likes.length;
     });
+
     try {
       final response = await userProfileProvider.toggleLike(
         postId: widget.event.id,
@@ -89,7 +90,7 @@ class _EventCardState extends State<EventCard> {
         homeProvider.updateEventLikes(widget.event.id, updatedLikes);
 
         final updatedEvent =
-            homeProvider.allEvents.firstWhere((e) => e.id == widget.event.id);
+        homeProvider.allEvents.firstWhere((e) => e.id == widget.event.id);
         setState(() {
           isLiked = updatedEvent.likes.contains(currentUserId);
           likeCount = updatedEvent.likes.length;
@@ -115,29 +116,31 @@ class _EventCardState extends State<EventCard> {
     }
   }
 
-  void _showCommentDialog() {
-    showModalBottomSheet(
+  void _showCommentDialog() async {
+    final updatedComments = await showModalBottomSheet<List<CommentModel>>(
       context: context,
       isScrollControlled: true,
-      builder: (_) =>
-          CommentSheet(
-            initialComments: widget.event.comments, // Already a List<CommentModel>
-            postId: widget.event.id,
-            onAddComment: (commentContent) {
-              setState(() {
-                widget.event.comments.add(
-                  CommentModel(
-                    id: DateTime.now().toString(),
-                    content: commentContent,
-                    createdAt: DateTime.now(),
-                    userName: "You",
-                    userProfile: "", // You can pass actual profile if needed
-                  ),
-                );
-              });
-            },
-          ),
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => CommentSheet(
+        initialComments: widget.event.comments,
+        postId: widget.event.id,
+        postOwnerId: widget.event.organizerId,
+        onCommentCountChange: (newCount) {
+          setState(() => _commentCount = newCount);
+        },
+      ),
     );
+
+    if (updatedComments != null) {
+      setState(() {
+        widget.event.comments
+          ..clear()
+          ..addAll(updatedComments);
+      });
+    }
   }
 
   String getFullImageUrl(String relativePath) {
@@ -149,18 +152,14 @@ class _EventCardState extends State<EventCard> {
 
   @override
   Widget build(BuildContext context) {
-    // Listen to UserProfileProvider to react to userId changes
     final userProfileProvider = Provider.of<FetchEditUserProvider>(context);
     final currentUserId = userProfileProvider.userId;
-
-    // Initialize `isLiked` based on the `widget.event.likes` list and the current user ID.
-    // This will correctly update the heart icon when the userId loads or changes.
 
     final String imageUrl = widget.event.media.isNotEmpty
         ? getFullImageUrl(widget.event.media.first)
         : (widget.event.image.isNotEmpty
-            ? getFullImageUrl(widget.event.image)
-            : '');
+        ? getFullImageUrl(widget.event.image)
+        : '');
 
     final String profileUrl = widget.event.organizerProfile.isNotEmpty
         ? getFullImageUrl(widget.event.organizerProfile)
@@ -179,17 +178,12 @@ class _EventCardState extends State<EventCard> {
           // Header (User Info)
           InkWell(
             onTap: () {
-              // Ensure widget.event.user has an 'id' or '_id' field
-              // Based on your JSON, it's "_id" under the "user" object.
-              // Assuming your Event model maps this to a field named 'id' in User.
-              if (widget.event.organizerId != null &&
-                  widget.event.organizerId.isNotEmpty) {
+              if (widget.event.organizerId.isNotEmpty) {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (_) => SingleUserProfileScreen(
-                      userId:
-                          widget.event.organizerId, // Pass the user's ID here
+                      userId: widget.event.organizerId,
                     ),
                   ),
                 );
@@ -205,7 +199,7 @@ class _EventCardState extends State<EventCard> {
                 backgroundImage: profileUrl.isNotEmpty
                     ? NetworkImage(profileUrl)
                     : const AssetImage('images/onbording/unkown.jpg')
-                        as ImageProvider,
+                as ImageProvider,
                 onBackgroundImageError: (exception, stackTrace) {
                   debugPrint(
                       'Error loading profile image for ${widget.event.organizer}: $exception');
@@ -216,7 +210,8 @@ class _EventCardState extends State<EventCard> {
               ),
               trailing: widget.event.type == 'event'
                   ? Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: Colors.pink.shade100,
                   borderRadius: BorderRadius.circular(15),
@@ -239,7 +234,8 @@ class _EventCardState extends State<EventCard> {
               subtitle: Text(timeAgo(widget.event.createdAt)),
             ),
           ),
-          // Event/Post Title & Content
+
+          // Post Content
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Column(
@@ -252,7 +248,7 @@ class _EventCardState extends State<EventCard> {
           ),
           const SizedBox(height: 10),
 
-          // Event/Post Image (conditional)
+          // Image
           if (imageUrl.isNotEmpty)
             AspectRatio(
               aspectRatio: 4 / 5,
@@ -282,23 +278,26 @@ class _EventCardState extends State<EventCard> {
               ),
             ),
 
-          // Actions: Like, Comment, Share
+          // Like, Comment, Share
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 20),
+            padding:
+            const EdgeInsets.symmetric(horizontal: 12.0, vertical: 20),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Row(
                   children: [
-                    // Like Button
                     GestureDetector(
                       onTap: _toggleLike,
                       child: Row(
                         children: [
                           Icon(
-                            isLiked ? Icons.favorite : Icons.favorite_border,
+                            isLiked
+                                ? Icons.favorite
+                                : Icons.favorite_border,
                             size: 24,
-                            color: isLiked ? Colors.redAccent : Colors.grey,
+                            color:
+                            isLiked ? Colors.redAccent : Colors.grey,
                           ),
                           const SizedBox(width: 4),
                           Text(likeCount.toString(),
@@ -307,14 +306,12 @@ class _EventCardState extends State<EventCard> {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    // Comment Button
-                    _iconText(Icons.comment_outlined, commentCount.toString(),
-                        onTap: _showCommentDialog),
+                    _iconText(Icons.comment_outlined,
+                        _commentCount.toString(), onTap: _showCommentDialog),
                   ],
                 ),
-                // Share Button
                 _iconText(Icons.send_outlined, '', onTap: () {
-                  // Implement share functionality
+                  // Implement share functionality here
                 }),
               ],
             ),
@@ -564,7 +561,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<HomeProvider>(
+    return
+      Consumer<HomeProvider>(
       builder: (context, homeProvider, child) {
         final allScreens = [
           HomeTabContent(

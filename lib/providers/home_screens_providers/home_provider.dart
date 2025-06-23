@@ -2,6 +2,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import '../../models/comment_model.dart';
 import '../../models/event_model.dart';
 
 class HomeProvider extends ChangeNotifier {
@@ -124,4 +125,34 @@ class HomeProvider extends ChangeNotifier {
     // ✅ Return the newly added comment
     return json['data']['comments'].last;
   }
+
+  /// ✅ DELETE: DELETE a comment to a post or event.
+
+  Future<void> deleteCommentFromPost({
+    required String postId,
+    required String commentId,
+  }) async {
+    final url = Uri.parse('$_base/comment/$postId');
+
+    final response = await http.delete(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'commentId': commentId}),
+    );
+
+    final json = jsonDecode(response.body);
+    if (response.statusCode != 200 || json['success'] != true) {
+      throw Exception(json['message'] ?? 'Failed to delete comment');
+    }
+  }
+  void updateEventComments(String postId, List<CommentModel> comments) {
+    final index = _allEvents.indexWhere((event) => event.id == postId);
+    if (index != -1) {
+      _allEvents[index].comments
+        ..clear()
+        ..addAll(comments);
+      notifyListeners(); // this updates HomeTabContent
+    }
+  }
+
 }

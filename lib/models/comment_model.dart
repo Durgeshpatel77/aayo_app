@@ -4,6 +4,7 @@ class CommentModel {
   final DateTime createdAt;
   final String userName;
   final String userProfile;
+  final String userId; // 👈 Add this line
 
   CommentModel({
     required this.id,
@@ -11,6 +12,7 @@ class CommentModel {
     required this.createdAt,
     required this.userName,
     required this.userProfile,
+    required this.userId, // 👈 Add this
   });
 
   factory CommentModel.fromJson(Map<String, dynamic> json) {
@@ -23,6 +25,7 @@ class CommentModel {
       userProfile: user['profile'] != null
           ? 'http://srv861272.hstgr.cloud:8000/${user['profile']}'
           : '',
+      userId: user['_id'] ?? '', // 👈 Parse userId
     );
   }
 }

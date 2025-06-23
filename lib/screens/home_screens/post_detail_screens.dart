@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:provider/provider.dart';
 import '../../models/event_model.dart';
+import '../../models/comment_model.dart';
+import '../../providers/home_screens_providers/home_provider.dart';
 import '../other_for_use/expandable_text.dart';
 import '../other_for_use/utils.dart';
 import 'comment_sheet.dart';
@@ -33,15 +36,15 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     setState(() {
       if (_isLiked) {
         _likeCount--;
-        widget.post.likes.remove('user123'); // Replace with actual user ID
+        widget.post.likes.remove('user123');
       } else {
         _likeCount++;
-        widget.post.likes.add('user123'); // Replace with actual user ID
+        widget.post.likes.add('user123');
       }
       _isLiked = !_isLiked;
     });
 
-    // TODO: Optionally send API request to update like status on backend
+    // TODO: Optionally send API request to update like status
   }
 
   String getFullImageUrl(String relativePath) {
@@ -62,6 +65,40 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     });
   }
 
+  Future<void> _openCommentSheet() async {
+    final updatedComments = await showModalBottomSheet<List<CommentModel>>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return CommentSheet(
+          initialComments: widget.post.comments,
+          postId: widget.post.id,
+          postOwnerId: widget.post.organizerId,
+          onCommentCountChange: (int newCount) {
+            setState(() => _commentCount = newCount);
+          },
+        );
+      },
+    );
+
+    if (updatedComments != null) {
+      setState(() {
+        widget.post.comments
+          ..clear()
+          ..addAll(updatedComments);
+        _commentCount = updatedComments.length;
+      });
+
+      // 👇 Update in provider so HomeScreen gets refreshed
+      Provider.of<HomeProvider>(context, listen: false)
+          .updateEventComments(widget.post.id, updatedComments);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final String postImageUrl = widget.post.media.isNotEmpty
@@ -76,7 +113,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // Zoomable + Double Tap Image
+          // Zoomable image
           Positioned(
             top: 50,
             left: 0,
@@ -97,8 +134,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                     placeholder: (context, url) => const Center(
                       child: CircularProgressIndicator(color: Colors.white),
                     ),
-                    errorWidget: (context, url, error) =>
-                    const Center(child: Icon(Icons.broken_image, color: Colors.white)),
+                    errorWidget: (context, url, error) => const Center(
+                      child: Icon(Icons.broken_image, color: Colors.white),
+                    ),
                   )
                       : const Center(
                     child: Icon(Icons.image_not_supported, color: Colors.white),
@@ -108,7 +146,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
             ),
           ),
 
-          // Bottom content (User info, caption, likes)
+          // Post info
           Positioned(
             bottom: 100,
             left: 16,
@@ -159,7 +197,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
             ),
           ),
 
-          // Right action icons (like, comment, share)
+          // Action icons
           Positioned(
             bottom: 130,
             right: 16,
@@ -188,27 +226,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
 
                 // Comment
                 GestureDetector(
-                  onTap: () {
-                    showModalBottomSheet(
-                      context: context,
-                      isScrollControlled: true,
-                      backgroundColor: Colors.white,
-                      shape: const RoundedRectangleBorder(
-                        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-                      ),
-                      builder: (context) {
-                        return CommentSheet(
-                          initialComments: widget.post.comments,
-                          postId: widget.post.id,
-                          onAddComment: (newText) {
-                            setState(() {
-                              _commentCount += 1;
-                            });
-                          },
-                        );
-                      },
-                    );
-                  },
+                  onTap: _openCommentSheet,
                   child: Column(
                     children: [
                       const Icon(Icons.comment_outlined, color: Colors.white, size: 30),
