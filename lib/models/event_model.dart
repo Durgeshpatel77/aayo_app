@@ -23,6 +23,7 @@ class Event {
   final DateTime createdAt;
   final String type;
 
+
   Event({
     required this.id,
     required this.title,
@@ -46,29 +47,29 @@ class Event {
   factory Event.fromJson(Map<String, dynamic> json) {
     final eventDetails = json['eventDetails'] ?? {};
     final user = json['user'] ?? {};
-
     final String parsedType = json['type'] ?? 'post';
 
     const String baseUrl = 'http://srv861272.hstgr.cloud:8000';
-    String userProfilePath = user['profile'] ?? '';
-    String fullOrganizerProfileUrl;
 
-    if (userProfilePath.isNotEmpty) {
-      if (userProfilePath.startsWith('http')) {
-        fullOrganizerProfileUrl = userProfilePath;
-      } else {
-        fullOrganizerProfileUrl = '$baseUrl/$userProfilePath';
-      }
-    } else {
-      fullOrganizerProfileUrl = 'https://randomuser.me/api/portraits/men/75.jpg';
+    String formatUrl(String? path) {
+      if (path == null || path.isEmpty) return '';
+      if (path.startsWith('http')) return path;
+      return path.startsWith('/') ? '$baseUrl$path' : '$baseUrl/$path';
     }
 
+    // Handle profile image
+    final userProfilePath = user['profile'] ?? '';
+    final fullOrganizerProfileUrl = userProfilePath.isNotEmpty
+        ? formatUrl(userProfilePath)
+        : 'https://randomuser.me/api/portraits/men/75.jpg';
+
+    // Handle media list
     List<String> parsedMedia = [];
     if (json['media'] is List) {
       parsedMedia = (json['media'] as List<dynamic>)
           .map((e) {
-        if (e is String) return e;
-        if (e is Map && e['url'] is String) return e['url'] as String;
+        if (e is String) return formatUrl(e);
+        if (e is Map && e['url'] is String) return formatUrl(e['url']);
         return '';
       })
           .where((url) => url.isNotEmpty)
@@ -89,7 +90,7 @@ class Event {
       price: (eventDetails['price'] ?? 0).toDouble(),
       likes: (json['likes'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
       comments: commentsJson.map((c) => CommentModel.fromJson(c)).toList(),
-      image: json['image'] ?? '',
+      image: formatUrl(json['image']), // ✅ convert image to full URL
       media: parsedMedia,
       organizer: user['name'] ?? 'Unknown User',
       organizerProfile: fullOrganizerProfileUrl,

@@ -1,7 +1,9 @@
+import 'package:aayo/screens/home_screens/post_detail_screens.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/event_model.dart';
 import '../../providers/home_screens_providers/add_post_provider.dart';
 import '../../providers/onording_login_screens_providers/user_profile_provider.dart';
 import '../login_and_onbording_screens/edit_profile_screen.dart';
@@ -18,7 +20,7 @@ class UserProfileList extends StatefulWidget {
 class _UserProfileListState extends State<UserProfileList> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   User? _currentUser;
-  List<String> _userPostPhotos = [];
+  List<Event> _userPostPhotos = [];
 
   @override
   void initState() {
@@ -30,7 +32,7 @@ class _UserProfileListState extends State<UserProfileList> with SingleTickerProv
 
   Future<void> _loadData() async {
     await _fetchProfile();
-    _fetchPostImages();
+    await _fetchPostImages();
   }
 
   Future<void> _fetchProfile() async {
@@ -43,9 +45,11 @@ class _UserProfileListState extends State<UserProfileList> with SingleTickerProv
   Future<void> _fetchPostImages() async {
     try {
       final postProvider = Provider.of<AddPostProvider>(context, listen: false);
-      final images = await postProvider.fetchMyPostImages();
-      setState(() => _userPostPhotos = images);
-    } catch (_) {}
+      final posts = await postProvider.fetchMyPosts();
+      setState(() => _userPostPhotos = posts);
+    } catch (e) {
+      debugPrint('Failed to fetch posts: $e');
+    }
   }
 
   @override
@@ -65,7 +69,6 @@ class _UserProfileListState extends State<UserProfileList> with SingleTickerProv
           final about = data['about'] ?? 'No bio available.';
           final profilePath = data['profile'] ?? '';
 
-          // ✅ Use correct follower/following data from userData
           final followersCount = (data['followers'] as List?)?.length ?? 0;
           final followingCount = (data['following'] as List?)?.length ?? 0;
 
@@ -122,8 +125,6 @@ class _UserProfileListState extends State<UserProfileList> with SingleTickerProv
                     const SizedBox(height: 12),
                     Text(name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 20),
-
-                    // Followers & Following
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
@@ -132,10 +133,7 @@ class _UserProfileListState extends State<UserProfileList> with SingleTickerProv
                         _buildStat(followingCount, 'Following'),
                       ],
                     ),
-
                     const SizedBox(height: 24),
-
-                    // Edit Profile
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16.0),
                       child: SizedBox(
@@ -147,7 +145,7 @@ class _UserProfileListState extends State<UserProfileList> with SingleTickerProv
                               context,
                               MaterialPageRoute(builder: (_) => const EditProfileScreen()),
                             );
-                            _fetchProfile(); // refresh after edit
+                            _fetchProfile();
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.pink,
@@ -157,10 +155,7 @@ class _UserProfileListState extends State<UserProfileList> with SingleTickerProv
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 24),
-
-                    // About
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16.0),
                       child: Column(
@@ -172,10 +167,7 @@ class _UserProfileListState extends State<UserProfileList> with SingleTickerProv
                         ],
                       ),
                     ),
-
                     const SizedBox(height: 24),
-
-                    // Tabs
                     _buildTabs(context),
                   ],
                 ),
@@ -198,8 +190,12 @@ class _UserProfileListState extends State<UserProfileList> with SingleTickerProv
     children: [
       TabBar(
         controller: _tabController,
+        indicator: const UnderlineTabIndicator(
+          borderSide: BorderSide(width: 4.0, color: Colors.pinkAccent),
+          insets: EdgeInsets.symmetric(horizontal: 50),
+        ),
         indicatorColor: Colors.pinkAccent,
-        labelColor: Colors.pinkAccent,
+        labelColor: Colors.black,
         unselectedLabelColor: Colors.grey,
         tabs: const [
           Tab(icon: Icon(Icons.grid_on)),
@@ -208,6 +204,7 @@ class _UserProfileListState extends State<UserProfileList> with SingleTickerProv
         ],
       ),
       const Divider(height: 1),
+      const SizedBox(height: 10),
       SizedBox(
         height: MediaQuery.of(context).size.height * 0.5,
         child: TabBarView(
@@ -232,17 +229,34 @@ class _UserProfileListState extends State<UserProfileList> with SingleTickerProv
             )
                 : GridView.builder(
               physics: const NeverScrollableScrollPhysics(),
+              shrinkWrap: true,
               itemCount: _userPostPhotos.length,
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 3,
                 crossAxisSpacing: 2,
                 mainAxisSpacing: 2,
               ),
-              itemBuilder: (_, i) => Image.network(
-                _userPostPhotos[i],
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const Icon(Icons.broken_image),
-              ),
+              itemBuilder: (_, i) {
+                final post = _userPostPhotos[i];
+                final imageUrl = post.image.isNotEmpty
+                    ? post.image
+                    : (post.media.isNotEmpty ? post.media.first : '');
+                return GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => PostDetailScreen(post: post),
+                      ),
+                    );
+                  },
+                  child: Image.network(
+                    imageUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const Icon(Icons.broken_image),
+                  ),
+                );
+              },
             ),
             const Center(child: Text('Scheduled Activities')),
             const Center(child: Text('Past Activities')),

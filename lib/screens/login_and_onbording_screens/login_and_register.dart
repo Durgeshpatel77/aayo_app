@@ -128,7 +128,7 @@ class LoginAndRegister extends StatelessWidget {
             Container(
               color: Colors.black.withOpacity(0.4),
               child: const Center(
-                child: CircularProgressIndicator(color: Colors.white),
+                child: CircularProgressIndicator(color: Colors.pink),
               ),
             ),
         ],

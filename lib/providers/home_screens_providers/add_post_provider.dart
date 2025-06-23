@@ -6,6 +6,8 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../models/event_model.dart';
+
 class AddPostProvider with ChangeNotifier {
   final TextEditingController _postController = TextEditingController();
   final TextEditingController _titleController = TextEditingController();
@@ -141,7 +143,7 @@ class AddPostProvider with ChangeNotifier {
   }
 
   /// ✅ 5. FETCH POSTS FOR LOGGED-IN USER
-  Future<List<String>> fetchMyPostImages() async {
+  Future<List<Event>> fetchMyPosts() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getString('backendUserId');
@@ -152,29 +154,21 @@ class AddPostProvider with ChangeNotifier {
       final response = await http.get(url);
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> jsonBody = json.decode(response.body);
-        final posts = jsonBody['data']['posts'] as List<dynamic>;
+        final data = jsonDecode(response.body);
+        final posts = data['data']['posts'] as List;
 
         return posts
             .where((post) => post['user']?['_id'] == userId)
-            .map<String>((post) {
-          final media = post['media'];
-          if (media is List && media.isNotEmpty) {
-            return '$_apiBaseUrl/${media[0]}';
-          }
-          return '';
-        })
-            .where((url) => url.isNotEmpty)
+            .map((postJson) => Event.fromJson(postJson))
             .toList();
       } else {
-        throw Exception('Failed to fetch posts: ${response.statusCode}');
+        throw Exception('Failed to load posts');
       }
     } catch (e) {
-      debugPrint('❌ Error fetching post images: $e');
-      rethrow;
+      debugPrint('❌ fetchMyPosts error: $e');
+      return [];
     }
   }
-
   /// ✅ 6. FETCH POSTS FOR SPECIFIC USER
   Future<List<String>> fetchUserPostImages(String userId) async {
     try {
@@ -216,3 +210,4 @@ class AddPostProvider with ChangeNotifier {
     super.dispose();
   }
 }
+
