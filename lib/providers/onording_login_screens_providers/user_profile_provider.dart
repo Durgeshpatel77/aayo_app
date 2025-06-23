@@ -8,7 +8,7 @@ class FetchEditUserProvider with ChangeNotifier {
   String? _userId;
   Map<String, dynamic> _userData = {};
   final String _baseUrl = 'http://srv861272.hstgr.cloud:8000';
-  List<String> _currentUserFollowing = [];
+  List<dynamic> _currentUserFollowing = [];
   List<dynamic> get currentUserFollowing => _currentUserFollowing;
 
   // -------------------- Getters --------------------
@@ -70,10 +70,6 @@ class FetchEditUserProvider with ChangeNotifier {
     if (res.statusCode == 200) {
       final result = json.decode(res.body);
       _userData = result['data'];
-
-      // ✅ Extract and assign 'following' to the provider field
-      _currentUserFollowing = List<String>.from(_userData['following'] ?? []);
-
       notifyListeners();
     } else {
       throw Exception('Failed to fetch user');
@@ -209,34 +205,60 @@ class FetchEditUserProvider with ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       final backendUserId = prefs.getString('backendUserId');
 
-      if (backendUserId == null) throw Exception('User not logged in');
+      if (backendUserId == null) {
+        debugPrint('❌ backendUserId not found in SharedPreferences');
+        throw Exception('backendUserId not found in SharedPreferences');
+      }
+
+      final body = {'followingId': backendUserId};
+
+      debugPrint('📤 Sending POST to: $url');
+      debugPrint('🧾 Request Body: ${jsonEncode(body)}');
 
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'followingId': backendUserId}),
+        body: jsonEncode(body),
       );
+
+      debugPrint('📥 Response Status: ${response.statusCode}');
+      debugPrint('📥 Response Body: ${response.body}');
 
       final decoded = json.decode(response.body);
 
       if (response.statusCode == 200 && decoded['success'] == true) {
-        // ✅ Don't use decoded['data'] to update your own profile
-        // Instead, just re-fetch your own user profile
+        /// ❗ Backend bug workaround: swap values
+        final backendIncorrectFollowers = decoded['data']['followers']; // actually 'following'
+        final backendIncorrectFollowing = decoded['data']['following']; // actually 'followers'
 
-        await fetchUser(backendUserId); // refresh your data
+        // Save correct values manually
+        final correctedFollowers = backendIncorrectFollowing ?? []; // who follows target user
+        final correctedFollowing = backendIncorrectFollowers ?? []; // whom current user follows
+
+        _currentUserFollowing = List.from(correctedFollowing); // your updated following list
+        notifyListeners();
 
         return {
           'success': true,
-          'message': decoded['message'] ?? 'Follow/unfollow successful',
-          'targetUser': decoded['data'], // optional: use this to update their profile if needed
+          'message': decoded['message'],
+          'targetFollowers': correctedFollowers,
+          'currentFollowing': _currentUserFollowing,
+        };
+      } else {
+        debugPrint('❌ Follow request failed: ${decoded['message']}');
+        return {
+          'success': false,
+          'message': decoded['message'] ?? 'Failed to follow/unfollow',
         };
       }
-
+    } on FormatException catch (e) {
+      debugPrint('❌ JSON decode error: $e');
       return {
         'success': false,
-        'message': decoded['message'] ?? 'Follow/unfollow failed',
+        'message': 'Invalid server response format: $e',
       };
     } catch (e) {
+      debugPrint('❌ toggleFollow() exception: $e');
       return {
         'success': false,
         'message': 'Unexpected error: $e',

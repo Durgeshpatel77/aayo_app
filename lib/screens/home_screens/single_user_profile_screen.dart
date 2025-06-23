@@ -39,12 +39,20 @@ class _SingleUserProfileScreenState extends State<SingleUserProfileScreen> with 
   Future<void> _fetchUserProfileData() async {
     setState(() => _isLoading = true);
     try {
-      final provider = Provider.of< FetchEditUserProvider>(context, listen: false);
+      final provider = Provider.of<FetchEditUserProvider>(context, listen: false);
       final data = await provider.fetchUserById(widget.userId);
+
       final followers = data['followers'] as List<dynamic>? ?? [];
+      final following = data['following'] as List<dynamic>? ?? [];
 
       setState(() {
         _userProfileData = data;
+
+        // ✅ No swapping — use directly
+        _userProfileData['followers'] = followers;
+        _userProfileData['following'] = following;
+
+        // ✅ You are following this profile if YOUR ID is in THEIR followers list
         isFollowing = backendUserId != null && followers.contains(backendUserId);
         _isLoading = false;
       });
@@ -76,13 +84,20 @@ class _SingleUserProfileScreenState extends State<SingleUserProfileScreen> with 
 
     if (result['success']) {
       final newFollowers = result['targetFollowers'] as List<dynamic>;
+
       setState(() {
+        // ✅ Update the current profile's followers
         _userProfileData['followers'] = newFollowers;
+
+        // ✅ Set whether current user is following this profile
         isFollowing = backendUserId != null && newFollowers.contains(backendUserId);
       });
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['message'])));
+    // ✅ Show follow/unfollow status message
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(result['message'] ?? 'Action completed')),
+    );
   }
 
   @override
