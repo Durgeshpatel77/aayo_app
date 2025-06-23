@@ -39,7 +39,7 @@ class EventCard extends StatefulWidget {
   State<EventCard> createState() => _EventCardState();
 }
 
-class _EventCardState extends State<EventCard>    {
+class _EventCardState extends State<EventCard> {
   bool isLiked = false;
   int likeCount = 0;
   late int _commentCount;
@@ -63,7 +63,7 @@ class _EventCardState extends State<EventCard>    {
 
   void _toggleLike() async {
     final userProfileProvider =
-    Provider.of<FetchEditUserProvider>(context, listen: false);
+        Provider.of<FetchEditUserProvider>(context, listen: false);
     final currentUserId = userProfileProvider.userId;
 
     if (currentUserId == null) {
@@ -90,7 +90,7 @@ class _EventCardState extends State<EventCard>    {
         homeProvider.updateEventLikes(widget.event.id, updatedLikes);
 
         final updatedEvent =
-        homeProvider.allEvents.firstWhere((e) => e.id == widget.event.id);
+            homeProvider.allEvents.firstWhere((e) => e.id == widget.event.id);
         setState(() {
           isLiked = updatedEvent.likes.contains(currentUserId);
           likeCount = updatedEvent.likes.length;
@@ -158,8 +158,8 @@ class _EventCardState extends State<EventCard>    {
     final String imageUrl = widget.event.media.isNotEmpty
         ? getFullImageUrl(widget.event.media.first)
         : (widget.event.image.isNotEmpty
-        ? getFullImageUrl(widget.event.image)
-        : '');
+            ? getFullImageUrl(widget.event.image)
+            : '');
 
     final String profileUrl = widget.event.organizerProfile.isNotEmpty
         ? getFullImageUrl(widget.event.organizerProfile)
@@ -199,7 +199,7 @@ class _EventCardState extends State<EventCard>    {
                 backgroundImage: profileUrl.isNotEmpty
                     ? NetworkImage(profileUrl)
                     : const AssetImage('images/onbording/unkown.jpg')
-                as ImageProvider,
+                        as ImageProvider,
                 onBackgroundImageError: (exception, stackTrace) {
                   debugPrint(
                       'Error loading profile image for ${widget.event.organizer}: $exception');
@@ -210,22 +210,22 @@ class _EventCardState extends State<EventCard>    {
               ),
               trailing: widget.event.type == 'event'
                   ? Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.pink.shade100,
-                  borderRadius: BorderRadius.circular(15),
-                  border: Border.all(color: Colors.pink, width: 1),
-                ),
-                child: Text(
-                  'EVENT',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: Colors.pink.shade800,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              )
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.pink.shade100,
+                        borderRadius: BorderRadius.circular(15),
+                        border: Border.all(color: Colors.pink, width: 1),
+                      ),
+                      child: Text(
+                        'EVENT',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: Colors.pink.shade800,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    )
                   : null,
               title: Text(
                 widget.event.organizer,
@@ -272,7 +272,7 @@ class _EventCardState extends State<EventCard>    {
                     ),
                   ),
                   errorWidget: (context, url, error) =>
-                  const Icon(Icons.broken_image, size: 40),
+                      const Icon(Icons.broken_image, size: 40),
                   fadeInDuration: const Duration(milliseconds: 300),
                 ),
               ),
@@ -280,8 +280,7 @@ class _EventCardState extends State<EventCard>    {
 
           // Like, Comment, Share
           Padding(
-            padding:
-            const EdgeInsets.symmetric(horizontal: 12.0, vertical: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 20),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -292,12 +291,9 @@ class _EventCardState extends State<EventCard>    {
                       child: Row(
                         children: [
                           Icon(
-                            isLiked
-                                ? Icons.favorite
-                                : Icons.favorite_border,
+                            isLiked ? Icons.favorite : Icons.favorite_border,
                             size: 24,
-                            color:
-                            isLiked ? Colors.redAccent : Colors.grey,
+                            color: isLiked ? Colors.redAccent : Colors.black,
                           ),
                           const SizedBox(width: 4),
                           Text(likeCount.toString(),
@@ -306,13 +302,54 @@ class _EventCardState extends State<EventCard>    {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    _iconText(Icons.comment_outlined,
-                        _commentCount.toString(), onTap: _showCommentDialog),
+                    GestureDetector(
+                      onTap: _showCommentDialog,
+                      child: Row(
+                        children: [
+                          Image.asset(
+                            'images/chat_icon.png',
+                            width: 22,
+                            height: 22,
+                            color: Colors.grey[800],
+                          ),
+                          const SizedBox(width: 7),
+                          Text(
+                            _commentCount.toString(),
+                            style: const TextStyle(fontSize: 15),
+                          ),
+                        ],
+                      ),
+                    ),
+
                   ],
                 ),
-                _iconText(Icons.send_outlined, '', onTap: () {
-                  // Implement share functionality here
-                }),
+                const Spacer(), // pushes register button to the right
+                if (widget.event.type == 'event')
+                  InkWell(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => EventDetailScreen(event: widget.event),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.pink.shade100,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Text(
+                        'Register Now',
+                        style: TextStyle(
+                          color: Colors.pink,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -460,22 +497,23 @@ class _HomeTabContentState extends State<HomeTabContent> {
               children: widget.isLoading
                   ? List.generate(5, (_) => const EventCardShimmer())
                   : widget.allEvents.isEmpty
-                  ? [
-                const SizedBox(height: 250),
-                const Center(
-                  child: Text(
-                    "No events or posts available.",
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
-                    textAlign: TextAlign.center,
-                  ),
-                )
-              ]
-                  : widget.allEvents.map((event) {
-                return GestureDetector(
-                  onTap: () => widget.onItemTapped(event),
-                  child: EventCard(event: event),
-                );
-              }).toList(),
+                      ? [
+                          const SizedBox(height: 250),
+                          const Center(
+                            child: Text(
+                              "No events or posts available.",
+                              style:
+                                  TextStyle(fontSize: 16, color: Colors.grey),
+                              textAlign: TextAlign.center,
+                            ),
+                          )
+                        ]
+                      : widget.allEvents.map((event) {
+                          return GestureDetector(
+                            onTap: () => widget.onItemTapped(event),
+                            child: EventCard(event: event),
+                          );
+                        }).toList(),
             ),
             const SizedBox(height: 12),
           ],
@@ -550,8 +588,7 @@ class _HomeScreenState extends State<HomeScreen> {
         context,
         MaterialPageRoute(builder: (_) => EventDetailScreen(event: item)),
       );
-    }
-    else if (item.isPost) {
+    } else if (item.isPost) {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => PostDetailScreen(post: item)),
@@ -561,8 +598,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return
-      Consumer<HomeProvider>(
+    return Consumer<HomeProvider>(
       builder: (context, homeProvider, child) {
         final allScreens = [
           HomeTabContent(
@@ -593,8 +629,7 @@ class _HomeScreenState extends State<HomeScreen> {
             }
             return true;
           },
-          child:
-          Scaffold(
+          child: Scaffold(
             backgroundColor: Colors.white,
             body: SafeArea(
               child: Container(

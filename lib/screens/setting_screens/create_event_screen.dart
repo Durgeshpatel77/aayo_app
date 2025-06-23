@@ -23,6 +23,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   final TextEditingController _eventNameController = TextEditingController();
   final TextEditingController _eventDescriptionController = TextEditingController();
   final TextEditingController _manualVenueNameController = TextEditingController();
+  final TextEditingController _eventLandmarkController = TextEditingController();
 
   @override
   void dispose() {
@@ -302,6 +303,20 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                         ),
                       ),
                       const SizedBox(height: 10),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 10),
+                          TextfieldEditprofiile(
+                            controller: _eventLandmarkController,
+                            hintText: 'Enter landmark',
+                            maxLength: 30,
+                            prefixIcon: Icons.apartment,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -372,7 +387,6 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
-
                 // --- Add Description ---
                 Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20.0),

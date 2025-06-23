@@ -103,7 +103,7 @@ class _SingleUserProfileScreenState extends State<SingleUserProfileScreen> with 
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(body: Center(child: CircularProgressIndicator(color: Colors.pink,)));
     }
 
     final name = _userProfileData['name'] ?? 'Unknown';
@@ -185,13 +185,24 @@ class _SingleUserProfileScreenState extends State<SingleUserProfileScreen> with 
 
               const SizedBox(height: 24),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text("About", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const Text(
+                      'About',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.left, // Optional: ensures explicit alignment
+                    ),
                     const SizedBox(height: 8),
-                    Text(about, style: const TextStyle(color: Colors.black54)),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        about,
+                        style: const TextStyle(color: Colors.black54),
+                        textAlign: TextAlign.left,
+                      ),
+                    ),
                   ],
                 ),
               ),

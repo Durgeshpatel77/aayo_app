@@ -161,9 +161,20 @@ class _UserProfileListState extends State<UserProfileList> with SingleTickerProv
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('About', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          const Text(
+                            'About',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            textAlign: TextAlign.left, // Optional: ensures explicit alignment
+                          ),
                           const SizedBox(height: 8),
-                          Text(about, style: const TextStyle(color: Colors.black54)),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              about,
+                              style: const TextStyle(color: Colors.black54),
+                              textAlign: TextAlign.left,
+                            ),
+                          ),
                         ],
                       ),
                     ),
