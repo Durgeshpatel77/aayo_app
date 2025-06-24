@@ -5,7 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 
 import '../../res/app_colors.dart';
-import 'approve_screen.dart';
+import '../approve_event_screens/approve_screen.dart';
 import 'chat_page.dart';
 import 'ordersummart_screen.dart';
 

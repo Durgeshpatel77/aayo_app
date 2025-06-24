@@ -1,4 +1,4 @@
-import 'package:aayo/screens/event_detail_screens/qr_ticket_screen.dart';
+import 'package:aayo/screens/approve_event_screens/qr_ticket_screen.dart';
 import 'package:flutter/material.dart';
 // Import the new E-Ticket screen
 import 'dart:math';
