@@ -1,18 +1,14 @@
 // Make sure this file is named event_detail_screen.dart and the class is EventDetailScreen
 import 'package:flutter/material.dart';
-import 'package:ionicons/ionicons.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 
-import '../../res/app_colors.dart';
 import '../approve_event_screens/approve_screen.dart';
 import 'chat_page.dart';
 import 'ordersummart_screen.dart';
 
-// Make sure this import path is correct for your Event model
-import '../../models/event_model.dart'; // Ensure this points to the file with the 'Event' class
+import '../../models/event_model.dart';
 import '../other_for_use/expandable_text.dart';
-import '../other_for_use/utils.dart'; // For timeAgo function
 
 class EventDetailScreen extends StatelessWidget {
   final Event event;

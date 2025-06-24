@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../models/event_model.dart';
 import '../event_detail_screens/registration_page.dart';
 import 'guest_page.dart';
 import 'overview_page.dart';
+import '../../providers/home_screens_providers/home_provider.dart';
 
 class ApproveScreen extends StatefulWidget {
   final String eventId;
@@ -13,14 +16,57 @@ class ApproveScreen extends StatefulWidget {
   State<ApproveScreen> createState() => _ApproveScreenState();
 }
 
-class _ApproveScreenState extends State<ApproveScreen>
-    with SingleTickerProviderStateMixin {
+class _ApproveScreenState extends State<ApproveScreen> with SingleTickerProviderStateMixin {
   late final String eventId;
+  Event? selectedEvent;
+  bool isLoading = true;
 
   @override
   void initState() {
     super.initState();
     eventId = widget.eventId;
+    _loadEventDetails();
+  }
+
+  Future<void> _loadEventDetails() async {
+    final homeProvider = Provider.of<HomeProvider>(context, listen: false);
+
+    if (homeProvider.allEvents.isEmpty) {
+      await homeProvider.fetchAll();
+    }
+
+    final event = homeProvider.allEvents.firstWhere(
+          (e) => e.id == eventId && e.isEvent,
+      orElse: () => Event(
+        id: '',
+        title: 'N/A',
+        content: '',
+        location: '',
+        startTime: DateTime.now(),
+        endTime: DateTime.now(),
+        isFree: true,
+        organizerId: '',
+        price: 0.0,
+        likes: [],
+        image: '',
+        media: [],
+        organizer: '',
+        organizerProfile: '',
+        createdAt: DateTime.now(),
+        type: 'event',
+        comments: [],
+      ),
+    );
+
+    if (event.id.isNotEmpty) {
+      setState(() {
+        selectedEvent = event;
+        isLoading = false;
+      });
+    } else {
+      debugPrint('❌ Event not found for ID: $eventId');
+      setState(() => isLoading = false);
+    }
   }
 
   @override
@@ -41,25 +87,21 @@ class _ApproveScreenState extends State<ApproveScreen>
             ],
           ),
         ),
-        body: Builder(
-          builder: (context) {
-            if (eventId.isEmpty) {
-              return const Center(
-                child: Text(
-                  "❌ No event ID found",
-                  style: TextStyle(fontSize: 16, color: Colors.red),
-                ),
-              );
-            }
-
-            return TabBarView(
-              children: [
-                const OverviewTab(),
-                GuestPage(eventId: eventId), // ✅ Pass eventId dynamically
-                const RegistrationPage(),
-              ],
-            );
-          },
+        body: isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : selectedEvent == null
+            ? const Center(
+          child: Text(
+            "❌ Event not found",
+            style: TextStyle(fontSize: 16, color: Colors.red),
+          ),
+        )
+            : TabBarView(
+          children: [
+            OverviewTab(event: selectedEvent!), // ✅ pass loaded Event
+            GuestPage(eventId: selectedEvent!.id), // still pass ID
+            const RegistrationPage(),
+          ],
         ),
       ),
     );
