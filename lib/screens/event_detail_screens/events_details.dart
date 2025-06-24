@@ -1,4 +1,5 @@
 // Make sure this file is named event_detail_screen.dart and the class is EventDetailScreen
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
@@ -498,6 +499,8 @@ class EventDetailScreen extends StatelessWidget {
                   const SizedBox(height: 24),
                   ElevatedButton(
                     onPressed: () {
+                      final String currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
+
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -508,6 +511,8 @@ class EventDetailScreen extends StatelessWidget {
                             eventLocation: eventLocation,
                             eventImageUrl: imageUrl,
                             ticketPrice: price,
+                            eventId: event.id,           // ✅ actual event ID
+                            joinedBy: currentUserId,    // ✅ actual user ID (e.g. from Firebase or auth state)
                           ),
                         ),
                       );

@@ -1,9 +1,9 @@
-import 'package:aayo/screens/approve_event_screens/qr_ticket_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-// Import the new E-Ticket screen
-import 'dart:math';
-
-import '../home_screens/home_screen.dart'; // For generating random data for QR code
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart'; // Import SharedPreferences
+import '../home_screens/home_screen.dart';
 
 class OrderSummaryScreen extends StatefulWidget {
   final String eventName;
@@ -12,6 +12,8 @@ class OrderSummaryScreen extends StatefulWidget {
   final String eventLocation;
   final String eventImageUrl;
   final double ticketPrice;
+  final String eventId;
+  final String joinedBy; // This 'joinedBy' is for passing initial data, not the one for API call
 
   const OrderSummaryScreen({
     Key? key,
@@ -21,6 +23,8 @@ class OrderSummaryScreen extends StatefulWidget {
     required this.eventLocation,
     required this.eventImageUrl,
     required this.ticketPrice,
+    required this.eventId,
+    required this.joinedBy,
   }) : super(key: key);
 
   @override
@@ -29,152 +33,82 @@ class OrderSummaryScreen extends StatefulWidget {
 
 class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
   String? _selectedPaymentMethod = 'Credit/Debit Card';
+  String? _backendUserId; // To store the backend user ID from SharedPreferences
+  bool _hasJoined = false;
+  bool _isJoining = false;
 
-  // Function to show the success dialog
-  void _showSuccessDialog() {
-    // Generate a random QR code data string
-    final String randomQrData =
-        'EventTicket_${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(100000)}';
+  @override
+  void initState() {
+    super.initState();
+    _loadBackendUserId();
+  }
 
-    showDialog(
-      context: context,
-      barrierDismissible: false, // User must tap a button to dismiss
-      builder: (BuildContext dialogContext) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20.0),
-          ),
-          elevation: 0,
-          backgroundColor: Colors.transparent, // Make background transparent
-          child: Container(
-            padding: const EdgeInsets.all(24.0),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20.0),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min, // Wrap content
-              children: [
-                // Checkmark icon
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: const BoxDecoration(
-                    color: Colors.green, // Green background for checkmark
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.check,
-                    color: Colors.white,
-                    size: 40,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                // Congratulations text
-                const Text(
-                  "Congratulations!",
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 16),
-                // Success message
-                Text(
-                  "You have successfully placed order for ${widget.eventName}. Enjoy the event!",
-                  style: TextStyle(
-                    fontSize: 15,
-                    color: Colors.grey[700],
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 32),
-                // View E-Ticket Button
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(dialogContext); // Dismiss dialog
-                      Navigator.pushReplacement(
-                        // Navigate to E-Ticket screen
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ETicketScreen(
-                            eventName: widget.eventName,
-                            eventDate: widget.eventDate,
-                            eventTime: widget.eventTime,
-                            eventLocation: widget.eventLocation,
-                            eventImageUrl: widget.eventImageUrl,
-                            ticketPrice: widget.ticketPrice,
-                            qrCodeData:
-                                randomQrData, // Pass the generated QR data
-                          ),
-                        ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor:
-                          const Color(0xFFE91E63), // Pink accent color
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                    child: const Text(
-                      "View E-Ticket",
-                      style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                // Go to Home Button
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton(
-                    onPressed: () {
-                      Navigator.pop(dialogContext); // Dismiss dialog
-                      Navigator.pushAndRemoveUntil(
-                        // Go to Home and remove all previous routes
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const HomeScreen()),
-                        (Route<dynamic> route) => false,
-                      );
-                    },
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.pinkAccent, // Text color
-                      side: const BorderSide(
-                          color: Colors.pinkAccent), // Border color
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                    child: const Text(
-                      "Go to Home",
-                      style:
-                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+  // Function to load the backend user ID from SharedPreferences
+  Future<void> _loadBackendUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _backendUserId = prefs.getString('backendUserId');
+    });
+  }
+
+  Future<void> joinEvent() async {
+    if (_backendUserId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('User ID not available.')),
+      );
+      return;
+    }
+
+    setState(() => _isJoining = true);
+
+    final url = 'http://srv861272.hstgr.cloud:8000/api/event/join/${widget.eventId}';
+    final headers = {'Content-Type': 'application/json'};
+    final body = {'joinedBy': _backendUserId!};
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: headers,
+        body: json.encode(body),
+      );
+
+      final resBody = json.decode(response.body);
+      debugPrint('📥 Response: ${response.statusCode} - ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        setState(() {
+          _hasJoined = true;
+          _isJoining = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('🎉 Successfully joined')),
         );
-      },
-    );
+      } else if (resBody['message']?.contains('already joined') == true) {
+        setState(() {
+          _hasJoined = true;
+          _isJoining = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('⚠️ You already joined this event')),
+        );
+      } else {
+        setState(() => _isJoining = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('❌ Failed to join: ${resBody['message']}')),
+        );
+      }
+    } catch (e) {
+      setState(() => _isJoining = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // ... (rest of your existing OrderSummaryScreen build method)
-    // Find the ElevatedButton for "Place Order" and update its onPressed:
     return Scaffold(
-      backgroundColor: Colors.grey.shade100, // Light grey background
+      backgroundColor: Colors.grey.shade100,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
@@ -186,10 +120,7 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
         ),
         title: const Text(
           "Order Detail",
-          style: TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
       ),
@@ -201,14 +132,11 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Event Detail Card
                   Card(
-                    margin: EdgeInsets.zero,
                     color: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    elevation: 0,
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: Row(
@@ -270,25 +198,17 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 24),
-
-                  // Order Summary Section
                   const Text(
                     "Order Summary",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 16),
                   Card(
-                    margin: EdgeInsets.zero,
                     color: Colors.grey.shade100,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    elevation: 0,
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: Column(
@@ -296,51 +216,41 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
+                              Text('2x Ticket price',
+                                  style: TextStyle(
+                                      fontSize: 16, color: Colors.grey[700])),
                               Text(
-                                '2x Ticket price', // Example: 2 tickets
-                                style: TextStyle(
-                                    fontSize: 16, color: Colors.grey[700]),
-                              ),
-                              Text(
-                                '\$${(widget.ticketPrice * 2).toStringAsFixed(2)}', // Calculate for 2 tickets
-                                style: TextStyle(
-                                    fontSize: 16, color: Colors.grey[700]),
-                              ),
+                                  '\$${(widget.ticketPrice * 2).toStringAsFixed(2)}',
+                                  style: TextStyle(
+                                      fontSize: 16, color: Colors.grey[700])),
                             ],
                           ),
                           const SizedBox(height: 8),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
+                              Text('Subtotal',
+                                  style: TextStyle(
+                                      fontSize: 16, color: Colors.grey[700])),
                               Text(
-                                'Subtotal',
-                                style: TextStyle(
-                                    fontSize: 16, color: Colors.grey[700]),
-                              ),
-                              Text(
-                                '\$${(widget.ticketPrice * 2).toStringAsFixed(2)}',
-                                style:  TextStyle(
-                                    fontSize: 16, color:Colors.grey[700] ),
-                              ),
+                                  '\$${(widget.ticketPrice * 2).toStringAsFixed(2)}',
+                                  style: TextStyle(
+                                      fontSize: 16, color: Colors.grey[700])),
                             ],
                           ),
                           const SizedBox(height: 8),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                                'Fees',
-                                style: TextStyle(
-                                    fontSize: 16, color: Colors.grey[700]),
-                              ),
-                               Text(
-                                '\$3.00',
-                                style: TextStyle(
-                                    fontSize: 16, color:Colors.grey[700] ),
-                              ),
+                              Text('Fees',
+                                  style: TextStyle(
+                                      fontSize: 16, color: Colors.grey[700])),
+                              const Text('\$3.00',
+                                  style: TextStyle(
+                                      fontSize: 16, color: Colors.grey)),
                             ],
                           ),
-                           Divider(color: Colors.grey[300]),
+                          Divider(color: Colors.grey[300]),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -349,15 +259,13 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.black,
                                 ),
                               ),
                               Text(
-                                '\$${((widget.ticketPrice * 2) + 3.00).toStringAsFixed(2)}', // Total with fees
+                                '\$${((widget.ticketPrice * 2) + 3.00).toStringAsFixed(2)}',
                                 style: const TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.black,
                                 ),
                               ),
                             ],
@@ -366,30 +274,22 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 14),
-
-                  // Payment Method Section
                   const Text(
                     "Payment Method",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 16),
                   Card(
-                    margin: EdgeInsets.zero,
                     color: Colors.grey.shade100,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    elevation: 0,
                     child: Column(
                       children: [
                         ListTile(
-                          leading: Image.asset('images/credit.png',
-                              height: 30), // Replace with your card icon
+                          leading:
+                          Image.asset('images/credit.png', height: 30),
                           title: const Text('Credit/Debit Card'),
                           trailing: Radio<String>(
                             value: 'Credit/Debit Card',
@@ -399,12 +299,11 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
                                 _selectedPaymentMethod = value;
                               });
                             },
-                            activeColor: Colors.pinkAccent, // Match UI color
+                            activeColor: Colors.pinkAccent,
                           ),
                         ),
                         ListTile(
-                          leading: Image.asset('images/paypal.png',
-                              height: 30), // Replace with your PayPal icon
+                          leading: Image.asset('images/paypal.png', height: 30),
                           title: const Text('Paypal'),
                           trailing: Radio<String>(
                             value: 'Paypal',
@@ -414,7 +313,7 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
                                 _selectedPaymentMethod = value;
                               });
                             },
-                            activeColor: Colors.pinkAccent, // Match UI color
+                            activeColor: Colors.pinkAccent,
                           ),
                         ),
                       ],
@@ -424,7 +323,6 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
               ),
             ),
           ),
-          // Persistent Bottom Bar for Price and Place Order Button
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             decoration: BoxDecoration(
@@ -435,45 +333,53 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
               children: [
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
                   children: [
+                    Text('Price', style: TextStyle(color: Colors.grey[700])),
                     Text(
-                      'Price',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[700],
-                      ),
-                    ),
-                    Text(
-                      '\$${((widget.ticketPrice * 2) + 3.00).toStringAsFixed(2)}', // Total price here
+                      '\$${((widget.ticketPrice * 2) + 3.00).toStringAsFixed(2)}',
                       style: const TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black,
                       ),
                     ),
                   ],
                 ),
-                SizedBox(width: 80,),
+                const SizedBox(width: 80),
                 Expanded(
-                  child: ElevatedButton(
-                    onPressed:
-                        _showSuccessDialog, // Call the new dialog function
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor:
-                          const Color(0xFFE91E63), // Pink accent color
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                  child:
+                  GestureDetector(
+                    onTap: (_hasJoined || _isJoining) ? null : joinEvent,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      width: double.infinity,
+                      height: 50,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: _hasJoined
+                            ? Colors.grey.shade600
+                            : _isJoining
+                            ? Colors.pink.shade300
+                            : const Color(0xFFE91E63),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          if (!_hasJoined && !_isJoining)
+                            BoxShadow(
+                              color: Colors.pink.withOpacity(0.3),
+                              offset: const Offset(0, 4),
+                              blurRadius: 6,
+                            ),
+                        ],
                       ),
-                      padding: const EdgeInsets.symmetric(vertical:16),
-                      minimumSize: const Size(double.infinity, 50),
-                    ),
-                    child: const Text(
-                      'Place Order',
-                      style: TextStyle(
-                        fontSize: 18,
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
+                      child: Text(
+                        _isJoining
+                            ? 'Joining...'
+                            : (_hasJoined ? 'Joined' : 'Join'),
+                        style: const TextStyle(
+                          fontSize: 18,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 1.0,
+                        ),
                       ),
                     ),
                   ),
