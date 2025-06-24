@@ -15,73 +15,24 @@ class GuestProvider with ChangeNotifier {
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
-  /// Create an event by the current user and set them as host
-  Future<void> createEventAndAddHost() async {
+  /// Add current user as a host to an existing event
+  Future<void> addCurrentUserAsHost({required String existingEventId}) async {
     try {
       _isLoading = true;
       notifyListeners();
 
+      _eventId = existingEventId;
+
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getString('backendUserId');
-      final userName = prefs.getString('userName') ?? 'Anonymous';
-      final userEmail = prefs.getString('userEmail') ?? '';
-
       if (userId == null || userId.isEmpty) {
         debugPrint('❌ backendUserId not found');
         return;
       }
 
-      // --- Step 1: Create Event ---
-      final createUrl = Uri.parse('$baseUrl/api/post/event');
-      final response = await http.post(
-        createUrl,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          "eventDetails": {
-            "title": "My Event by $userName",
-            "description": "Event created by $userName",
-            "hostedBy": [userId],
-          },
-        }),
-      );
-
-      if (response.statusCode == 201) {
-        final data = jsonDecode(response.body)['data'];
-        _eventId = data['_id'];
-        debugPrint('✅ Event created with ID $_eventId');
-
-        // Update host list in UI
-        _hosts = [
-          {"name": userName, "email": userEmail}
-        ];
-
-        notifyListeners();
-      } else {
-        debugPrint('❌ Failed to create event: ${response.body}');
-      }
-    } catch (e) {
-      debugPrint('🔥 Error in createEventAndAddHost: $e');
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  /// Add current user as a host to the event
-  Future<void> addCurrentUserAsHost() async {
-    if (_eventId == null) {
-      debugPrint('❗ No event ID available');
-      return;
-    }
-
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getString('backendUserId');
-      final userName = prefs.getString('userName') ?? 'Anonymous';
-      final userEmail = prefs.getString('userEmail') ?? '';
-
-      final url = Uri.parse('$baseUrl/api/post/event/$_eventId');
-      final getRes = await http.get(url);
+      // Step 1: Fetch event to get current hosts
+      final getUrl = Uri.parse('$baseUrl/api/post/event/$existingEventId');
+      final getRes = await http.get(getUrl);
 
       if (getRes.statusCode != 200) {
         debugPrint('❌ Failed to fetch event: ${getRes.body}');
@@ -92,25 +43,64 @@ class GuestProvider with ChangeNotifier {
       List<String> currentHosts = List<String>.from(eventData['eventDetails']['hostedBy']);
 
       if (!currentHosts.contains(userId)) {
-        currentHosts.add(userId!);
+        currentHosts.add(userId);
+
+        // Step 2: Update hostedBy
+        final putUrl = Uri.parse('$baseUrl/api/post/event/$existingEventId');
         final putRes = await http.put(
-          url,
+          putUrl,
           headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({"hostedBy": currentHosts}),
+          body: jsonEncode({
+            "eventDetails": {"hostedBy": currentHosts}
+          }),
         );
 
         if (putRes.statusCode == 200) {
-          _hosts.add({'name': userName, 'email': userEmail});
-          debugPrint('✅ Host added');
-          notifyListeners();
+          debugPrint('✅ Host added successfully');
         } else {
           debugPrint('❌ Failed to update event: ${putRes.body}');
         }
       } else {
-        debugPrint('ℹ️ User already a host');
+        debugPrint('ℹ️ User is already a host');
       }
     } catch (e) {
-      debugPrint('🔥 Error in addCurrentUserAsHost: $e');
+      debugPrint('🔥 Error adding host: $e');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Fetch host user info from GET /api/event/hosts/:eventId
+  Future<void> fetchHostNames({required String eventId}) async {
+    _eventId = eventId;
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final url = Uri.parse('$baseUrl/api/event/hosts/$eventId');
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body)['data'];
+
+        _hosts = data.map<Map<String, String>>((host) {
+          return {
+            'name': host['name'] ?? 'No Name',
+            'email': host['email'] ?? 'No Email',
+            'profile': host['profile'] ?? '',
+          };
+        }).toList();
+
+        debugPrint("✅ Fetched ${_hosts.length} hosts");
+      } else {
+        debugPrint('❌ Failed to fetch host names: ${response.body}');
+      }
+    } catch (e) {
+      debugPrint('🔥 Error fetching host names: $e');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 }

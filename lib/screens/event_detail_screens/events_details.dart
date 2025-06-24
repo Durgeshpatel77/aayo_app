@@ -292,8 +292,12 @@ class EventDetailScreen extends StatelessWidget {
                           const SizedBox(width: 12),
                           InkWell(
                             onTap: () {
-                              Navigator.push(context,
-                                  MaterialPageRoute(builder: (_) => ApproveScreen()));
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => ApproveScreen(eventId: event.id),
+                                ),
+                              );
                             },
                             child: Container(
                               width: screenWidth * 0.2,

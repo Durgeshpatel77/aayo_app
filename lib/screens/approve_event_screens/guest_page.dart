@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
 import '../../providers/approve_events_provider/guest_page_provider.dart';
 
-class GuestPage extends StatelessWidget {
-  const GuestPage({super.key});
+class GuestPage extends StatefulWidget {
+  final String eventId;
+  const GuestPage({super.key, required this.eventId});
 
+  @override
+  State<GuestPage> createState() => _GuestPageState();
+}
+
+class _GuestPageState extends State<GuestPage> {
   final List<Map<String, String>> recentGuests = const [
     {'name': 'Alice Johnson', 'email': 'alice@example.com'},
     {'name': 'Bob Smith', 'email': 'bob@example.com'},
@@ -13,64 +18,72 @@ class GuestPage extends StatelessWidget {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeHostData();
+    });
+  }
+
+  Future<void> _initializeHostData() async {
+    final provider = Provider.of<GuestProvider>(context, listen: false);
+    await provider.addCurrentUserAsHost(existingEventId: widget.eventId);
+    await provider.fetchHostNames(eventId: widget.eventId);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final provider = Provider.of<GuestProvider>(context);
     final hosts = provider.hosts;
 
     return Scaffold(
+      appBar: AppBar(title: const Text("Guests & Hosts")),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: ListView(
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  "Recent Registrations",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    // Add guest logic
-                  },
-                  icon: const Icon(Icons.person_add, color: Colors.white),
-                  label: const Text("Add Guest", style: TextStyle(color: Colors.white)),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.pink),
-                ),
-              ],
-            ),
+            _buildHeader("Recent Registrations", () {}),
             const SizedBox(height: 10),
             for (var guest in recentGuests) _buildGuestCard(guest),
             const SizedBox(height: 30),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  "Hosts",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                ElevatedButton.icon(
-                  onPressed: provider.isLoading
-                      ? null
-                      : () async {
-                    await provider.createEventAndAddHost();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Event created and host added')),
-                    );
-                  },
-                  icon: const Icon(Icons.event_available, color: Colors.white),
-                  label: provider.isLoading
-                      ? const Text("Creating...", style: TextStyle(color: Colors.white))
-                      : const Text("Create Event", style: TextStyle(color: Colors.white)),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.pink),
-                ),
-              ],
-            ),
+            _buildHeader("Hosts", () async {
+              await provider.addCurrentUserAsHost(existingEventId: widget.eventId);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Host added to event')),
+              );
+              await provider.fetchHostNames(eventId: widget.eventId);
+            }, isLoading: provider.isLoading),
             const SizedBox(height: 10),
-            for (var host in hosts) _buildHostCard(host),
+            if (hosts.isEmpty)
+              const Center(
+                child: Text(
+                  "❗ No hosts found. Please add a host.",
+                  style: TextStyle(fontSize: 16, color: Colors.grey),
+                ),
+              )
+            else
+              ...hosts.map(_buildHostCard).toList(),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildHeader(String title, VoidCallback onPressed, {bool isLoading = false}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        ElevatedButton.icon(
+          onPressed: isLoading ? null : onPressed,
+          icon: const Icon(Icons.person_add, color: Colors.white),
+          label: Text(
+            isLoading ? "Loading..." : title == "Hosts" ? "Add Host" : "Add Guest",
+            style: const TextStyle(color: Colors.white),
+          ),
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.pink),
+        ),
+      ],
     );
   }
 
@@ -83,14 +96,8 @@ class GuestPage extends StatelessWidget {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            IconButton(
-              onPressed: () {},
-              icon: const Icon(Icons.check, color: Colors.green),
-            ),
-            IconButton(
-              onPressed: () {},
-              icon: const Icon(Icons.close, color: Colors.red),
-            ),
+            IconButton(onPressed: () {}, icon: const Icon(Icons.check, color: Colors.green)),
+            IconButton(onPressed: () {}, icon: const Icon(Icons.close, color: Colors.red)),
           ],
         ),
       ),
@@ -100,7 +107,13 @@ class GuestPage extends StatelessWidget {
   Widget _buildHostCard(Map<String, String> host) {
     return Card(
       child: ListTile(
-        leading: const Icon(Icons.star, color: Colors.blue),
+        leading: host['profile'] != null && host['profile']!.isNotEmpty
+            ? CircleAvatar(
+          backgroundImage: NetworkImage(
+            'http://srv861272.hstgr.cloud:8000/${host['profile']}',
+          ),
+        )
+            : const Icon(Icons.star, color: Colors.blue),
         title: Text(host['name'] ?? ''),
         subtitle: Text(host['email'] ?? ''),
       ),

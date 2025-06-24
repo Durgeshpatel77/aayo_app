@@ -1,15 +1,13 @@
-// lib/screens/ApproveScreen.dart
-
-import 'dart:math';
-
-import 'package:aayo/screens/event_detail_screens/registration_page.dart';
 import 'package:flutter/material.dart';
-// No need to import create_event_model.dart if you're not using a model
+
+import '../event_detail_screens/registration_page.dart';
 import 'guest_page.dart';
-import 'overview_page.dart'; // This is where OverviewTab will be defined
+import 'overview_page.dart';
 
 class ApproveScreen extends StatefulWidget {
-  const ApproveScreen({super.key}); // Remove 'event' if not passing a model
+  final String eventId;
+
+  const ApproveScreen({super.key, required this.eventId});
 
   @override
   State<ApproveScreen> createState() => _ApproveScreenState();
@@ -17,10 +15,18 @@ class ApproveScreen extends StatefulWidget {
 
 class _ApproveScreenState extends State<ApproveScreen>
     with SingleTickerProviderStateMixin {
+  late final String eventId;
+
+  @override
+  void initState() {
+    super.initState();
+    eventId = widget.eventId;
+  }
+
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 3, // Number of tabs
+      length: 3,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Approve Event'),
@@ -35,14 +41,25 @@ class _ApproveScreenState extends State<ApproveScreen>
             ],
           ),
         ),
-        body: const TabBarView(
-          // Make this const if children are const
-          children: [
-            // Directly use OverviewTab without passing event data
-            OverviewTab(),
-            GuestPage(),
-            RegistrationPage(),
-          ],
+        body: Builder(
+          builder: (context) {
+            if (eventId.isEmpty) {
+              return const Center(
+                child: Text(
+                  "❌ No event ID found",
+                  style: TextStyle(fontSize: 16, color: Colors.red),
+                ),
+              );
+            }
+
+            return TabBarView(
+              children: [
+                const OverviewTab(),
+                GuestPage(eventId: eventId), // ✅ Pass eventId dynamically
+                const RegistrationPage(),
+              ],
+            );
+          },
         ),
       ),
     );
