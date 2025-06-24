@@ -10,36 +10,53 @@ import '../../providers/home_screens_providers/home_provider.dart';
 class ApproveScreen extends StatefulWidget {
   final String eventId;
 
-  const ApproveScreen({super.key, required this.eventId});
+  ApproveScreen({super.key, required this.eventId}) {
+    debugPrint("✅ ApproveScreen opened with eventId: '$eventId'");
+  }
 
   @override
   State<ApproveScreen> createState() => _ApproveScreenState();
 }
 
 class _ApproveScreenState extends State<ApproveScreen> with SingleTickerProviderStateMixin {
-  late final String eventId;
   Event? selectedEvent;
   bool isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    eventId = widget.eventId;
-    _loadEventDetails();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadEventDetails(); // ✅ Safe now
+    });
   }
 
   Future<void> _loadEventDetails() async {
-    final homeProvider = Provider.of<HomeProvider>(context, listen: false);
+    final id = widget.eventId.trim();
 
-    if (homeProvider.allEvents.isEmpty) {
-      await homeProvider.fetchAll();
+    if (id.isEmpty) {
+      debugPrint("❌ ApproveScreen received an EMPTY eventId. Aborting.");
+      setState(() => isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Invalid event ID ❗")),
+      );
+      return;
     }
 
-    final event = homeProvider.allEvents.firstWhere(
-          (e) => e.id == eventId && e.isEvent,
+    final homeProvider = Provider.of<HomeProvider>(context, listen: false);
+
+    debugPrint("🔍 Fetching all events...");
+    await homeProvider.fetchAll();
+
+    debugPrint("🔍 Searching for event ID: '$id'");
+    for (final e in homeProvider.allEvents) {
+      debugPrint("➡️ Event in list: ${e.id} - ${e.title}");
+    }
+
+    Event? event = homeProvider.allEvents.firstWhere(
+          (e) => e.id == id,
       orElse: () => Event(
         id: '',
-        title: 'N/A',
+        title: '',
         content: '',
         location: '',
         startTime: DateTime.now(),
@@ -58,23 +75,47 @@ class _ApproveScreenState extends State<ApproveScreen> with SingleTickerProvider
       ),
     );
 
-    if (event.id.isNotEmpty) {
+    // ✅ Fallback: fetch from API directly if not found
+    if (event.id.isEmpty) {
+      debugPrint("🔁 Trying fallback fetch by ID...");
+      event = await homeProvider.fetchEventById(id);
+    }
+
+    if (event != null && event.id.isNotEmpty && event.type == 'event') {
       setState(() {
         selectedEvent = event;
         isLoading = false;
       });
     } else {
-      debugPrint('❌ Event not found for ID: $eventId');
+      debugPrint("❌ Still no matching event found by ID: $id");
       setState(() => isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Event not found ❗")),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (selectedEvent == null || selectedEvent!.id.isEmpty) {
+      return const Scaffold(
+        body: Center(
+          child: Text("❌ Event not found", style: TextStyle(fontSize: 16, color: Colors.red)),
+        ),
+      );
+    }
+
     return DefaultTabController(
       length: 3,
       child: Scaffold(
         appBar: AppBar(
+          backgroundColor: Colors.white,
           title: const Text('Approve Event'),
           bottom: const TabBar(
             labelStyle: TextStyle(color: Colors.pink),
@@ -87,19 +128,10 @@ class _ApproveScreenState extends State<ApproveScreen> with SingleTickerProvider
             ],
           ),
         ),
-        body: isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : selectedEvent == null
-            ? const Center(
-          child: Text(
-            "❌ Event not found",
-            style: TextStyle(fontSize: 16, color: Colors.red),
-          ),
-        )
-            : TabBarView(
+        body: TabBarView(
           children: [
-            OverviewTab(event: selectedEvent!), // ✅ pass loaded Event
-            GuestPage(eventId: selectedEvent!.id), // still pass ID
+            OverviewTab(event: selectedEvent!),
+            GuestPage(eventId: selectedEvent!.id),
             const RegistrationPage(),
           ],
         ),

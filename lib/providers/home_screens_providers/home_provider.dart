@@ -24,6 +24,7 @@ class HomeProvider extends ChangeNotifier {
 
   Future<void> fetchAll() async {
     _loading = true;
+
     notifyListeners();
 
     List<Event> combined = [];
@@ -153,6 +154,30 @@ class HomeProvider extends ChangeNotifier {
         ..addAll(comments);
       notifyListeners(); // this updates HomeTabContent
     }
+  }
+  Future<Event?> fetchEventById(String id) async {
+    final url = Uri.parse("$_base/$id");
+
+    try {
+      final response = await http.get(url);
+      debugPrint("📡 fetchEventById response: ${response.statusCode}");
+
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+        debugPrint("📦 fetchEventById JSON: $json");
+
+        final data = json['data'];
+        if (data != null && data is Map<String, dynamic>) {
+          return Event.fromJson(data); // ✅ Use data directly
+        } else {
+          debugPrint("❌ 'data' missing or invalid.");
+        }
+      }
+    } catch (e) {
+      debugPrint("❌ Exception in fetchEventById: $e");
+    }
+
+    return null;
   }
 
 }

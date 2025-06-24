@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../models/event_registration_model.dart';
+
 class GuestProvider with ChangeNotifier {
   final String baseUrl = 'http://srv861272.hstgr.cloud:8000';
 
@@ -14,6 +16,10 @@ class GuestProvider with ChangeNotifier {
 
   bool _isLoading = false;
   bool get isLoading => _isLoading;
+
+  List<EventRegistration> _registrations = [];
+  List<EventRegistration> get registrations => _registrations;
+
 
   /// Add current user as a host to an existing event
   Future<void> addCurrentUserAsHost({required String existingEventId}) async {
@@ -103,4 +109,27 @@ class GuestProvider with ChangeNotifier {
       notifyListeners();
     }
   }
+
+  Future<void> fetchEventRegistrations(String eventId) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      final url = 'http://srv861272.hstgr.cloud:8000/api/event/registrations/$eventId';
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body);
+        final List raw = (body['data'] is List) ? body['data'] : [body['data']];
+
+        _registrations = raw.map((e) => EventRegistration.fromJson(e)).toList();
+      } else {
+        _registrations = [];
+      }
+    } catch (e) {
+      _registrations = [];
+    }
+    _isLoading = false;
+    notifyListeners();
+  }
+
 }

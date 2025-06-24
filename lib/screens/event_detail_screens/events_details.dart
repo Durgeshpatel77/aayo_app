@@ -253,7 +253,7 @@ class EventDetailScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (event.type == 'event')
+                  if (event.type == "event")
                     Container(
                       width: double.infinity,
                       padding: EdgeInsets.symmetric(
@@ -288,14 +288,23 @@ class EventDetailScreen extends StatelessWidget {
                           ),
                           const SizedBox(width: 12),
                           InkWell(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => ApproveScreen(eventId: event.id),
-                                ),
-                              );
-                            },
+                              onTap: () {
+                                  debugPrint("👆 Tapped: ${event.id} | ${event.title} | type: ${event.type}");
+
+                                  if (event.id.isNotEmpty && event.type == 'event') {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => ApproveScreen(eventId: event.id),
+                                      ),
+                                    );
+                                  } else {
+                                    debugPrint("❌ Blocked navigation to ApproveScreen. Not a valid event.");
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text("This is not a valid event.")),
+                                    );
+                                  }
+                              },
                             child: Container(
                               width: screenWidth * 0.2,
                               height: screenHeight * 0.04,

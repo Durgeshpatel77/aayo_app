@@ -116,10 +116,8 @@ class _EventsscreenState extends State<Eventsscreen> {
                           location: event.eventDetails?.city ?? "Unknown",
                           price: event.eventDetails?.price ?? 0.0,
                           type: event.type ?? "event",
-                          organizerId: (event.user as UserInfo).id, // possible error here
-                          comments: event.comments
-                              .map((e) => CommentModel.fromJson(e as Map<String, dynamic>))
-                              .toList(),
+                          organizerId: (event.user as UserInfo).id,
+                          comments: event.comments.map((e) => CommentModel.fromJson(e)).toList(),
                         );
 
                         Navigator.push(
