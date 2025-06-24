@@ -74,6 +74,7 @@ class _UserProfileListState extends State<UserProfileList> with SingleTickerProv
   @override
   Widget build(BuildContext context) {
     return RefreshIndicator(
+      color: Colors.pink,
       onRefresh: _loadData,
       child: Consumer<FetchEditUserProvider>(
         builder: (_, provider, __) {

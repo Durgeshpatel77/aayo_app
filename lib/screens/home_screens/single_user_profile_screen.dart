@@ -5,7 +5,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/create_event_model.dart';
 import '../../providers/home_screens_providers/add_post_provider.dart';
 import '../../providers/onording_login_screens_providers/user_profile_provider.dart';
-import '../../providers/setting_screens_providers/event_provider.dart';
 
 class SingleUserProfileScreen extends StatefulWidget {
   final String userId;
@@ -36,9 +35,7 @@ class _SingleUserProfileScreenState extends State<SingleUserProfileScreen> with 
     final prefs = await SharedPreferences.getInstance();
     backendUserId = prefs.getString('backendUserId');
     await _fetchUserProfileData();
-    await _fetchUserPostImages();
-    await _fetchUserEvents(); // ✅ add this
-
+    _fetchUserPostImages();
   }
 
   Future<void> _fetchUserProfileData() async {
@@ -58,7 +55,8 @@ class _SingleUserProfileScreenState extends State<SingleUserProfileScreen> with 
         _userProfileData['following'] = following;
 
         // ✅ You are following this profile if YOUR ID is in THEIR followers list
-        isFollowing = backendUserId != null && followers.contains(backendUserId);
+        isFollowing = backendUserId != null &&
+            followers.any((user) => user['_id'] == backendUserId);
         _isLoading = false;
       });
     } catch (e) {
@@ -74,20 +72,6 @@ class _SingleUserProfileScreenState extends State<SingleUserProfileScreen> with 
       setState(() => _userPostPhotos = images);
     } catch (_) {}
   }
-  Future<void> _fetchUserEvents() async {
-    try {
-      final eventsProvider = Provider.of<EventCreationProvider>(context, listen: false);
-      await eventsProvider.fetchUserPostsFromPrefs(type: 'event');
-      final allEvents = eventsProvider.allEvents;
-
-      final userEvents = allEvents.where((e) => e.user.id == widget.userId).toList();
-
-      setState(() => _userEventPosts = userEvents);
-    } catch (e) {
-      debugPrint('Failed to fetch user events: $e');
-    }
-  }
-
 
   String _fullImageUrl(String path) {
     const baseUrl = 'http://srv861272.hstgr.cloud:8000';
@@ -102,18 +86,30 @@ class _SingleUserProfileScreenState extends State<SingleUserProfileScreen> with 
     if (!mounted) return;
 
     if (result['success']) {
-      final newFollowers = result['targetFollowers'] as List<dynamic>;
-
       setState(() {
-        // ✅ Update the current profile's followers
-        _userProfileData['followers'] = newFollowers;
+        List<dynamic> followers = _userProfileData['followers'] ?? [];
 
-        // ✅ Set whether current user is following this profile
-        isFollowing = backendUserId != null && newFollowers.contains(backendUserId);
+        final currentUserId = backendUserId;
+        final isAlreadyFollowing = followers.any((user) => user['_id'] == currentUserId);
+
+        if (isAlreadyFollowing) {
+          // ✅ UNFOLLOW
+          followers.removeWhere((user) => user['_id'] == currentUserId);
+          isFollowing = false;
+        } else {
+          // ✅ FOLLOW
+          followers.add({
+            '_id': currentUserId,
+            'name': 'You',
+            'profile': '',
+          });
+          isFollowing = true;
+        }
+
+        _userProfileData['followers'] = followers;
       });
     }
 
-    // ✅ Show follow/unfollow status message
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(result['message'] ?? 'Action completed')),
     );
@@ -184,7 +180,8 @@ class _SingleUserProfileScreenState extends State<SingleUserProfileScreen> with 
                           backgroundColor: isFollowing ? Colors.grey : Colors.pink,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
-                        child: Text(isFollowing ? 'Unfollow' : 'Follow', style: const TextStyle(color: Colors.white)),
+                        child: Text(isFollowing ? 'Unfollow' : 'Follow',
+                            style: const TextStyle(color: Colors.white)),
                       ),
                     ),
                     const SizedBox(width: 10),

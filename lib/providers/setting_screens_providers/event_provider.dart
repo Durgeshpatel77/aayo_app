@@ -414,7 +414,7 @@ class EventCreationProvider with ChangeNotifier {
         url += '&type=$type';
       }
 
-      debugPrint("Fetching user posts: $url");
+      //debugPrint("Fetching user posts: $url");
 
       final response = await http.get(
         Uri.parse(url),
@@ -422,7 +422,7 @@ class EventCreationProvider with ChangeNotifier {
       );
 
       debugPrint("Fetched User Posts Status Code: ${response.statusCode}");
-      debugPrint("Fetched User Posts Raw Body: ${response.body}");
+     // debugPrint("Fetched User Posts Raw Body: ${response.body}");
 
       final decoded = json.decode(response.body);
 

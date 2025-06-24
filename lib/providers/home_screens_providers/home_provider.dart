@@ -52,7 +52,7 @@ class HomeProvider extends ChangeNotifier {
     final url = Uri.parse("$_base?type=$type");
 
     final response = await http.get(url);
-    debugPrint("API RESPONSE ($type): ${response.statusCode} ${response.body}");
+    debugPrint("API RESPONSE HOME PAGE($type): ${response.statusCode}");
 
     if (response.statusCode == 200) {
       final Map<String, dynamic> json = jsonDecode(response.body);
