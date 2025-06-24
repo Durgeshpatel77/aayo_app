@@ -1,4 +1,3 @@
-// models/event_model.dart (or create_event_model.dart)
 import 'dart:io';
 import 'package:flutter/material.dart';
 
@@ -11,8 +10,8 @@ class UserInfo {
 
   factory UserInfo.fromJson(Map<String, dynamic> json) {
     return UserInfo(
-      id: json['_id'] as String,
-      name: json['name'] as String,
+      id: json['_id'] as String? ?? '',
+      name: json['name'] as String? ?? '',
       profile: json['profile'] as String?,
     );
   }
@@ -45,16 +44,16 @@ class EventDetails {
 
   factory EventDetails.fromJson(Map<String, dynamic> json) {
     return EventDetails(
-      title: json['title'] as String,
-      startTime: DateTime.parse(json['startTime'] as String),
-      endTime: DateTime.parse(json['endTime'] as String),
-      location: json['location'] as String,
-      city: json['city'] as String,
-      latitude: (json['latitude'] as num).toDouble(),
-      longitude: (json['longitude'] as num).toDouble(),
-      description: json['description'] as String,
-      isFree: json['isFree'] as bool,
-      price: (json['price'] as num).toDouble(),
+      title: json['title'] as String? ?? '',
+      startTime: DateTime.tryParse(json['startTime'] ?? '') ?? DateTime.now(),
+      endTime: DateTime.tryParse(json['endTime'] ?? '') ?? DateTime.now(),
+      location: json['location'] as String? ?? '',
+      city: json['city'] as String? ?? '',
+      latitude: (json['latitude'] as num?)?.toDouble() ?? 0.0,
+      longitude: (json['longitude'] as num?)?.toDouble() ?? 0.0,
+      description: json['description'] as String? ?? '',
+      isFree: json['isFree'] as bool? ?? true,
+      price: (json['price'] as num?)?.toDouble() ?? 0.0,
     );
   }
 }
@@ -86,7 +85,6 @@ class VenueDetails {
 }
 
 class EventModel {
-  // Fields for created events (from your previous EventCreationProvider)
   final String name;
   final DateTime? startDate;
   final TimeOfDay? startTime;
@@ -96,9 +94,8 @@ class EventModel {
   final String? description;
   final String? ticketType;
   final String? ticketPrice;
-  final File? image; // For local image file before upload
+  final File? image;
 
-  // Fields from API response (for fetched events)
   final EventDetails? eventDetails;
   final VenueDetails? venueDetails;
   final String id;
@@ -106,14 +103,13 @@ class EventModel {
   final UserInfo user;
   final String title;
   final String content;
-  final List<String> media; // List of image URLs from server
+  final List<String> media;
   final List<dynamic> likes;
   final List<dynamic> comments;
   final DateTime createdAt;
   final DateTime updatedAt;
 
   EventModel({
-    // Fields for creation (optional if only parsing from API)
     this.name = '',
     this.startDate,
     this.startTime,
@@ -124,8 +120,6 @@ class EventModel {
     this.ticketType,
     this.ticketPrice,
     this.image,
-
-    // Fields from API
     this.eventDetails,
     this.venueDetails,
     required this.id,
@@ -141,59 +135,59 @@ class EventModel {
   });
 
   factory EventModel.fromJson(Map<String, dynamic> json) {
-    // Determine if it's an event or venue post based on 'type'
+    final type = json['type'] as String? ?? '';
+    final eventDetailsJson = json['eventDetails'] as Map<String, dynamic>?;
+    final venueDetailsJson = json['venueDetails'] as Map<String, dynamic>?;
+
     EventDetails? eventDetails;
     VenueDetails? venueDetails;
 
-    if (json['type'] == 'event') {
-      eventDetails = EventDetails.fromJson(json['eventDetails']);
-    } else if (json['type'] == 'venue') {
-      venueDetails = VenueDetails.fromJson(json['venueDetails']);
+    if (type == 'event' && eventDetailsJson != null) {
+      eventDetails = EventDetails.fromJson(eventDetailsJson);
+    } else if (type == 'venue' && venueDetailsJson != null) {
+      venueDetails = VenueDetails.fromJson(venueDetailsJson);
     }
 
+    final start = type == 'event' && eventDetailsJson != null
+        ? DateTime.tryParse(eventDetailsJson['startTime'] ?? '')
+        : null;
+    final end = type == 'event' && eventDetailsJson != null
+        ? DateTime.tryParse(eventDetailsJson['endTime'] ?? '')
+        : null;
+
     return EventModel(
-      // Fields from API
       eventDetails: eventDetails,
       venueDetails: venueDetails,
-      id: json['_id'] as String,
-      type: json['type'] as String,
-      user: UserInfo.fromJson(json['user']),
-      title: json['title'] as String,
-      content: json['content'] as String,
+      id: json['_id'] as String? ?? '',
+      type: type,
+      user: UserInfo.fromJson(json['user'] ?? {}),
+      title: json['title'] as String? ?? '',
+      content: json['content'] as String? ?? '',
       media: List<String>.from(json['media'] ?? []),
       likes: List<dynamic>.from(json['likes'] ?? []),
       comments: List<dynamic>.from(json['comments'] ?? []),
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      updatedAt: DateTime.parse(json['updatedAt'] as String),
+      createdAt: DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
+      updatedAt: DateTime.tryParse(json['updatedAt'] ?? '') ?? DateTime.now(),
 
-      // Dummy values for the old creation fields, or you can make them nullable
-      // if this model is primarily for fetched data.
-      name: json['title'] as String, // Use title from API as name
-      startDate: (json['type'] == 'event' && json['eventDetails'] != null)
-          ? DateTime.parse(json['eventDetails']['startTime'] as String)
+      // creation-only fields
+      name: json['title'] as String? ?? '',
+      startDate: start,
+      startTime: start != null ? TimeOfDay.fromDateTime(start) : null,
+      endDate: end,
+      endTime: end != null ? TimeOfDay.fromDateTime(end) : null,
+      location: type == 'event' && eventDetailsJson != null
+          ? eventDetailsJson['location'] as String? ?? ''
+          : (type == 'venue' && venueDetailsJson != null
+          ? venueDetailsJson['location'] as String? ?? ''
+          : null),
+      description: json['content'] as String? ?? '',
+      ticketType: (type == 'event' && eventDetailsJson != null)
+          ? ((eventDetailsJson['isFree'] as bool? ?? true) ? 'Free' : 'Paid')
           : null,
-      startTime: (json['type'] == 'event' && json['eventDetails'] != null)
-          ? TimeOfDay.fromDateTime(DateTime.parse(json['eventDetails']['startTime'] as String))
+      ticketPrice: (type == 'event' && eventDetailsJson != null)
+          ? (eventDetailsJson['price']?.toString() ?? '0')
           : null,
-      endDate: (json['type'] == 'event' && json['eventDetails'] != null)
-          ? DateTime.parse(json['eventDetails']['endTime'] as String)
-          : null,
-      endTime: (json['type'] == 'event' && json['eventDetails'] != null)
-          ? TimeOfDay.fromDateTime(DateTime.parse(json['eventDetails']['endTime'] as String))
-          : null,
-      location: (json['type'] == 'event' && json['eventDetails'] != null)
-          ? json['eventDetails']['location'] as String
-          : (json['type'] == 'venue' && json['venueDetails'] != null)
-          ? json['venueDetails']['location'] as String
-          : null,
-      description: json['content'] as String,
-      ticketType: (json['type'] == 'event' && json['eventDetails'] != null)
-          ? (json['eventDetails']['isFree'] ? 'Free' : 'Paid')
-          : null,
-      ticketPrice: (json['type'] == 'event' && json['eventDetails'] != null)
-          ? (json['eventDetails']['price'] as num).toString()
-          : null,
-      image: null, // Fetched image is handled by 'media' URLs
+      image: null,
     );
   }
 }

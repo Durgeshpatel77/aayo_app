@@ -414,15 +414,13 @@ class EventCreationProvider with ChangeNotifier {
         url += '&type=$type';
       }
 
-      //debugPrint("Fetching user posts: $url");
-
       final response = await http.get(
         Uri.parse(url),
         headers: {'Content-Type': 'application/json'},
       );
 
-      debugPrint("Fetched User Posts Status Code: ${response.statusCode}");
-     // debugPrint("Fetched User Posts Raw Body: ${response.body}");
+      debugPrint("🛰 Status Code: ${response.statusCode}");
+      debugPrint("📦 Raw Body: ${response.body}");
 
       final decoded = json.decode(response.body);
 
@@ -431,23 +429,29 @@ class EventCreationProvider with ChangeNotifier {
             decoded['data'] != null &&
             decoded['data']['posts'] != null) {
           final List<dynamic> postsJson = decoded['data']['posts'];
+
+          for (var i = 0; i < postsJson.length; i++) {
+            debugPrint("🔍 Post[$i]: ${jsonEncode(postsJson[i])}");
+          }
+
           _allEvents.addAll(
             postsJson.map((json) => EventModel.fromJson(json)).toList(),
           );
-          _errorMessage = null; // reset error
+          _errorMessage = null;
         } else {
           _errorMessage = "Failed to parse posts: ${decoded['message']}";
         }
       } else if (response.statusCode == 404 &&
           decoded['message'] == 'Posts not found') {
-        // ✅ No events/posts available — treat as empty, not error
         _allEvents.clear();
         _errorMessage = null;
       } else {
         _errorMessage = 'Error ${response.statusCode}: ${decoded['message']}';
       }
-    } catch (e) {
-      _errorMessage = 'Network error during user post fetch: $e';
+    } catch (e, st) {
+      _errorMessage = '❌ Network error during user post fetch: $e';
+      debugPrint(_errorMessage!);
+      debugPrint('📍 Stack trace:\n$st');
     } finally {
       _setFetchingEvents(false);
     }

@@ -1,32 +1,27 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../../providers/approve_events_provider/guest_page_provider.dart';
 
 class GuestPage extends StatelessWidget {
   const GuestPage({super.key});
 
-  // List of recent guests
   final List<Map<String, String>> recentGuests = const [
     {'name': 'Alice Johnson', 'email': 'alice@example.com'},
     {'name': 'Bob Smith', 'email': 'bob@example.com'},
     {'name': 'Catherine Lee', 'email': 'catherine@example.com'},
   ];
 
-  // List of hosts
-  final List<Map<String, String>> hosts = const [
-    {'name': 'Daniel Roy', 'email': 'daniel@eventhost.com'},
-    {'name': 'Emily Rose', 'email': 'emily@eventhost.com'},
-  ];
-
   @override
   Widget build(BuildContext context) {
+    final provider = Provider.of<GuestProvider>(context);
+    final hosts = provider.hosts;
+
     return Scaffold(
-      // Body content
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: ListView(
           children: [
-            // --- Recent Registrations Section ---
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -36,22 +31,17 @@ class GuestPage extends StatelessWidget {
                 ),
                 ElevatedButton.icon(
                   onPressed: () {
-                    // Add Guest logic
+                    // Add guest logic
                   },
-                  icon: const Icon(Icons.person_add,color: Colors.white,),
-                  label: const Text("Add Guest",style: TextStyle(color: Colors.white),),
+                  icon: const Icon(Icons.person_add, color: Colors.white),
+                  label: const Text("Add Guest", style: TextStyle(color: Colors.white)),
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.pink),
-
                 ),
               ],
             ),
             const SizedBox(height: 10),
-            // Show guest cards
             for (var guest in recentGuests) _buildGuestCard(guest),
-
             const SizedBox(height: 30),
-
-            // --- Hosts Section ---
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -60,18 +50,23 @@ class GuestPage extends StatelessWidget {
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 ElevatedButton.icon(
-                  onPressed: () {
-                    // Add Host logic
+                  onPressed: provider.isLoading
+                      ? null
+                      : () async {
+                    await provider.createEventAndAddHost();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Event created and host added')),
+                    );
                   },
-                  icon: const Icon(Icons.add,color: Colors.white,),
-                  label: const Text("Add Host",style: TextStyle(color: Colors.white),),
+                  icon: const Icon(Icons.event_available, color: Colors.white),
+                  label: provider.isLoading
+                      ? const Text("Creating...", style: TextStyle(color: Colors.white))
+                      : const Text("Create Event", style: TextStyle(color: Colors.white)),
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.pink),
-
                 ),
               ],
             ),
             const SizedBox(height: 10),
-            // Show host cards
             for (var host in hosts) _buildHostCard(host),
           ],
         ),
@@ -79,26 +74,21 @@ class GuestPage extends StatelessWidget {
     );
   }
 
-  // Widget for guest cards
   Widget _buildGuestCard(Map<String, String> guest) {
     return Card(
       child: ListTile(
-        leading: const Icon(Icons.person,color: Colors.pink,),
+        leading: const Icon(Icons.person, color: Colors.pink),
         title: Text(guest['name'] ?? ''),
         subtitle: Text(guest['email'] ?? ''),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             IconButton(
-              onPressed: () {
-                // Approve guest
-              },
+              onPressed: () {},
               icon: const Icon(Icons.check, color: Colors.green),
             ),
             IconButton(
-              onPressed: () {
-                // Deny guest
-              },
+              onPressed: () {},
               icon: const Icon(Icons.close, color: Colors.red),
             ),
           ],
@@ -107,11 +97,10 @@ class GuestPage extends StatelessWidget {
     );
   }
 
-  // Widget for host cards
   Widget _buildHostCard(Map<String, String> host) {
     return Card(
       child: ListTile(
-        leading: const Icon(Icons.star,color: Colors.blue,),
+        leading: const Icon(Icons.star, color: Colors.blue),
         title: Text(host['name'] ?? ''),
         subtitle: Text(host['email'] ?? ''),
       ),

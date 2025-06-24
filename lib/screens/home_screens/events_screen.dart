@@ -102,31 +102,36 @@ class _EventsscreenState extends State<Eventsscreen> {
 
                   return GestureDetector(
                     onTap: () {
-                      final convertedEvent = Event(
-                        title: event.title,
-                        id: event.id,
-                        content: event.content,
-                        createdAt: event.createdAt,
-                        endTime: event.eventDetails?.endTime ?? DateTime.now(),
-                        startTime: event.eventDetails?.startTime ?? DateTime.now(),
-                        image: event.media.isNotEmpty ? event.media.first : '',
-                        isFree: event.eventDetails?.isFree ?? true,
-                        likes: event.likes.map((e) => e.toString()).toList(),
-                        location: event.eventDetails?.city ?? "Unknown",
-                        price: event.eventDetails?.price ?? 0.0,
-                        type: event.type ?? "event",
-                        organizerId: (event.user as UserInfo).id,
-                        comments: event.comments
-                            .map((e) => CommentModel.fromJson(e as Map<String, dynamic>))
-                            .toList(),
-                      );
+                      try {
+                        final convertedEvent = Event(
+                          title: event.title,
+                          id: event.id,
+                          content: event.content,
+                          createdAt: event.createdAt,
+                          endTime: event.eventDetails?.endTime ?? DateTime.now(),
+                          startTime: event.eventDetails?.startTime ?? DateTime.now(),
+                          image: event.media.isNotEmpty ? event.media.first : '',
+                          isFree: event.eventDetails?.isFree ?? true,
+                          likes: event.likes.map((e) => e.toString()).toList(),
+                          location: event.eventDetails?.city ?? "Unknown",
+                          price: event.eventDetails?.price ?? 0.0,
+                          type: event.type ?? "event",
+                          organizerId: (event.user as UserInfo).id, // possible error here
+                          comments: event.comments
+                              .map((e) => CommentModel.fromJson(e as Map<String, dynamic>))
+                              .toList(),
+                        );
 
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => EventDetailScreen(event: convertedEvent),
-                        ),
-                      );
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => EventDetailScreen(event: convertedEvent),
+                          ),
+                        );
+                      } catch (e, stackTrace) {
+                        debugPrint('❌ Error converting event: $e');
+                        debugPrint('📍 Stack trace: $stackTrace');
+                      }
                     },
                     child: Container(
                       margin: EdgeInsets.only(bottom: screenHeight * 0.025),
