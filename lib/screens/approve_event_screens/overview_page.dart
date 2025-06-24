@@ -15,8 +15,14 @@ class OverviewTab extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Card(
-          elevation: 6,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          color: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(
+              color: Colors.pink.shade100, // or any color you prefer
+              width: 1,
+            ),
+          ),
           child: Padding(
             padding: const EdgeInsets.all(20.0),
             child: Column(
@@ -25,22 +31,29 @@ class OverviewTab extends StatelessWidget {
                 Text(
                   'Event Overview',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.pink.shade400,
-                  ),
+                        fontWeight: FontWeight.bold,
+                        color: Colors.pink.shade400,
+                      ),
                 ),
                 const SizedBox(height: 20),
                 _buildInfoTile(Icons.event, 'Event Name', event.title),
                 _buildInfoTile(Icons.location_on, 'Location', event.location),
-                _buildInfoTile(Icons.calendar_today, 'Start Date', _formatDate(event.startTime)),
-                _buildInfoTile(Icons.calendar_month, 'End Date', _formatDate(event.endTime)),
+                _buildInfoTile(Icons.calendar_today, 'Start Date',
+                    _formatDate(event.startTime)),
+                _buildInfoTile(Icons.calendar_month, 'End Date',
+                    _formatDate(event.endTime)),
                 _buildInfoTile(Icons.people, 'Max Guests', '$maxGuests'),
                 const SizedBox(height: 20),
-                const Divider(),
+                Divider(
+                  color: Colors.pink.shade100,
+                ),
                 const SizedBox(height: 20),
                 Text(
                   'Description',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -48,11 +61,16 @@ class OverviewTab extends StatelessWidget {
                   style: const TextStyle(fontSize: 16, height: 1.5),
                 ),
                 const SizedBox(height: 20),
-                const Divider(),
+                Divider(
+                  color: Colors.pink.shade100,
+                ),
                 const SizedBox(height: 20),
                 Text(
                   'Guest Capacity',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 12),
                 _buildGuestCapacityBar(currentGuests, maxGuests, context),
@@ -82,7 +100,10 @@ class OverviewTab extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.grey),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: Colors.grey),
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -106,8 +127,12 @@ class OverviewTab extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('$current Guests', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
-            Text('Capacity: $max', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+            Text('$current Guests',
+                style:
+                    const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+            Text('Capacity: $max',
+                style:
+                    const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
           ],
         ),
         const SizedBox(height: 10),

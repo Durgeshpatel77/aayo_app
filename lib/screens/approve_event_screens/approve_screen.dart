@@ -128,6 +128,7 @@ class _ApproveScreenState extends State<ApproveScreen> with SingleTickerProvider
             ],
           ),
         ),
+        backgroundColor: Colors.white,
         body: TabBarView(
           children: [
             OverviewTab(event: selectedEvent!),
