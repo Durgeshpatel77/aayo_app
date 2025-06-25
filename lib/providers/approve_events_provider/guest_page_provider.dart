@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+// import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/event_registration_model.dart';
 
@@ -84,24 +85,48 @@ class GuestProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final url = Uri.parse('$baseUrl/api/event/hosts/$eventId');
-      final response = await http.get(url);
+      // ✅ Corrected fetch event (to get creator)
+      final eventUrl = Uri.parse('$baseUrl/api/post/$eventId');
+      final eventRes = await http.get(eventUrl);
+      if (eventRes.statusCode != 200) {
+        debugPrint('❌ Failed to fetch event: ${eventRes.body}');
+        return;
+      }
 
-      if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body)['data'];
+      final eventData = jsonDecode(eventRes.body)['data'];
+      final creator = eventData['user'];
+      final creatorMap = {
+        'id': (creator['_id'] ?? '').toString(),
+        'name': (creator['name'] ?? 'Creator').toString(),
+        'email': (creator['email'] ?? '').toString(),
+        'profile': (creator['profile'] ?? '').toString(),
+      };
 
-        _hosts = data.map<Map<String, String>>((host) {
+      // Fetch existing hosts
+      final hostUrl = Uri.parse('$baseUrl/api/event/hosts/$eventId');
+      final hostRes = await http.get(hostUrl);
+
+      List<Map<String, String>> loadedHosts = [];
+      if (hostRes.statusCode == 200) {
+        final List<dynamic> hostData = jsonDecode(hostRes.body)['data'];
+        loadedHosts = hostData.map<Map<String, String>>((host) {
           return {
-            'name': host['name'] ?? 'No Name',
-            'email': host['email'] ?? 'No Email',
-            'profile': host['profile'] ?? '',
+            'id': (host['_id'] ?? '').toString(),
+            'name': (host['name'] ?? 'No Name').toString(),
+            'email': (host['email'] ?? 'No Email').toString(),
+            'profile': (host['profile'] ?? '').toString(),
           };
         }).toList();
-
-        debugPrint("✅ Fetched ${_hosts.length} hosts");
-      } else {
-        debugPrint('❌ Failed to fetch host names: ${response.body}');
       }
+
+      // Add creator if not already present
+      final alreadyAdded = loadedHosts.any((host) => host['id'] == creatorMap['id']);
+      if (!alreadyAdded) {
+        loadedHosts.insert(0, creatorMap);
+      }
+
+      _hosts = loadedHosts;
+      debugPrint("✅ Fetched ${_hosts.length} hosts (including creator)");
     } catch (e) {
       debugPrint('🔥 Error fetching host names: $e');
     } finally {

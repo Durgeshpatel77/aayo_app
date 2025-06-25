@@ -99,7 +99,7 @@ class _ApproveScreenState extends State<ApproveScreen> with SingleTickerProvider
   Widget build(BuildContext context) {
     if (isLoading) {
       return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+        body: Center(child: CircularProgressIndicator(color: Colors.pink,)),
       );
     }
 

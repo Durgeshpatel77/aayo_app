@@ -50,7 +50,7 @@ class HomeProvider extends ChangeNotifier {
   }
 
   Future<List<Event>> _fetchByType(String type) async {
-    final url = Uri.parse("$_base?type=$type");
+    final url = Uri.parse("$_base?type=$type&limit=1000000000000000");
 
     final response = await http.get(url);
     debugPrint("API RESPONSE HOME PAGE($type): ${response.statusCode}");
@@ -61,6 +61,7 @@ class HomeProvider extends ChangeNotifier {
 
       if (data != null && data['posts'] is List) {
         final List<dynamic> posts = data['posts'];
+        debugPrint("🔢 ${posts.length} $type(s) fetched");
         return posts.map((item) => Event.fromJson(item)).toList();
       } else {
         throw Exception(
