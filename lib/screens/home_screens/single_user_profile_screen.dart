@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/create_event_model.dart';
 import '../../providers/home_screens_providers/add_post_provider.dart';
 import '../../providers/onording_login_screens_providers/user_profile_provider.dart';
+import 'follow_list_screen.dart';
 
 class SingleUserProfileScreen extends StatefulWidget {
   final String userId;
@@ -136,7 +137,7 @@ class _SingleUserProfileScreenState extends State<SingleUserProfileScreen> with 
         title: Text(name, style: const TextStyle(color: Colors.black)),
         centerTitle: true,
         backgroundColor: Colors.white,
-        elevation: 0,
+        scrolledUnderElevation: 0,
         iconTheme: const IconThemeData(color: Colors.black),
       ),
       backgroundColor: Colors.white,
@@ -145,12 +146,34 @@ class _SingleUserProfileScreenState extends State<SingleUserProfileScreen> with 
           child: Column(
             children: [
               const SizedBox(height: 20),
-              CircleAvatar(
-                radius: 60,
-                backgroundColor: Colors.pink,
+              GestureDetector(
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) {
+                      return Dialog(
+                        backgroundColor: Colors.transparent,
+                        insetPadding: const EdgeInsets.all(30),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CircleAvatar(
+                              radius: 100,
+                              backgroundImage: profileImage,
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                },
                 child: CircleAvatar(
-                  radius: 57,
-                  backgroundImage: profileImage,
+                  radius: 60,
+                  backgroundColor: Colors.pink,
+                  child: CircleAvatar(
+                    radius: 57,
+                    backgroundImage: profileImage,
+                  ),
                 ),
               ),
               const SizedBox(height: 10),
@@ -161,9 +184,29 @@ class _SingleUserProfileScreenState extends State<SingleUserProfileScreen> with 
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _buildStat(followers.length, 'Followers'),
+                  _buildStat(followers.length, 'Followers', () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => FollowListScreen(
+                          title: 'Followers',
+                          users: followers,
+                        ),
+                      ),
+                    );
+                  }),
                   Container(height: 40, width: 1, color: Colors.grey[300]),
-                  _buildStat(following.length, 'Following'),
+                  _buildStat(following.length, 'Following', () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => FollowListScreen(
+                          title: 'Following',
+                          users: following,
+                        ),
+                      ),
+                    );
+                  }),
                 ],
               ),
               const SizedBox(height: 20),
@@ -271,11 +314,14 @@ class _SingleUserProfileScreenState extends State<SingleUserProfileScreen> with 
     );
   }
 
-  Widget _buildStat(int count, String label) => Column(
-    children: [
-      Text(count.toString(), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-      const SizedBox(height: 4),
-      Text(label, style: const TextStyle(color: Colors.pink)),
-    ],
+  Widget _buildStat(int count, String label, VoidCallback onTap) => InkWell(
+    onTap: onTap,
+    child: Column(
+      children: [
+        Text(count.toString(), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 4),
+        Text(label, style: const TextStyle(color: Colors.pink)),
+      ],
+    ),
   );
 }

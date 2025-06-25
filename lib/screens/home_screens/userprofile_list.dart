@@ -12,6 +12,7 @@ import '../event_detail_screens/events_details.dart';
 import '../login_and_onbording_screens/edit_profile_screen.dart';
 import '../setting_screens/setting_screen.dart';
 import 'create_post_screen.dart';
+import 'follow_list_screen.dart';
 
 class UserProfileList extends StatefulWidget {
   const UserProfileList({super.key});
@@ -50,7 +51,8 @@ class _UserProfileListState extends State<UserProfileList> with SingleTickerProv
   Future<void> _fetchPostImages() async {
     try {
       final postProvider = Provider.of<AddPostProvider>(context, listen: false);
-      final eventsProvider = Provider.of<EventCreationProvider>(context, listen: false);
+      final eventsProvider = Provider.of<EventCreationProvider>(
+          context, listen: false);
 
       final posts = await postProvider.fetchMyPosts();
       await eventsProvider.fetchUserPostsFromPrefs(type: 'event');
@@ -89,7 +91,9 @@ class _UserProfileListState extends State<UserProfileList> with SingleTickerProv
           ImageProvider profileImg;
           if (profilePath.isNotEmpty) {
             final fullUrl = provider.profileImageUrl;
-            profileImg = (fullUrl != null && Uri.parse(fullUrl).isAbsolute)
+            profileImg = (fullUrl != null && Uri
+                .parse(fullUrl)
+                .isAbsolute)
                 ? NetworkImage(fullUrl)
                 : const AssetImage('images/default_avatar.png');
           } else if (_currentUser?.photoURL != null) {
@@ -108,10 +112,12 @@ class _UserProfileListState extends State<UserProfileList> with SingleTickerProv
               actions: [
                 IconButton(
                   icon: const Icon(Icons.settings, color: Colors.pink),
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const SettingsScreen()),
-                  ),
+                  onPressed: () =>
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const SettingsScreen()),
+                      ),
                 ),
               ],
             ),
@@ -122,28 +128,58 @@ class _UserProfileListState extends State<UserProfileList> with SingleTickerProv
                 child: Column(
                   children: [
                     const SizedBox(height: 20),
-                    CircleAvatar(
-                      radius: 60,
-                      backgroundColor: Colors.pink,
+                    GestureDetector(
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: (_) => Dialog(
+                            backgroundColor: Colors.transparent,
+                            insetPadding: const EdgeInsets.all(30),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                CircleAvatar(
+                                  radius: 100,
+                                  backgroundImage: profileImg,
+                                  backgroundColor: Colors.pink.shade200,
+                                  child: profileImg is AssetImage
+                                      ? Text(
+                                    name[0].toUpperCase(),
+                                    style: const TextStyle(fontSize: 50, color: Colors.white),
+                                  )
+                                      : null,
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
                       child: CircleAvatar(
-                        radius: 57,
-                        backgroundImage: profileImg,
-                        child: profileImg is AssetImage
-                            ? Text(
-                          name[0].toUpperCase(),
-                          style: const TextStyle(fontSize: 40, color: Colors.white),
-                        )
-                            : null,
+                        radius: 60,
+                        backgroundColor: Colors.pink,
+                        child: CircleAvatar(
+                          radius: 57,
+                          backgroundImage: profileImg,
+                          backgroundColor: Colors.pink.shade200,
+                          child: profileImg is AssetImage
+                              ? Text(
+                            name[0].toUpperCase(),
+                            style: const TextStyle(fontSize: 40, color: Colors.white),
+                          )
+                              : null,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 12),
-                    Text(name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                    Text(name, style: const TextStyle(
+                        fontSize: 20, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 20),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
                         _buildStat(followersCount, 'Followers'),
-                        Container(height: 40, width: 1, color: Colors.grey[300]),
+                        Container(height: 40, width: 1, color: Colors
+                            .grey[300]),
                         _buildStat(followingCount, 'Following'),
                       ],
                     ),
@@ -157,15 +193,18 @@ class _UserProfileListState extends State<UserProfileList> with SingleTickerProv
                           onPressed: () async {
                             await Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (_) => const EditProfileScreen()),
+                              MaterialPageRoute(
+                                  builder: (_) => const EditProfileScreen()),
                             );
-                            _fetchProfile();
+                            _fetchProfile(); // Re-fetch profile data when returning from EditProfileScreen
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.pink,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
                           ),
-                          child: const Text('Edit Profile', style: TextStyle(color: Colors.white, fontSize: 16)),
+                          child: const Text('Edit Profile', style: TextStyle(
+                              color: Colors.white, fontSize: 16)),
                         ),
                       ),
                     ),
@@ -177,8 +216,10 @@ class _UserProfileListState extends State<UserProfileList> with SingleTickerProv
                         children: [
                           const Text(
                             'About',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                            textAlign: TextAlign.left, // Optional: ensures explicit alignment
+                            style: TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.bold),
+                            textAlign: TextAlign
+                                .left, // Optional: ensures explicit alignment
                           ),
                           const SizedBox(height: 8),
                           Align(
@@ -203,15 +244,34 @@ class _UserProfileListState extends State<UserProfileList> with SingleTickerProv
       ),
     );
   }
+  Widget _buildStat(int count, String label) {
+    return InkWell(
+      onTap: () async {
+        final provider = Provider.of<FetchEditUserProvider>(context, listen: false);
+        final data = provider.userData;
 
-  Widget _buildStat(int count, String label) => Column(
-    children: [
-      Text('$count', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-      Text(label, style: const TextStyle(color: Colors.pink)),
-    ],
-  );
+        final users = label == 'Followers'
+            ? (data['followers'] ?? [])
+            : (data['following'] ?? []);
 
-  Widget _buildTabs(BuildContext context) => Column(
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => FollowListScreen(title: label, users: users),
+          ),
+        );
+
+        _fetchProfile();
+      },
+      child: Column(
+        children: [
+          Text('$count', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          Text(label, style: const TextStyle(color: Colors.pink)),
+        ],
+      ),
+    );
+  }
+    Widget _buildTabs(BuildContext context) => Column(
     children: [
       TabBar(
         controller: _tabController,
