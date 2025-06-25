@@ -1,14 +1,19 @@
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import '../../models/event_model.dart';
 import '../../models/comment_model.dart';
 import '../../providers/home_screens_providers/home_provider.dart';
+import '../../providers/onording_login_screens_providers/user_profile_provider.dart';
 import '../other_for_use/expandable_text.dart';
 import '../other_for_use/utils.dart';
 import 'comment_sheet.dart';
+import 'package:flutter/services.dart';
 
-class PostDetailScreen extends StatefulWidget {
+
+
+  class PostDetailScreen extends StatefulWidget {
   final Event post;
 
   const PostDetailScreen({required this.post, super.key});
@@ -23,29 +28,96 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   late int _commentCount;
   late bool _isLiked;
   late int _likeCount;
+  bool _showHeart = false;
+
+  final AudioPlayer _audioPlayer = AudioPlayer();
 
   @override
   void initState() {
     super.initState();
-    _commentCount = widget.post.comments.length;
-    _likeCount = widget.post.likes.length;
-    _isLiked = widget.post.likes.contains('user123'); // Replace with actual user ID
-  }
-
-  void _toggleLike() {
-    setState(() {
-      if (_isLiked) {
-        _likeCount--;
-        widget.post.likes.remove('user123');
-      } else {
-        _likeCount++;
-        widget.post.likes.add('user123');
-      }
-      _isLiked = !_isLiked;
+    rootBundle.load('assets/sounds/like.mp3').then((_) {
+      debugPrint('✅ like.mp3 loaded successfully');
+    }).catchError((e) {
+      debugPrint('❌ like.mp3 failed to load: $e');
     });
 
-    // TODO: Optionally send API request to update like status
+    final userId = Provider.of<FetchEditUserProvider>(context, listen: false).userId;
+
+    _commentCount = widget.post.comments.length;
+    _likeCount = widget.post.likes.length;
+    _isLiked = userId != null && widget.post.likes.contains(userId);
   }
+
+  void _toggleLike() async {
+    final userProfileProvider = Provider.of<FetchEditUserProvider>(context, listen: false);
+    final homeProvider = Provider.of<HomeProvider>(context, listen: false);
+    final userId = userProfileProvider.userId;
+
+    if (userId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("You must be logged in to like this.")),
+      );
+      return;
+    }
+
+    final wasLiked = _isLiked;
+
+    // 🔁 Optimistic update
+    setState(() {
+      _isLiked = !_isLiked;
+      _likeCount += _isLiked ? 1 : -1;
+      if (_isLiked) {
+        widget.post.likes.add(userId);
+      } else {
+        widget.post.likes.remove(userId);
+      }
+    });
+
+    // 🔊 Play sound only if user just liked (not on unlike)
+    if (!wasLiked) {
+      await _playLikeSound(); // ✅ Reuse your existing method
+      HapticFeedback.mediumImpact();
+    }
+
+    try {
+      final response = await userProfileProvider.toggleLike(
+        postId: widget.post.id,
+        userId: userId,
+      );
+
+      if (response['success'] == true) {
+        final updatedLikes = List<String>.from(response['likes'] ?? []);
+        homeProvider.updateEventLikes(widget.post.id, updatedLikes);
+      } else {
+        throw Exception(response['message']);
+      }
+    } catch (e) {
+      // Revert on failure
+      setState(() {
+        _isLiked = wasLiked;
+        _likeCount += _isLiked ? 1 : -1;
+        if (_isLiked) {
+          widget.post.likes.add(userId);
+        } else {
+          widget.post.likes.remove(userId);
+        }
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to update like: $e')),
+      );
+    }
+  }
+  Future<void> _playLikeSound() async {
+    try {
+      debugPrint('🔊 Attempting to play sound...');
+      await _audioPlayer.play(AssetSource('sounds/like.mp3'));
+      debugPrint('✅ Sound played!');
+    } catch (e) {
+      debugPrint('🔇 Failed to play like sound: $e');
+    }
+  }
+
 
   String getFullImageUrl(String relativePath) {
     const baseUrl = 'http://srv861272.hstgr.cloud:8000';
@@ -54,17 +126,53 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     return '$baseUrl$relativePath';
   }
 
-  void _handleDoubleTap() {
-    setState(() {
-      if (_zoomed) {
-        _transformationController.value = Matrix4.identity();
-      } else {
-        _transformationController.value = Matrix4.identity()..scale(2.5);
-      }
-      _zoomed = !_zoomed;
-    });
-  }
+  void _handleDoubleTap() async {
+    final userProfileProvider = Provider.of<FetchEditUserProvider>(context, listen: false);
+    final userId = userProfileProvider.userId;
 
+    if (userId == null || _isLiked) {
+      debugPrint('⚠️ Already liked or no user ID');
+      return;
+    }
+
+    debugPrint('❤️ Double-tap like triggered by user: $userId');
+    _playLikeSound();
+    HapticFeedback.mediumImpact(); // 🔊 + 🔋
+
+    setState(() {
+      _isLiked = true;
+      _likeCount++;
+      widget.post.likes.add(userId);
+      _showHeart = true;
+    });
+
+    Future.delayed(const Duration(milliseconds: 600), () {
+      if (mounted) setState(() => _showHeart = false);
+    });
+
+    try {
+      final response = await userProfileProvider.toggleLike(
+        postId: widget.post.id,
+        userId: userId,
+      );
+
+      debugPrint('📡 Like API response: $response');
+
+      if (response['success'] == true) {
+        final updatedLikes = List<String>.from(response['likes'] ?? []);
+        Provider.of<HomeProvider>(context, listen: false)
+            .updateEventLikes(widget.post.id, updatedLikes);
+        debugPrint('✅ Provider updated with new likes: ${updatedLikes.length}');
+      }
+    } catch (e) {
+      debugPrint('❌ API call failed: $e');
+      setState(() {
+        _isLiked = false;
+        _likeCount--;
+        widget.post.likes.remove(userId);
+      });
+    }
+  }
   Future<void> _openCommentSheet() async {
     final updatedComments = await showModalBottomSheet<List<CommentModel>>(
       context: context,
@@ -119,28 +227,43 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
             left: 0,
             right: 0,
             child: SizedBox(
-              height: 550,
+              height: MediaQuery.of(context).size.height * 0.75, // ✅ 75% of screen
               child: GestureDetector(
                 onDoubleTap: _handleDoubleTap,
-                child: InteractiveViewer(
-                  transformationController: _transformationController,
-                  minScale: 1.0,
-                  maxScale: 4.0,
-                  panEnabled: true,
-                  child: postImageUrl.isNotEmpty
-                      ? CachedNetworkImage(
-                    imageUrl: postImageUrl,
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) => const Center(
-                      child: CircularProgressIndicator(color: Colors.white),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    InteractiveViewer(
+                      transformationController: _transformationController,
+                      minScale: 1.0,
+                      maxScale: 4.0,
+                      panEnabled: true,
+                      child: postImageUrl.isNotEmpty
+                          ? CachedNetworkImage(
+                        imageUrl: postImageUrl,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => const Center(
+                          child: CircularProgressIndicator(color: Colors.white),
+                        ),
+                        errorWidget: (context, url, error) => const Center(
+                          child: Icon(Icons.broken_image, color: Colors.white),
+                        ),
+                      )
+                          : const Center(
+                        child: Icon(Icons.image_not_supported, color: Colors.white),
+                      ),
                     ),
-                    errorWidget: (context, url, error) => const Center(
-                      child: Icon(Icons.broken_image, color: Colors.white),
-                    ),
-                  )
-                      : const Center(
-                    child: Icon(Icons.image_not_supported, color: Colors.white),
-                  ),
+                    if (_showHeart)
+                      AnimatedOpacity(
+                        opacity: _showHeart ? 1.0 : 0.0,
+                        duration: const Duration(milliseconds: 300),
+                        child: const Icon(
+                          Icons.favorite,
+                          size: 100,
+                          color: Colors.red,
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ),

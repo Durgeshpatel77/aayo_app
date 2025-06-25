@@ -88,42 +88,6 @@ class FetchEditUserProvider with ChangeNotifier {
     }
   }
 
-  // -------------------- Like Toggle --------------------
-  Future<Map<String, dynamic>> toggleLike({
-    required String postId,
-    required String userId,
-  }) async {
-    final url = Uri.parse('$_baseUrl/api/post/like/$postId');
-
-    try {
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'user': userId}),
-      );
-
-      final decoded = jsonDecode(response.body);
-
-      if (response.statusCode == 200 && decoded['success'] == true) {
-        return {
-          'success': true,
-          'likes': List<String>.from(decoded['data']['likes'] ?? []),
-          'message': decoded['message'],
-        };
-      } else {
-        return {
-          'success': false,
-          'message': decoded['message'] ?? 'Failed to toggle like',
-        };
-      }
-    } catch (e) {
-      return {
-        'success': false,
-        'message': 'Network error: $e',
-      };
-    }
-  }
-
   // -------------------- Local Update --------------------
   void updateUserLocal({
     String? name,
@@ -261,6 +225,42 @@ class FetchEditUserProvider with ChangeNotifier {
       return {
         'success': false,
         'message': 'Unexpected error: $e',
+      };
+    }
+  }
+
+  // -------------------- Like Toggle --------------------
+  Future<Map<String, dynamic>> toggleLike({
+    required String postId,
+    required String userId,
+  }) async {
+    final url = Uri.parse('$_baseUrl/api/post/like/$postId');
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'user': userId}),
+      );
+
+      final decoded = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && decoded['success'] == true) {
+        return {
+          'success': true,
+          'likes': List<String>.from(decoded['data']['likes'] ?? []),
+          'message': decoded['message'],
+        };
+      } else {
+        return {
+          'success': false,
+          'message': decoded['message'] ?? 'Failed to toggle like',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: $e',
       };
     }
   }

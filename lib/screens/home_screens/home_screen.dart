@@ -4,9 +4,11 @@
 import 'package:aayo/screens/home_screens/post_detail_screens.dart';
 import 'package:aayo/screens/home_screens/single_user_profile_screen.dart';
 import 'package:aayo/screens/home_screens/userprofile_list.dart';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
@@ -48,6 +50,8 @@ class _EventCardState extends State<EventCard> {
   bool isLiked = false;
   int likeCount = 0;
   late int _commentCount;
+  final AudioPlayer _audioPlayer = AudioPlayer();
+
 
   @override
   void initState() {
@@ -75,7 +79,15 @@ class _EventCardState extends State<EventCard> {
     });
   }
 
-
+  Future<void> _playLikeSound() async {
+    try {
+      debugPrint('🔊 Playing like sound...');
+      await _audioPlayer.play(AssetSource('sounds/like.mp3'));
+      HapticFeedback.mediumImpact(); // Optional vibration
+    } catch (e) {
+      debugPrint('🔇 Sound error: $e');
+    }
+  }
   void _toggleLike() async {
     final userProfileProvider =
     Provider.of<FetchEditUserProvider>(context, listen: false);
@@ -91,10 +103,17 @@ class _EventCardState extends State<EventCard> {
     final homeProvider = Provider.of<HomeProvider>(context, listen: false);
 
     // Optimistic update
+    final wasLiked = isLiked;
+
     setState(() {
       isLiked = !isLiked;
       likeCount += isLiked ? 1 : -1;
     });
+
+// 🔊 Play sound if now liked
+    if (!wasLiked) {
+      _playLikeSound();
+    }
 
     try {
       final response = await userProfileProvider.toggleLike(
@@ -177,6 +196,7 @@ class _EventCardState extends State<EventCard> {
 
   @override
   Widget build(BuildContext context) {
+
     final userProfileProvider = Provider.of<FetchEditUserProvider>(context);
     final currentUserId = userProfileProvider.userId;
 
@@ -522,24 +542,12 @@ class _HomeTabContentState extends State<HomeTabContent> {
             Column(
               children: widget.isLoading
                   ? List.generate(5, (_) => const EventCardShimmer())
-                  : widget.allEvents.isEmpty
-                      ? [
-                          const SizedBox(height: 250),
-                          const Center(
-                            child: Text(
-                              "No events or posts available.",
-                              style:
-                                  TextStyle(fontSize: 16, color: Colors.grey),
-                              textAlign: TextAlign.center,
-                            ),
-                          )
-                        ]
-                      : widget.allEvents.map((event) {
-                          return GestureDetector(
-                            onTap: () => widget.onItemTapped(event),
-                            child: EventCard(event: event),
-                          );
-                        }).toList(),
+                  : widget.allEvents.map((event) {
+                return GestureDetector(
+                  onTap: () => widget.onItemTapped(event),
+                  child: EventCard(event: event), // ✅ use original event
+                );
+              }).toList(),
             ),
             const SizedBox(height: 12),
           ],

@@ -99,7 +99,8 @@ class HomeProvider extends ChangeNotifier {
       }
       return event;
     }).toList();
-    notifyListeners();
+
+    notifyListeners(); // ✅ called once after update
   }
 
   /// ✅ NEW: Add a comment to a post or event by its ID
