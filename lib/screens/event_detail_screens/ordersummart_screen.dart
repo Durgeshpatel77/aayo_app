@@ -183,11 +183,14 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
                                     Icon(Icons.location_on,
                                         size: 14, color: Colors.grey[600]),
                                     const SizedBox(width: 4),
-                                    Text(
-                                      widget.eventLocation,
-                                      style: TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.grey[600]),
+                                    Expanded(
+                                      child: Text(
+                                        widget.eventLocation,
+                                        style: TextStyle(
+                                          overflow: TextOverflow.ellipsis,
+                                            fontSize: 12,
+                                            color: Colors.grey[600]),
+                                      ),
                                     ),
                                   ],
                                 ),

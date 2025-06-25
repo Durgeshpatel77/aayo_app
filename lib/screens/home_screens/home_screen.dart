@@ -30,6 +30,11 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 // ---- EventCard ----
+// lib/screens/home_screens/home_tab_content.dart (home_screen.dart)
+
+// ... (existing imports)
+
+// ---- EventCard ----
 class EventCard extends StatefulWidget {
   final Event event;
 
@@ -47,13 +52,22 @@ class _EventCardState extends State<EventCard> {
   @override
   void initState() {
     super.initState();
+    _commentCount = widget.event.comments.length;
+    _updateLikeState(); // Initial setup
+  }
 
-    _commentCount = widget.event.comments.length; // ✅ initialize count
+  // ✅ ADD OR ENSURE THIS METHOD IS CORRECT
+  @override
+  void didUpdateWidget(covariant EventCard oldWidget) {
+    if (widget.event.likes.length != oldWidget.event.likes.length) {
+      _updateLikeState();
+    }
+  }
 
+  // Helper to set isLiked and likeCount based on current widget.event and userId
+  void _updateLikeState() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final userId =
-          Provider.of<FetchEditUserProvider>(context, listen: false).userId;
-
+      final userId = Provider.of<FetchEditUserProvider>(context, listen: false).userId;
       setState(() {
         isLiked = userId != null && widget.event.likes.contains(userId);
         likeCount = widget.event.likes.length;
@@ -61,9 +75,10 @@ class _EventCardState extends State<EventCard> {
     });
   }
 
+
   void _toggleLike() async {
     final userProfileProvider =
-        Provider.of<FetchEditUserProvider>(context, listen: false);
+    Provider.of<FetchEditUserProvider>(context, listen: false);
     final currentUserId = userProfileProvider.userId;
 
     if (currentUserId == null) {
@@ -75,8 +90,10 @@ class _EventCardState extends State<EventCard> {
 
     final homeProvider = Provider.of<HomeProvider>(context, listen: false);
 
+    // Optimistic update
     setState(() {
-      likeCount = widget.event.likes.length;
+      isLiked = !isLiked;
+      likeCount += isLiked ? 1 : -1;
     });
 
     try {
@@ -85,31 +102,42 @@ class _EventCardState extends State<EventCard> {
         userId: currentUserId,
       );
 
-      if (response['success']) {
-        final updatedLikes = List<String>.from(response['likes'] ?? []);
-        homeProvider.updateEventLikes(widget.event.id, updatedLikes);
+      debugPrint('✅ Like API response: $response');
 
-        final updatedEvent =
-            homeProvider.allEvents.firstWhere((e) => e.id == widget.event.id);
-        setState(() {
-          isLiked = updatedEvent.likes.contains(currentUserId);
-          likeCount = updatedEvent.likes.length;
-        });
+      if (response['success']) {
+        final updatedLikes = (response['likes'] as List)
+            .map((like) {
+          if (like is String) return like;
+          if (like is Map && like['_id'] is String) return like['_id'] as String;
+          return null;
+        })
+            .whereType<String>()
+            .toList();
+        debugPrint('✅ Updated Likes: $updatedLikes');
+
+        homeProvider.updateEventLikes(widget.event.id, updatedLikes);
       } else {
+        // Revert optimistic update on failure
         setState(() {
           isLiked = !isLiked;
           likeCount += isLiked ? 1 : -1;
         });
+        final msg = response['message'] ?? 'Failed to update like.';
+        debugPrint('❌ Like failed: $msg');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text(response['message'] ?? 'Failed to update like.')),
+          SnackBar(content: Text(msg)),
         );
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      // Revert optimistic update on error
       setState(() {
         isLiked = !isLiked;
         likeCount += isLiked ? 1 : -1;
       });
+
+      debugPrint('❌ Like error: $e');
+      debugPrint('📍 StackTrace: $stackTrace');
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: ${e.toString()}')),
       );
@@ -135,11 +163,8 @@ class _EventCardState extends State<EventCard> {
     );
 
     if (updatedComments != null) {
-      setState(() {
-        widget.event.comments
-          ..clear()
-          ..addAll(updatedComments);
-      });
+      Provider.of<HomeProvider>(context, listen: false)
+          .updateEventComments(widget.event.id, updatedComments);
     }
   }
 
@@ -158,8 +183,8 @@ class _EventCardState extends State<EventCard> {
     final String imageUrl = widget.event.media.isNotEmpty
         ? getFullImageUrl(widget.event.media.first)
         : (widget.event.image.isNotEmpty
-            ? getFullImageUrl(widget.event.image)
-            : '');
+        ? getFullImageUrl(widget.event.image)
+        : '');
 
     final String profileUrl = widget.event.organizerProfile.isNotEmpty
         ? getFullImageUrl(widget.event.organizerProfile)
@@ -199,7 +224,7 @@ class _EventCardState extends State<EventCard> {
                 backgroundImage: profileUrl.isNotEmpty
                     ? NetworkImage(profileUrl)
                     : const AssetImage('images/onbording/unkown.jpg')
-                        as ImageProvider,
+                as ImageProvider,
                 onBackgroundImageError: (exception, stackTrace) {
                   debugPrint(
                       'Error loading profile image for ${widget.event.organizer}: $exception');
@@ -210,22 +235,22 @@ class _EventCardState extends State<EventCard> {
               ),
               trailing: widget.event.type == 'event'
                   ? Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.pink.shade100,
-                        borderRadius: BorderRadius.circular(15),
-                        border: Border.all(color: Colors.pink, width: 1),
-                      ),
-                      child: Text(
-                        'EVENT',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: Colors.pink.shade800,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    )
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.pink.shade100,
+                  borderRadius: BorderRadius.circular(15),
+                  border: Border.all(color: Colors.pink, width: 1),
+                ),
+                child: Text(
+                  'EVENT',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.pink.shade800,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              )
                   : null,
               title: Text(
                 widget.event.organizer,
@@ -272,7 +297,7 @@ class _EventCardState extends State<EventCard> {
                     ),
                   ),
                   errorWidget: (context, url, error) =>
-                      const Icon(Icons.broken_image, size: 40),
+                  const Icon(Icons.broken_image, size: 40),
                   fadeInDuration: const Duration(milliseconds: 300),
                 ),
               ),
@@ -374,6 +399,7 @@ class _EventCardState extends State<EventCard> {
     );
   }
 }
+
 
 // ---- CommentSheet (No changes needed, including for your reference) ----
 // ---- HomeTabContent (No changes needed, including for your reference) ----
@@ -553,14 +579,11 @@ class _HomeScreenState extends State<HomeScreen> {
     super.didChangeDependencies();
     if (!_initialized) {
       _initialized = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        debugPrint(
-            'HomeScreen: didChangeDependencies - Initializing data fetch and user ID load.');
-        // Initial fetch of eventsFhom
-        Provider.of<HomeProvider>(context, listen: false).fetchAll();
-        // Load user ID. This will trigger _onUserProviderChange if the ID changes/is loaded.
-        _userProfileProvider.loadUserId();
-      });
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        await _userProfileProvider.loadUserId(); // <-- Wait for this
+        if (_userProfileProvider.userId != null) {
+          await Provider.of<HomeProvider>(context, listen: false).fetchAll();
+        }});
     }
   }
 

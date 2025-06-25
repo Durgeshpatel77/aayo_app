@@ -184,14 +184,6 @@ class _GuestPageState extends State<GuestPage> {
                     fontSize: 16,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  host['email'] ?? 'No email',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: Colors.red,
-                  ),
-                ),
               ],
             ),
           ),

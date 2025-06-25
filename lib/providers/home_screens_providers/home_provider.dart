@@ -53,7 +53,7 @@ class HomeProvider extends ChangeNotifier {
     final url = Uri.parse("$_base?type=$type&limit=1000000000000000");
 
     final response = await http.get(url);
-    debugPrint("API RESPONSE HOME PAGE($type): ${response.statusCode}");
+    //debugPrint("API RESPONSE HOME PAGE($type): ${response.statusCode}");
 
     if (response.statusCode == 200) {
       final Map<String, dynamic> json = jsonDecode(response.body);
@@ -61,7 +61,7 @@ class HomeProvider extends ChangeNotifier {
 
       if (data != null && data['posts'] is List) {
         final List<dynamic> posts = data['posts'];
-        debugPrint("🔢 ${posts.length} $type(s) fetched");
+        //debugPrint("🔢 ${posts.length} $type(s) fetched");
         return posts.map((item) => Event.fromJson(item)).toList();
       } else {
         throw Exception(
