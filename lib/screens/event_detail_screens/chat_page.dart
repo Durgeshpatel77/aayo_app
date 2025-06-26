@@ -9,12 +9,12 @@ class ChatPage extends StatefulWidget {
   final String chatId;
 
   const ChatPage({
-    super.key,
+    Key? key,
     required this.currentUserId,
     required this.peerUserId,
     required this.peerName,
     required this.chatId,
-  });
+  }) : super(key: key);
 
   @override
   State<ChatPage> createState() => _ChatPageState();
@@ -22,11 +22,19 @@ class ChatPage extends StatefulWidget {
 
 class _ChatPageState extends State<ChatPage> {
   final TextEditingController _controller = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
 
   void _sendMessage() async {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
 
+    final timestamp = FieldValue.serverTimestamp();
+
+    // 🔍 Get current user's name from Firestore
+    final userDoc = await FirebaseFirestore.instance.collection('users').doc(widget.currentUserId).get();
+    final currentUserName = userDoc.data()?['name'] ?? 'Unknown';
+
+    // ✅ Send message
     await FirebaseFirestore.instance
         .collection('chats')
         .doc(widget.chatId)
@@ -34,20 +42,41 @@ class _ChatPageState extends State<ChatPage> {
         .add({
       'text': text,
       'senderId': widget.currentUserId,
-      'timestamp': FieldValue.serverTimestamp(),
+      'receiverId': widget.peerUserId,
+      'timestamp': timestamp,
     });
 
-    _controller.clear();
-  }
-  Widget _buildMessage(Map<String, dynamic> msg) {
-    bool isMe = msg['senderId'] == widget.currentUserId;
+    // ✅ Update summary
+    await FirebaseFirestore.instance
+        .collection('chat_summaries')
+        .doc(widget.chatId)
+        .set({
+      'chatId': widget.chatId,
+      'users': [widget.currentUserId, widget.peerUserId],
+      'lastMessage': text,
+      'lastTimestamp': timestamp,
+      'userDetails': {
+        widget.currentUserId: {'name': currentUserName},
+        widget.peerUserId: {'name': widget.peerName},
+      },
+    }, SetOptions(merge: true));
 
-    Timestamp? timestamp = msg['timestamp'];
-    String timeString = '';
-    if (timestamp != null) {
-      DateTime dateTime = timestamp.toDate();
-      timeString = DateFormat.jm().format(dateTime); // Formats like "12:30 PM"
-    }
+    _controller.clear();
+    Future.delayed(const Duration(milliseconds: 200), () {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  Widget _buildMessage(Map<String, dynamic> msg) {
+    final isMe = msg['senderId'] == widget.currentUserId;
+    final timestamp = msg['timestamp'] as Timestamp?;
+    final time = timestamp != null ? DateFormat.jm().format(timestamp.toDate()) : '';
 
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
@@ -64,16 +93,12 @@ class _ChatPageState extends State<ChatPage> {
           children: [
             Text(msg['text'] ?? '', style: const TextStyle(fontSize: 16)),
             const SizedBox(height: 4),
-            Text(
-              timeString,
-              style: TextStyle(fontSize: 10, color: Colors.grey[600]),
-            ),
+            Text(time, style: TextStyle(fontSize: 10, color: Colors.grey[600])),
           ],
         ),
       ),
     );
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -87,8 +112,8 @@ class _ChatPageState extends State<ChatPage> {
       appBar: AppBar(
         title: Text(widget.peerName),
         backgroundColor: Colors.white,
-        scrolledUnderElevation: 0,
-        automaticallyImplyLeading: false,
+        elevation: 1,
+        foregroundColor: Colors.black87,
       ),
       backgroundColor: Colors.white,
       body: Column(
@@ -103,54 +128,11 @@ class _ChatPageState extends State<ChatPage> {
                 final messages = snapshot.data!.docs;
                 return ListView.builder(
                   reverse: true,
+                  controller: _scrollController,
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
                     final data = messages[index].data() as Map<String, dynamic>;
-                    Timestamp? currentTimestamp = data['timestamp'];
-                    DateTime? currentDate = currentTimestamp?.toDate();
-
-                    DateTime? previousDate;
-                    if (index + 1 < messages.length) {
-                      final prevData = messages[index + 1].data() as Map<String, dynamic>;
-                      Timestamp? prevTimestamp = prevData['timestamp'];
-                      previousDate = prevTimestamp?.toDate();
-                    }
-
-                    bool showDateSeparator = false;
-                    String dateString = '';
-                    if (currentDate != null) {
-                      if (previousDate == null ||
-                          currentDate.year != previousDate.year ||
-                          currentDate.month != previousDate.month ||
-                          currentDate.day != previousDate.day) {
-                        // Date changed or first message in the list
-                        showDateSeparator = true;
-                        dateString = DateFormat.yMMMMd().format(currentDate); // Example: May 29, 2025
-                      }
-                    }
-
-                    return Column(
-                      children: [
-                        if (showDateSeparator)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            child: Center(
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[400],
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  dateString,
-                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                            ),
-                          ),
-                        _buildMessage(data),
-                      ],
-                    );
+                    return _buildMessage(data);
                   },
                 );
               },
@@ -161,13 +143,10 @@ class _ChatPageState extends State<ChatPage> {
             child: Row(
               children: [
                 Expanded(
-                  child:
-                  TextField(
+                  child: TextField(
                     controller: _controller,
-                    minLines: 1, // Start with one line
-                    maxLines: 6, // Expand up to 30 lines
-                    textInputAction: TextInputAction.newline,
-                    keyboardType: TextInputType.multiline,
+                    minLines: 1,
+                    maxLines: 6,
                     decoration: InputDecoration(
                       hintText: 'Type a message',
                       filled: true,
@@ -181,16 +160,12 @@ class _ChatPageState extends State<ChatPage> {
                         borderRadius: BorderRadius.circular(30),
                         borderSide: BorderSide(width: 2.0, color: Colors.pink.shade700),
                       ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(30),
-                        borderSide: BorderSide(width: 1.5, color: Colors.pink.shade400),
-                      ),
                     ),
                   ),
                 ),
                 const SizedBox(width: 8),
                 GestureDetector(
-                  onTap: _sendMessage,  // send on double tap
+                  onTap: _sendMessage,
                   child: CircleAvatar(
                     backgroundColor: Colors.green[700],
                     child: const Icon(Icons.send, color: Colors.white),

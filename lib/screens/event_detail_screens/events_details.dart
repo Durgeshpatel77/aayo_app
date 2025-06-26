@@ -411,15 +411,20 @@ class EventDetailScreen extends StatelessWidget {
                       ),
                       GestureDetector(
                         onTap: () {
+                          final currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
+                          final peerUserId = event.organizerId;   // ✅ organizerId from your Event model
+                          final peerName = event.organizer;       // ✅ organizer name from your Event model
+
+                          final chatId = generateChatId(currentUserId, peerUserId);
+
                           Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (_) => ChatPage(
-                                currentUserId: 'your_user_id',
-                                peerUserId: 'organizer_id_fallback',
-                                peerName: organizerName,
-                                chatId: generateChatId(
-                                    'your_user_id', 'organizer_id_fallback'),
+                                currentUserId: currentUserId,
+                                peerUserId: peerUserId,
+                                peerName: peerName,
+                                chatId: chatId,
                               ),
                             ),
                           );
@@ -429,7 +434,7 @@ class EventDetailScreen extends StatelessWidget {
                           size: 36,
                           color: Colors.pink.shade400,
                         ),
-                      )
+                      ),
                     ],
                   ),
                    Divider(color: Colors.grey.shade300,height: 30,),
