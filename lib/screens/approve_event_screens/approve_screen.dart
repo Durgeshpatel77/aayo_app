@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/event_model.dart';
-import '../event_detail_screens/registration_page.dart';
+import 'registration_page.dart';
 import 'guest_page.dart';
 import 'overview_page.dart';
 import '../../providers/home_screens_providers/home_provider.dart';
@@ -133,7 +133,7 @@ class _ApproveScreenState extends State<ApproveScreen> with SingleTickerProvider
           children: [
             OverviewTab(event: selectedEvent!),
             GuestPage(eventId: selectedEvent!.id),
-            const RegistrationPage(),
+            RegistrationPage(eventId:selectedEvent!.id),
           ],
         ),
       ),

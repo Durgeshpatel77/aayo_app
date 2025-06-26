@@ -2,8 +2,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart'; // Import SharedPreferences
-import '../home_screens/home_screen.dart';
+import 'package:razorpay_flutter/razorpay_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class OrderSummaryScreen extends StatefulWidget {
   final String eventName;
@@ -13,7 +13,7 @@ class OrderSummaryScreen extends StatefulWidget {
   final String eventImageUrl;
   final double ticketPrice;
   final String eventId;
-  final String joinedBy; // This 'joinedBy' is for passing initial data, not the one for API call
+  final String joinedBy;
 
   const OrderSummaryScreen({
     Key? key,
@@ -32,23 +32,78 @@ class OrderSummaryScreen extends StatefulWidget {
 }
 
 class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
-  String? _selectedPaymentMethod = 'Credit/Debit Card';
-  String? _backendUserId; // To store the backend user ID from SharedPreferences
+  String? _backendUserId;
   bool _hasJoined = false;
   bool _isJoining = false;
+  late Razorpay _razorpay;
+  final int _ticketQuantity = 1;
 
   @override
   void initState() {
     super.initState();
     _loadBackendUserId();
+    _razorpay = Razorpay();
+    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
+    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
+    _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
   }
 
-  // Function to load the backend user ID from SharedPreferences
+  @override
+  void dispose() {
+    _razorpay.clear();
+    super.dispose();
+  }
+
   Future<void> _loadBackendUserId() async {
     final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getString('backendUserId');
+    final joinedEvents = prefs.getStringList('joinedEvents') ?? [];
+
     setState(() {
-      _backendUserId = prefs.getString('backendUserId');
+      _backendUserId = userId;
+      _hasJoined = joinedEvents.contains(widget.eventId);
     });
+  }
+
+  void _handlePaymentSuccess(PaymentSuccessResponse response) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('✅ Payment Successful!')),
+    );
+    joinEvent();
+  }
+
+  void _handlePaymentError(PaymentFailureResponse response) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('❌ Payment Failed: ${response.message}')),
+    );
+  }
+
+  void _handleExternalWallet(ExternalWalletResponse response) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('🔔 External Wallet: ${response.walletName}')),
+    );
+  }
+
+  void _startPayment() {
+    var options = {
+      'key': 'rzp_test_fQHgGz0HjzaYHN',
+      'amount': ((widget.ticketPrice + 3.00) * 100).toInt(),
+      'name': widget.eventName,
+      'description': 'Ticket Booking',
+      'prefill': {
+        'contact': '9999999999',
+        'email': 'test@example.com',
+      },
+      'external': {
+        'wallets': ['paytm']
+      }
+    };
+
+    try {
+      _razorpay.open(options);
+    } catch (e) {
+      debugPrint('Razorpay Error: $e');
+    }
   }
 
   Future<void> joinEvent() async {
@@ -61,7 +116,8 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
 
     setState(() => _isJoining = true);
 
-    final url = 'http://srv861272.hstgr.cloud:8000/api/event/join/${widget.eventId}';
+    final url =
+        'http://srv861272.hstgr.cloud:8000/api/event/join/${widget.eventId}';
     final headers = {'Content-Type': 'application/json'};
     final body = {'joinedBy': _backendUserId!};
 
@@ -75,26 +131,39 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
       final resBody = json.decode(response.body);
       debugPrint('📥 Response: ${response.statusCode} - ${response.body}');
 
+      final prefs = await SharedPreferences.getInstance();
+      final joinedEvents = prefs.getStringList('joinedEvents') ?? [];
+
       if (response.statusCode == 200 || response.statusCode == 201) {
+        if (!joinedEvents.contains(widget.eventId)) {
+          joinedEvents.add(widget.eventId);
+          await prefs.setStringList('joinedEvents', joinedEvents);
+        }
+
         setState(() {
           _hasJoined = true;
           _isJoining = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('🎉 Successfully joined')),
+          const SnackBar(content: Text('🎉 Successfully booked')),
         );
       } else if (resBody['message']?.contains('already joined') == true) {
+        if (!joinedEvents.contains(widget.eventId)) {
+          joinedEvents.add(widget.eventId);
+          await prefs.setStringList('joinedEvents', joinedEvents);
+        }
+
         setState(() {
           _hasJoined = true;
           _isJoining = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('⚠️ You already joined this event')),
+          const SnackBar(content: Text('⚠️ You already booked this event')),
         );
       } else {
         setState(() => _isJoining = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('❌ Failed to join: ${resBody['message']}')),
+          SnackBar(content: Text('❌ Failed to book: ${resBody['message']}')),
         );
       }
     } catch (e) {
@@ -107,6 +176,8 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final totalAmount = widget.ticketPrice + 3.00;
+
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
       appBar: AppBar(
@@ -114,9 +185,7 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
-          onPressed: () {
-            Navigator.pop(context);
-          },
+          onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
           "Order Detail",
@@ -132,6 +201,7 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Event Info
                   Card(
                     color: Colors.white,
                     shape: RoundedRectangleBorder(
@@ -140,7 +210,6 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           ClipRRect(
                             borderRadius: BorderRadius.circular(8),
@@ -156,56 +225,45 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  widget.eventName,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
+                                Text(widget.eventName,
+                                    style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold)),
                                 const SizedBox(height: 8),
                                 Row(
                                   children: [
-                                    Icon(Icons.calendar_today,
-                                        size: 14, color: Colors.grey[600]),
+                                    const Icon(Icons.calendar_today,
+                                        size: 14, color: Colors.grey),
                                     const SizedBox(width: 4),
-                                    Text(
-                                      '${widget.eventDate}, ${widget.eventTime}',
-                                      style: TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.grey[600]),
-                                    ),
+                                    Text('${widget.eventDate}, ${widget.eventTime}',
+                                        style: const TextStyle(fontSize: 12)),
                                   ],
                                 ),
                                 const SizedBox(height: 4),
                                 Row(
                                   children: [
-                                    Icon(Icons.location_on,
-                                        size: 14, color: Colors.grey[600]),
+                                    const Icon(Icons.location_on,
+                                        size: 14, color: Colors.grey),
                                     const SizedBox(width: 4),
                                     Expanded(
-                                      child: Text(
-                                        widget.eventLocation,
-                                        style: TextStyle(
-                                          overflow: TextOverflow.ellipsis,
-                                            fontSize: 12,
-                                            color: Colors.grey[600]),
-                                      ),
+                                      child: Text(widget.eventLocation,
+                                          style: const TextStyle(fontSize: 12),
+                                          overflow: TextOverflow.ellipsis),
                                     ),
                                   ],
                                 ),
                               ],
                             ),
-                          ),
+                          )
                         ],
                       ),
                     ),
                   ),
                   const SizedBox(height: 24),
-                  const Text(
-                    "Order Summary",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
+
+                  const Text("Order Summary",
+                      style: TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 16),
                   Card(
                     color: Colors.grey.shade100,
@@ -219,113 +277,40 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text('2x Ticket price',
-                                  style: TextStyle(
-                                      fontSize: 16, color: Colors.grey[700])),
-                              Text(
-                                  '\$${(widget.ticketPrice * 2).toStringAsFixed(2)}',
-                                  style: TextStyle(
-                                      fontSize: 16, color: Colors.grey[700])),
+                              const Text('1 Ticket'),
+                              Text('\₹${widget.ticketPrice.toStringAsFixed(2)}'),
                             ],
                           ),
                           const SizedBox(height: 8),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text('Subtotal',
-                                  style: TextStyle(
-                                      fontSize: 16, color: Colors.grey[700])),
-                              Text(
-                                  '\$${(widget.ticketPrice * 2).toStringAsFixed(2)}',
-                                  style: TextStyle(
-                                      fontSize: 16, color: Colors.grey[700])),
+                            children: const [
+                              Text('Fees'),
+                              Text('\₹3.00'),
                             ],
                           ),
-                          const SizedBox(height: 8),
+                          Divider(color: Colors.grey[400]),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text('Fees',
+                              const Text("Total",
                                   style: TextStyle(
-                                      fontSize: 16, color: Colors.grey[700])),
-                              const Text('\$3.00',
-                                  style: TextStyle(
-                                      fontSize: 16, color: Colors.grey)),
-                            ],
-                          ),
-                          Divider(color: Colors.grey[300]),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text(
-                                'Total',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              Text(
-                                '\$${((widget.ticketPrice * 2) + 3.00).toStringAsFixed(2)}',
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold)),
+                              Text('\₹${totalAmount.toStringAsFixed(2)}',
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold)),
                             ],
                           ),
                         ],
                       ),
                     ),
                   ),
-                  const SizedBox(height: 14),
-                  const Text(
-                    "Payment Method",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 16),
-                  Card(
-                    color: Colors.grey.shade100,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      children: [
-                        ListTile(
-                          leading:
-                          Image.asset('images/credit.png', height: 30),
-                          title: const Text('Credit/Debit Card'),
-                          trailing: Radio<String>(
-                            value: 'Credit/Debit Card',
-                            groupValue: _selectedPaymentMethod,
-                            onChanged: (String? value) {
-                              setState(() {
-                                _selectedPaymentMethod = value;
-                              });
-                            },
-                            activeColor: Colors.pinkAccent,
-                          ),
-                        ),
-                        ListTile(
-                          leading: Image.asset('images/paypal.png', height: 30),
-                          title: const Text('Paypal'),
-                          trailing: Radio<String>(
-                            value: 'Paypal',
-                            groupValue: _selectedPaymentMethod,
-                            onChanged: (String? value) {
-                              setState(() {
-                                _selectedPaymentMethod = value;
-                              });
-                            },
-                            activeColor: Colors.pinkAccent,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
                 ],
               ),
             ),
           ),
+          // Bottom Bar
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             decoration: BoxDecoration(
@@ -339,7 +324,7 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
                   children: [
                     Text('Price', style: TextStyle(color: Colors.grey[700])),
                     Text(
-                      '\$${((widget.ticketPrice * 2) + 3.00).toStringAsFixed(2)}',
+                      '\₹${totalAmount.toStringAsFixed(2)}',
                       style: const TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
@@ -349,9 +334,8 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
                 ),
                 const SizedBox(width: 80),
                 Expanded(
-                  child:
-                  GestureDetector(
-                    onTap: (_hasJoined || _isJoining) ? null : joinEvent,
+                  child: GestureDetector(
+                    onTap: (_hasJoined || _isJoining) ? null : _startPayment,
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 300),
                       width: double.infinity,
@@ -375,8 +359,8 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
                       ),
                       child: Text(
                         _isJoining
-                            ? 'Joining...'
-                            : (_hasJoined ? 'Joined' : 'Join'),
+                            ? 'Booking...'
+                            : (_hasJoined ? 'Booked' : 'Book'),
                         style: const TextStyle(
                           fontSize: 18,
                           color: Colors.white,

@@ -138,21 +138,32 @@ class GuestProvider with ChangeNotifier {
   Future<void> fetchEventRegistrations(String eventId) async {
     _isLoading = true;
     notifyListeners();
+
     try {
-      final url = 'http://srv861272.hstgr.cloud:8000/api/event/registrations/$eventId';
+      final url = 'http://srv861272.hstgr.cloud:8000/api/event/dashboard/$eventId';
       final response = await http.get(Uri.parse(url));
 
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
-        final List raw = (body['data'] is List) ? body['data'] : [body['data']];
+        final registrationsJson = body['data']['registrations'] ?? [];
 
-        _registrations = raw.map((e) => EventRegistration.fromJson(e)).toList();
+        _registrations = registrationsJson
+            .map<EventRegistration>((e) => EventRegistration.fromJson(e))
+            .toList();
+
+        // (Optional) You can also store counts if needed:
+        final counts = body['data']['counts'];
+        debugPrint('🧮 Registration counts: $counts');
+
       } else {
         _registrations = [];
+        debugPrint('❌ Failed with status: ${response.statusCode}');
       }
     } catch (e) {
       _registrations = [];
+      debugPrint('❌ Exception during fetchEventRegistrations: $e');
     }
+
     _isLoading = false;
     notifyListeners();
   }

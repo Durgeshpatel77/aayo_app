@@ -1,5 +1,6 @@
 // main.dart
 import 'package:aayo/firebase_options.dart';
+import 'package:aayo/providers/approve_events_provider/event_registration_provider.dart';
 import 'package:aayo/providers/approve_events_provider/guest_page_provider.dart';
 import 'package:aayo/providers/home_screens_providers/add_post_provider.dart';
 import 'package:aayo/providers/home_screens_providers/chat_provider.dart';
@@ -47,7 +48,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => VenueProvider()),
         ChangeNotifierProvider(create: (_) => AddPostProvider()),
         ChangeNotifierProvider(create: (_) => GuestProvider()),
-
+        ChangeNotifierProvider(create: (_) => EventRegistrationProvider()),
 
 
       ],
