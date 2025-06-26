@@ -1,3 +1,4 @@
+import 'package:aayo/screens/home_screens/single_user_profile_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -185,6 +186,16 @@ class _FollowListScreenState extends State<FollowListScreen> {
                 ),
               ),
             ),
+            onTap: () {
+              if (!isSelf) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => SingleUserProfileScreen(userId: userId),
+                  ),
+                );
+              }
+            },
           );
         },
       ),

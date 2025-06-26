@@ -201,6 +201,25 @@ class AddPostProvider with ChangeNotifier {
       rethrow;
     }
   }
+  /// ✅ 7. FETCH POSTS FOR A SPECIFIC USER (with full Event objects)
+  Future<List<Event>> fetchUserPostsById(String userId) async {
+    try {
+      final url = Uri.parse('$_apiBaseUrl/api/post?type=post&user=$userId');
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final posts = data['data']['posts'] as List;
+
+        return posts.map((json) => Event.fromJson(json)).toList();
+      } else {
+        throw Exception('Failed to load posts for user');
+      }
+    } catch (e) {
+      debugPrint('❌ fetchUserPostsById error: $e');
+      return [];
+    }
+  }
 
   /// ✅ CLEAN UP
   @override

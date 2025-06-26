@@ -1,8 +1,10 @@
+import 'package:aayo/screens/home_screens/post_detail_screens.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/create_event_model.dart';
+import '../../models/event_model.dart';
 import '../../providers/home_screens_providers/add_post_provider.dart';
 import '../../providers/onording_login_screens_providers/user_profile_provider.dart';
 import 'follow_list_screen.dart';
@@ -19,8 +21,7 @@ class SingleUserProfileScreen extends StatefulWidget {
 class _SingleUserProfileScreenState extends State<SingleUserProfileScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   Map<String, dynamic> _userProfileData = {};
-  List<EventModel> _userEventPosts = [];
-  List<String> _userPostPhotos = [];
+  List<Event> _userEventPosts = []; // ✅ Matches what fetchUserPostsById returns
   bool _isLoading = true;
   bool isFollowing = false;
   String? backendUserId;
@@ -36,7 +37,7 @@ class _SingleUserProfileScreenState extends State<SingleUserProfileScreen> with 
     final prefs = await SharedPreferences.getInstance();
     backendUserId = prefs.getString('backendUserId');
     await _fetchUserProfileData();
-    _fetchUserPostImages();
+    await _fetchUserPosts(); // ✅ rename this
   }
 
   Future<void> _fetchUserProfileData() async {
@@ -66,12 +67,14 @@ class _SingleUserProfileScreenState extends State<SingleUserProfileScreen> with 
     }
   }
 
-  Future<void> _fetchUserPostImages() async {
+  Future<void> _fetchUserPosts() async {
     try {
       final provider = Provider.of<AddPostProvider>(context, listen: false);
-      final images = await provider.fetchUserPostImages(widget.userId);
-      setState(() => _userPostPhotos = images);
-    } catch (_) {}
+      final posts = await provider.fetchUserPostsById(widget.userId);
+      setState(() => _userEventPosts = posts);
+    } catch (e) {
+      debugPrint("Failed to fetch posts: $e");
+    }
   }
 
   String _fullImageUrl(String path) {
@@ -258,7 +261,7 @@ class _SingleUserProfileScreenState extends State<SingleUserProfileScreen> with 
                       alignment: Alignment.centerLeft,
                       child: Text(
                         about,
-                        style: const TextStyle(color: Colors.black54),
+                        style: const TextStyle(color: Colors.black),
                         textAlign: TextAlign.left,
                       ),
                     ),
@@ -281,13 +284,14 @@ class _SingleUserProfileScreenState extends State<SingleUserProfileScreen> with 
               ),
               SizedBox(
                 height: MediaQuery.of(context).size.height * 0.5,
-                child: TabBarView(
+                child:
+                TabBarView(
                   controller: _tabController,
                   children: [
-                    _userPostPhotos.isEmpty
+                    _userEventPosts.isEmpty
                         ? const Center(child: Text("No posts available."))
                         : GridView.builder(
-                      itemCount: _userPostPhotos.length,
+                      itemCount: _userEventPosts.length,
                       physics: const NeverScrollableScrollPhysics(),
                       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 3,
@@ -295,10 +299,23 @@ class _SingleUserProfileScreenState extends State<SingleUserProfileScreen> with 
                         mainAxisSpacing: 2,
                       ),
                       itemBuilder: (context, index) {
-                        return Image.network(
-                          _userPostPhotos[index],
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => const Icon(Icons.broken_image),
+                        final event = _userEventPosts[index];
+                        final imageUrl = event.media.isNotEmpty ? event.media.first : event.image;
+
+                        return GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => PostDetailScreen(post: event),
+                              ),
+                            );
+                          },
+                          child: Image.network(
+                            imageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => const Icon(Icons.broken_image),
+                          ),
                         );
                       },
                     ),
