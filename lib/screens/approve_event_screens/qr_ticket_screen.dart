@@ -9,8 +9,8 @@ class ETicketScreen extends StatelessWidget {
   final String eventLocation;
   final String eventImageUrl;
   final double ticketPrice;
-  final String qrCodeData;
-
+   final String qrCodeData;
+  //
   const ETicketScreen({
     Key? key,
     required this.eventName,

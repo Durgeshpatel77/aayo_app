@@ -92,7 +92,7 @@ class _GuestPageState extends State<GuestPage> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        ],
+      ],
     );
   }
 

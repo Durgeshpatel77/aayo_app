@@ -1,3 +1,4 @@
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -8,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/event_registration_model.dart';
 import '../../providers/approve_events_provider/event_registration_provider.dart';
+import '../approve_event_screens/ticket_detail_screen.dart';
 
 class OrderSummaryScreen extends StatefulWidget {
   final String eventName;
@@ -86,40 +88,17 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
       ),
     );
 
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: const [
-            Icon(Icons.confirmation_num, color: Colors.pink),
-            SizedBox(width: 8),
-            Text('Your Ticket',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-          ],
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TicketDetailScreen(
+          registration: registration,
+          eventName: widget.eventName,
+          eventDate: widget.eventDate,
+          eventTime: widget.eventTime,
+          eventLocation: widget.eventLocation,
+          ticketPrice: widget.ticketPrice,
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _styledRow(Icons.event, 'Event', widget.eventName),
-            _styledRow(Icons.date_range, 'Date & Time',
-                '${widget.eventDate}, ${widget.eventTime}'),
-            _styledRow(Icons.location_on, 'Location', widget.eventLocation),
-            _styledRow(Icons.currency_rupee, 'Price',
-                '₹${widget.ticketPrice.toStringAsFixed(2)}'),
-            _styledRow(Icons.info, 'Status', registration.status),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'Close',
-              style: TextStyle(fontWeight: FontWeight.bold,color: Colors.pink),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -457,15 +436,15 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
                         ? GestureDetector(
                       onTap: _showTicketDetails,
                       child:const Text(
-              'View Detail',
-              style: TextStyle(
-                color: Colors.green,
-                decoration: TextDecoration.underline,
-                decorationColor: Colors.green, // This line makes the underline green
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+                        'View Detail',
+                        style: TextStyle(
+                          color: Colors.green,
+                          decoration: TextDecoration.underline,
+                          decorationColor: Colors.green, // This line makes the underline green
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     )
                         : Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -529,4 +508,3 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
     );
   }
 }
-
