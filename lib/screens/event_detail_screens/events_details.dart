@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../approve_event_screens/approve_screen.dart';
 import 'chat_page.dart';
@@ -353,94 +354,54 @@ class EventDetailScreen extends StatelessWidget {
                   Divider(color: Colors.grey.shade300,),
                   const Text('Organizers and Attendees',
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 20),
-                  Row(
-                    children: [
-                      SizedBox(
-                        width: 85,
-                        height: 50,
-                        child: Stack(
-                          children: [
-                            Positioned(
-                              left: 0,
-                              child: CircleAvatar(
-                                radius: 20,
-                                backgroundImage: NetworkImage(organizerProfileUrl),
-                              ),
-                            ),
-                            Positioned(
-                              left: 35,
-                              child: CircleAvatar(
-                                backgroundColor: Colors.pinkAccent,
-                                radius: 20,
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    const Icon(
-                                      Icons.add,
-                                      size: 16,
-                                      color: Colors.white,
-                                    ),
-                                    Text(
-                                      "$totalLikes",
-                                      style: const TextStyle(
-                                          color: Colors.white, fontSize: 16),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                  const SizedBox(height: 10),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: CircleAvatar(
+                      radius: 22,
+                      backgroundImage: NetworkImage(organizerProfileUrl),
+                    ),
+                    title: const Text(
+                      'Organizers',
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontSize: 13,
                       ),
-                      const SizedBox(width: 12),
-
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('Organizers',
-                                style: TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 13,
-                                )),
-                            Text(organizerName,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                )),
-                          ],
-                        ),
+                    ),
+                    subtitle: Text(
+                      organizerName,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
                       ),
-                      GestureDetector(
-                        onTap: () {
-                          final currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
-                          final peerUserId = event.organizerId;
-                          final peerName = event.organizer;
+                    ),
+                    trailing: GestureDetector(
+                      onTap: () {
+                        final currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
+                        final peerUserId = event.organizerId;
+                        final peerName = event.organizer;
 
-                          final chatId = generateChatId(currentUserId, peerUserId);
+                        final chatId = generateChatId(currentUserId, peerUserId);
 
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => ChatPage(
-                                currentUserId: currentUserId,
-                                peerUserId: peerUserId,
-                                peerName: peerName,
-                                chatId: chatId,
-                              ),
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ChatPage(
+                              currentUserId: currentUserId,
+                              peerUserId: peerUserId,
+                              peerName: peerName,
+                              chatId: chatId,
                             ),
-                          );
-                        },
-                        child: Image.asset(
-                          'images/message_send.png', // 🔁 your image path
-                          width: 32,                 // ✅ adjust size as needed
-                          height: 32,
-                          //color: Colors.pink.shade400, // Optional: apply tint if image is monochrome
-                        ),
+                          ),
+                        );
+                      },
+                      child: Image.asset(
+                        'images/message_send.png',
+                        width: 28,
+                        height: 28,
                       ),
-                    ],
+                    ),
                   ),
                    Divider(color: Colors.grey.shade300,height: 30,),
                   const Text('Location',
@@ -453,8 +414,8 @@ class EventDetailScreen extends StatelessWidget {
                         Positioned.fill(
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(12),
-                            child: Image.network(
-                              'https://media.istockphoto.com/id/1306807452/vector/map-city-vector-illustration.jpg?s=612x612&w=0&k=20&c=8efOIy-Ft3trEzeDk3PY2WRjWws8mvKXgkLqCZ2cP5A=',
+                            child: Image.asset(
+                              'images/location.jpeg', // ✅ your local image path
                               fit: BoxFit.cover,
                             ),
                           ),
@@ -482,15 +443,24 @@ class EventDetailScreen extends StatelessWidget {
                           top: 12,
                           left: 12,
                           child: GestureDetector(
-                            onTap: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                    content: Text('See Location Tapped')),
+                            onTap: () async {
+                              final lat = event.latitude;
+                              final lng = event.longitude;
+
+                              final Uri googleMapsUrl = Uri.parse(
+                                'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng&travelmode=driving',
                               );
+
+                              if (await canLaunchUrl(googleMapsUrl)) {
+                                await launchUrl(googleMapsUrl, mode: LaunchMode.externalApplication);
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Could not open Google Maps')),
+                                );
+                              }
                             },
                             child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 14, vertical: 9),
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(12),

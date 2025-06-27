@@ -184,6 +184,8 @@ class _EventsscreenState extends State<Eventsscreen> {
             organizer: user.name,              // ✅ organizer name
             organizerProfile: user.profile ?? '', // ✅ profile image URL
             comments: event.comments.map((e) => CommentModel.fromJson(e)).toList(),
+            latitude: event.eventDetails?.latitude ?? 0.0,
+            longitude: event.eventDetails?.longitude ?? 0.0,
           );
 
           Navigator.push(

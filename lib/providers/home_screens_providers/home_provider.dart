@@ -95,6 +95,10 @@ class HomeProvider extends ChangeNotifier {
           createdAt: event.createdAt,
           type: event.type,
           comments: event.comments,
+
+          // ✅ Add these two
+          latitude: event.latitude,
+          longitude: event.longitude,
         );
       }
       return event;

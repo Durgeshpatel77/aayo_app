@@ -72,6 +72,8 @@ class _ApproveScreenState extends State<ApproveScreen> with SingleTickerProvider
         createdAt: DateTime.now(),
         type: 'event',
         comments: [],
+        latitude: 0.0, // ✅ required
+        longitude: 0.0, // ✅ also required
       ),
     );
 

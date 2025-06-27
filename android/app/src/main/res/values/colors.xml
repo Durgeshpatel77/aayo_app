@@ -4,4 +4,6 @@
     <color name="your_notification_color">#FF0000FF</color> <!-- Blue, for example -->
     <color name="pink">#E91E63</color>
     <color name="pink_dark">#C2185B</color>
+    <color name="your_accent_color">#FF4081</color> <!-- or any color -->
+
 </resources>

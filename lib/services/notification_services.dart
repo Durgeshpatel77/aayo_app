@@ -37,8 +37,12 @@ class NotificationService {
     await _firebaseMessaging.requestPermission();
 
     // Get FCM token (optional)
-    final token = await _firebaseMessaging.getToken();
-    print('FCM Token: $token');
+    try {
+      final token = await _firebaseMessaging.getToken();
+      print('✅ FCM Token: $token');
+    } catch (e) {
+      print('❌ Failed to fetch FCM token: $e');
+    }
 
     // Foreground message listener
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {

@@ -377,6 +377,9 @@ class _UserProfileListState extends State<UserProfileList> with SingleTickerProv
                       organizerProfile: event.user.profile ?? '',
                       createdAt: event.createdAt,
                       type: event.type,
+                      latitude: event.eventDetails?.latitude ?? 0.0,
+                      longitude: event.eventDetails?.longitude ?? 0.0,
+
                     );
 
                     Navigator.push(

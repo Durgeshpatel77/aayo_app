@@ -28,8 +28,8 @@
 
         <!-- Firebase -->
         <meta-data
-            android:name="com.google.firebase.messaging.default_notification_icon"
-            android:resource="@drawable/logo" />
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/your_accent_color" />
 
         <!-- Main Activity -->
         <activity

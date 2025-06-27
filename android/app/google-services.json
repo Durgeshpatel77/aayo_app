@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "703528893342-6ik29srui6icb8n9lojnvlcfk53fk84j.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.aayomeet.app",
+            "certificate_hash": "4d5b03a2fd0d217872a4872077aabef9b03d8afb"
+          }
+        },
+        {
           "client_id": "703528893342-40nj4303s5bk41o7gpfktfllkq7no89j.apps.googleusercontent.com",
           "client_type": 3
         }

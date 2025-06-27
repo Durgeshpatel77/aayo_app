@@ -18,10 +18,10 @@ class FavoriteCategoryProvider with ChangeNotifier {
     if (isSelected(category)) {
       _selectedCategories.remove(category);
     } else {
-      if (_selectedCategories.length >= 2) {
+      if (_selectedCategories.length >= 3) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text("You can only select up to 2 categories."),
+            content: Text("You can only select up to 3 categories."),
             duration: Duration(seconds: 2),
           ),
         );
