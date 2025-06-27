@@ -4,7 +4,7 @@
     final String name; // joinedBy name
     final String registrationId;
     final String eventId;
-    final String status;
+     String status;
 
     EventRegistration({
       required this.id,

@@ -1,3 +1,4 @@
+import 'package:aayo/screens/approve_event_screens/status_user_list_page.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/event_registration_model.dart';
@@ -115,15 +116,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
             const SizedBox(height: 5),
             Text("📅 Event ID: ${reg.eventId}",
                 style: const TextStyle(fontSize: 13, color: Colors.grey)),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _actionButton("Approve", Colors.green, 'approved', reg),
-                _actionButton("Decline", Colors.red, 'declined', reg),
-                _actionButton("Waitlist", Colors.orange, 'waiting', reg),
-              ],
-            )
+            const SizedBox(height: 10),
           ],
         ),
       ),
@@ -169,7 +162,14 @@ class _RegistrationPageState extends State<RegistrationPage> {
       List<EventRegistration> list,
       ) {
     return GestureDetector(
-      onTap: () => _showStatusDialog(title, list),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => StatusUserListPage(title: title, users: list),
+          ),
+        );
+      },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(

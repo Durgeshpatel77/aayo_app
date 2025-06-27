@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/event_registration_model.dart';
+import '../../providers/approve_events_provider/event_registration_provider.dart';
 import '../../providers/approve_events_provider/guest_page_provider.dart';
 
 class GuestPage extends StatefulWidget {
@@ -91,22 +92,80 @@ class _GuestPageState extends State<GuestPage> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        if (showRefresh)
-          OutlinedButton.icon(
-            onPressed: onPressed,
-            icon: const Icon(Icons.refresh, color: Colors.white),
-            label: const Text("Refresh", style: TextStyle(color: Colors.white)),
-            style: OutlinedButton.styleFrom(
-              backgroundColor: Colors.pink,
-              side: const BorderSide(color: Colors.pink),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-          ),
-      ],
+        ],
     );
   }
 
   Widget _buildMinimalGuestCard(EventRegistration guest) {
+    final provider = Provider.of<EventRegistrationProvider>(context, listen: false);
+
+    Future<void> _updateStatus(String newStatus, String label, Color color) async {
+      final success = await provider.updateStatus(
+        eventId: guest.eventId,
+        joinedBy: guest.id,
+        registrationId: guest.registrationId,
+        newStatus: newStatus,
+      );
+
+      if (success) {
+        setState(() {
+          guest.status = newStatus; // ✅ update the UI instantly
+        });
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(success
+              ? '$label ${guest.name}'
+              : 'Failed to $label ${guest.name}'),
+          backgroundColor: success ? color : Colors.red,
+        ),
+      );
+    }
+
+    Widget _buildStatusChip(String label, Color color) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: color),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(color: color, fontWeight: FontWeight.bold),
+        ),
+      );
+    }
+
+    Widget _buildTrailing() {
+      switch (guest.status) {
+        case 'approved':
+          return _buildStatusChip('Approved', Colors.green);
+        case 'declined':
+          return _buildStatusChip('Rejected', Colors.red);
+        case 'waiting':
+          return _buildStatusChip('Waitlisted', Colors.blue);
+        case 'pending':
+        default:
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                onPressed: () => _updateStatus('approved', 'Approved', Colors.green),
+                icon: const Icon(Icons.check_circle, color: Colors.green, size: 28),
+                tooltip: 'Approve Guest',
+              ),
+              IconButton(
+                onPressed: () => _updateStatus('declined', 'Rejected', Colors.red),
+                icon: const Icon(Icons.cancel, color: Colors.red, size: 28),
+                tooltip: 'Reject Guest',
+              ),
+            ],
+          );
+      }
+    }
+
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 6),
       elevation: 2,
@@ -121,29 +180,7 @@ class _GuestPageState extends State<GuestPage> {
           guest.name,
           style: const TextStyle(fontWeight: FontWeight.w600),
         ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Approved ${guest.name}')),
-                );
-              },
-              icon: const Icon(Icons.check_circle, color: Colors.green, size: 28),
-              tooltip: 'Approve Guest',
-            ),
-            IconButton(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Rejected ${guest.name}')),
-                );
-              },
-              icon: const Icon(Icons.cancel, color: Colors.red, size: 28),
-              tooltip: 'Reject Guest',
-            ),
-          ],
-        ),
+        trailing: _buildTrailing(),
       ),
     );
   }

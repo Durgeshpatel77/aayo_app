@@ -1,9 +1,13 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 import 'dart:convert';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../models/event_registration_model.dart';
+import '../../providers/approve_events_provider/event_registration_provider.dart';
 
 class OrderSummaryScreen extends StatefulWidget {
   final String eventName;
@@ -37,12 +41,19 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
   bool _isJoining = false;
   late Razorpay _razorpay;
   final int _ticketQuantity = 1;
+  late EventRegistrationProvider provider;
 
   @override
   void initState() {
     super.initState();
+
+    // Load stored user ID and joined events info
     _loadBackendUserId();
+
+    // Initialize Razorpay instance
     _razorpay = Razorpay();
+
+    // Set up Razorpay event listeners
     _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
     _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
     _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
@@ -52,6 +63,126 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
   void dispose() {
     _razorpay.clear();
     super.dispose();
+  }
+  void _showTicketDetails() async {
+    showDialog(
+      context: context,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+      barrierDismissible: false,
+    );
+
+    final provider = EventRegistrationProvider();
+    await provider.fetchRegistrations(widget.eventId);
+    Navigator.pop(context); // Remove loading
+
+    final registration = provider.registrations.firstWhere(
+          (reg) => reg.id == _backendUserId,
+      orElse: () => EventRegistration(
+        id: '',
+        name: 'Unknown',
+        registrationId: '',
+        eventId: '',
+        status: 'Not Found',
+      ),
+    );
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: const [
+            Icon(Icons.confirmation_num, color: Colors.pink),
+            SizedBox(width: 8),
+            Text('Your Ticket',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _styledRow(Icons.event, 'Event', widget.eventName),
+            _styledRow(Icons.date_range, 'Date & Time',
+                '${widget.eventDate}, ${widget.eventTime}'),
+            _styledRow(Icons.location_on, 'Location', widget.eventLocation),
+            _styledRow(Icons.currency_rupee, 'Price',
+                '₹${widget.ticketPrice.toStringAsFixed(2)}'),
+            _styledRow(Icons.info, 'Status', registration.status),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              'Close',
+              style: TextStyle(fontWeight: FontWeight.bold,color: Colors.pink),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _styledRow(IconData icon, String title, String value) {
+    Color getStatusColor(String status) {
+      switch (status.toLowerCase()) {
+        case 'approved':
+          return Colors.green;
+        case 'pending':
+          return Colors.orange;
+        case 'rejected':
+          return Colors.red;
+        default:
+          return Colors.grey;
+      }
+    }
+
+    bool isStatus = title.toLowerCase() == 'status';
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: Colors.pink.shade400, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey)),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: isStatus ? getStatusColor(value) : Colors.black87,
+                    fontWeight: isStatus ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _ticketRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        children: [
+          Expanded(child: Text('$label:', style: const TextStyle(fontWeight: FontWeight.bold))),
+          Expanded(child: Text(value, textAlign: TextAlign.right)),
+        ],
+      ),
+    );
   }
 
   Future<void> _loadBackendUserId() async {
@@ -322,14 +453,33 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Price', style: TextStyle(color: Colors.grey[700])),
-                    Text(
-                      '\₹${totalAmount.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    _hasJoined
+                        ? GestureDetector(
+                      onTap: _showTicketDetails,
+                      child:const Text(
+              'View Detail',
+              style: TextStyle(
+                color: Colors.green,
+                decoration: TextDecoration.underline,
+                decorationColor: Colors.green, // This line makes the underline green
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+                    )
+                        : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Price', style: TextStyle(color: Colors.grey[700])),
+                        Text(
+                          '\₹${totalAmount.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    )
                   ],
                 ),
                 const SizedBox(width: 80),
@@ -379,3 +529,4 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
     );
   }
 }
+
