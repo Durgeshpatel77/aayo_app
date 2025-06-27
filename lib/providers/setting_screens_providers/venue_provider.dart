@@ -300,17 +300,17 @@ class VenueProvider extends ChangeNotifier {
    * ============================================================
    */
   Future<void> addVenue(BuildContext context) async {
-    // --- Validation --------------------------------------------------------
     if (venuenameController.text.isEmpty ||
-        addressController.text.isEmpty   ||
-        cityController.text.isEmpty      ||
+        addressController.text.isEmpty ||
+        cityController.text.isEmpty ||
         descriptionController.text.isEmpty ||
-        selectedLocation == null         ||
-        latitude  == null                ||
-        longitude == null                ||
-        pickedVenueImage == null         ||
+        selectedLocation == null ||
+        latitude == null ||
+        longitude == null ||
+        pickedVenueImage == null ||
         selectedFacilities.isEmpty ||
-        capacityController.text.isEmpty) {      _snack(context, 'Please fill all fields, pick image, location & facilities.');
+        capacityController.text.isEmpty) {
+      _snack(context, 'Please fill all fields, pick image, location & facilities.');
       return;
     }
 
@@ -330,16 +330,17 @@ class VenueProvider extends ChangeNotifier {
         Uri.parse('http://srv861272.hstgr.cloud:8000/api/post/venue'),
       )
         ..fields.addAll({
-          'user'        : userId,
-          'title'       : venuenameController.text,
-          'content'     : descriptionController.text,
-          'location'    : addressController.text,
-          'city'        : cityController.text,
-          'latitude'    : latitude.toString(),
-          'longitude'   : longitude.toString(),
-          'description' : descriptionController.text,
-          'facilities'  : selectedFacilities.join(', '),
-          'capacity'    : capacityController.text,
+          'user': userId,
+          'title': venuenameController.text.trim(),
+          'name': venuenameController.text.trim(), // ✅ required
+          'content': descriptionController.text.trim(),
+          'description': descriptionController.text.trim(), // ✅ required
+          'location': addressController.text.trim(),
+          'city': cityController.text.trim(),
+          'latitude': latitude.toString(),
+          'longitude': longitude.toString(),
+          'facilities': selectedFacilities.join(', '),
+          'capacity': capacityController.text.trim(),
         })
         ..files.add(await http.MultipartFile.fromPath('media', pickedVenueImage!.path));
 
@@ -347,10 +348,12 @@ class VenueProvider extends ChangeNotifier {
       final body = await res.stream.bytesToString();
       final decoded = body.isNotEmpty ? json.decode(body) : {};
 
+      debugPrint('📨 Venue API Response: ${res.statusCode}');
+      debugPrint('📦 Body: $decoded');
+
       if (res.statusCode == 201) {
         _snack(context, 'Venue added successfully ✅');
         clearForm();
-        // Optionally refresh venue list
         await fetchVenues();
       } else {
         _snack(context, 'Error ${res.statusCode}: ${decoded['message'] ?? 'Unknown'}');

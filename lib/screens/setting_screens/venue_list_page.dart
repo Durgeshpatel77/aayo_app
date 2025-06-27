@@ -71,11 +71,10 @@ class _VenueListPageState extends State<VenueListPage> {
     }
 
     // ---------- EMPTY ----------
-    if (provider.venues.isEmpty) {
+    if (!provider.isLoadingVenues && provider.venues.isEmpty) {
       return const Scaffold(
-        backgroundColor: Colors.white,
         appBar: _AppBar(),
-        body: Center(child: Text('No venues available.')),
+        body: Center(child: Text("No venues available.")),
       );
     }
 

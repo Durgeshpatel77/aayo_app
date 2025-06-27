@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../approve_event_screens/approve_screen.dart';
@@ -12,11 +13,16 @@ import 'ordersummart_screen.dart';
 import '../../models/event_model.dart';
 import '../other_for_use/expandable_text.dart';
 
-class EventDetailScreen extends StatelessWidget {
+class EventDetailScreen extends StatefulWidget {
   final Event event;
 
   EventDetailScreen({required this.event, super.key});
 
+  @override
+  State<EventDetailScreen> createState() => _EventDetailScreenState();
+}
+
+class _EventDetailScreenState extends State<EventDetailScreen> {
   String generateChatId(String user1, String user2) {
     return user1.hashCode <= user2.hashCode
         ? '${user1}_$user2'
@@ -31,29 +37,51 @@ class EventDetailScreen extends StatelessWidget {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _loadLoggedInUserId();
+  }
+
+  String? loggedInUserId;
+
+  Future<void> _loadLoggedInUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getString('backendUserId'); // ✅ This is the MongoDB ID
+    debugPrint('🔐 Loaded logged-in MongoDB userId: $userId');
+    setState(() {
+      loggedInUserId = userId;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
     final screenWidth = mediaQuery.size.width;
     final screenHeight = mediaQuery.size.height;
+    final double fontSize = (screenWidth * 0.03).clamp(10.0, 14.0);
 
-    final String imageUrl = event.media.isNotEmpty
-        ? getFullImageUrl(event.media.first)
-        : (event.image.isNotEmpty
-        ? getFullImageUrl(event.image)
-        : 'https://via.placeholder.com/400x200?text=No+Image');
+    debugPrint('🔍 Organizer ID: ${widget.event.organizerId}');
+    debugPrint('🔐 Logged-in User ID: $loggedInUserId');
+    debugPrint("👤 Event Organizer ID: ${widget.event.organizerId}");
 
-    final String eventTitle = event.title;
-    final String eventLocation = event.location;
-    final DateTime startTime = event.startTime;
-    final DateTime endTime = event.endTime;
-    final double price = event.price;
-    final bool isFree = event.isFree;
-    final String organizerName = event.organizer;
-    final String organizerProfileUrl = event.organizerProfile.isNotEmpty
-        ? getFullImageUrl(event.organizerProfile)
+    final String imageUrl = widget.event.media.isNotEmpty
+        ? getFullImageUrl(widget.event.media.first)
+        : (widget.event.image.isNotEmpty
+            ? getFullImageUrl(widget.event.image)
+            : 'https://via.placeholder.com/400x200?text=No+Image');
+
+    final String eventTitle = widget.event.title;
+    final String eventLocation = widget.event.location;
+    final DateTime startTime = widget.event.startTime;
+    final DateTime endTime = widget.event.endTime;
+    final double price = widget.event.price;
+    final bool isFree = widget.event.isFree;
+    final String organizerName = widget.event.organizer;
+    final String organizerProfileUrl = widget.event.organizerProfile.isNotEmpty
+        ? getFullImageUrl(widget.event.organizerProfile)
         : 'https://randomuser.me/api/portraits/men/75.jpg';
-    final String eventContent = event.content;
-    final int totalLikes = event.likes.length;
+    final String eventContent = widget.event.content;
+    // final int totalLikes = widget.event.likes.length; // This variable was declared but not used.
 
     String formattedDateTime = '';
     if (startTime.day == endTime.day &&
@@ -62,21 +90,10 @@ class EventDetailScreen extends StatelessWidget {
       formattedDateTime = '${DateFormat('EEE dMMM').format(startTime)} • '
           '${DateFormat('hh:mma').format(startTime)}  ';
     } else {
-      formattedDateTime =
-      '${DateFormat('EEEE,dMMM,hh:mma').format(startTime)}';
+      formattedDateTime = '${DateFormat('EEEE,dMMM,hh:mma').format(startTime)}';
     }
 
     String priceDisplay = isFree ? "Free" : '₹${price.toStringAsFixed(0)}';
-
-   // final int totalAttendees = 45;
-    // final List<String> visibleAttendeeAvatars = [
-    //   'https://randomuser.me/api/portraits/women/68.jpg',
-    //   'https://randomuser.me/api/portraits/women/65.jpg',
-    //   'https://randomuser.me/api/portraits/women/66.jpg',
-    //   'https://randomuser.me/api/portraits/women/67.jpg',
-    //   'https://randomuser.me/api/portraits/men/45.jpg',
-    // ];
-   // final int otherAttendees = totalAttendees - visibleAttendeeAvatars.length;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -96,7 +113,7 @@ class EventDetailScreen extends StatelessWidget {
                         child: CircularProgressIndicator(color: Colors.pink),
                       ),
                       errorWidget: (context, url, error) =>
-                      const Icon(Icons.broken_image),
+                          const Icon(Icons.broken_image),
                     ),
                   ),
                   Positioned(
@@ -156,7 +173,7 @@ class EventDetailScreen extends StatelessWidget {
                                   ),
                                 ),
                               ),
-                              Spacer(),
+                              const Spacer(),
                               Text(
                                 priceDisplay,
                                 maxLines: 1,
@@ -172,7 +189,8 @@ class EventDetailScreen extends StatelessWidget {
                           const SizedBox(height: 8),
                           Row(
                             children: [
-                              Icon(Icons.location_on, size: 16, color: Colors.grey[600]),
+                              Icon(Icons.location_on,
+                                  size: 16, color: Colors.grey[600]),
                               const SizedBox(width: 6),
                               Expanded(
                                 child: Text(
@@ -185,43 +203,6 @@ class EventDetailScreen extends StatelessWidget {
                                   ),
                                 ),
                               ),
-                              // SizedBox(
-                              //   width: (visibleAttendeeAvatars.length * 23 +
-                              //       (otherAttendees > 0 ? 30 : 0))
-                              //       .toDouble(),
-                              //   height: 36,
-                              //   child: Stack(
-                              //     children: [
-                              //       ...List.generate(
-                              //         visibleAttendeeAvatars.length,
-                              //             (index) {
-                              //           return Positioned(
-                              //             left: (index * 20).toDouble(),
-                              //             child: CircleAvatar(
-                              //               radius: 18,
-                              //               backgroundImage: NetworkImage(
-                              //                   visibleAttendeeAvatars[index]),
-                              //             ),
-                              //           );
-                              //         },
-                              //       ),
-                              //       if (otherAttendees > 0)
-                              //         Positioned(
-                              //           left: (visibleAttendeeAvatars.length * 20)
-                              //               .toDouble(),
-                              //           child: CircleAvatar(
-                              //             backgroundColor: Colors.pinkAccent,
-                              //             radius: 18,
-                              //             child: Text(
-                              //               "+$otherAttendees",
-                              //               style: const TextStyle(
-                              //                   color: Colors.white, fontSize: 12),
-                              //             ),
-                              //           ),
-                              //         ),
-                              //     ],
-                              //   ),
-                              // ),
                             ],
                           ),
                           const SizedBox(height: 6),
@@ -254,93 +235,99 @@ class EventDetailScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (event.type == "event")
-                    Container(
-                      width: double.infinity,
-                      padding: EdgeInsets.symmetric(
-                        horizontal: screenWidth * 0.03,
-                        vertical: screenHeight * 0.01,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.pink.shade50,
-                        border: Border.all(color: Colors.pink, width: 0.4),
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.pink.withOpacity(0.1),
-                            spreadRadius: 1,
-                            blurRadius: 5,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          const Expanded(
-                            child: Text(
-                              'You have manage access for this event',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.pink,
-                              ),
-                              overflow: TextOverflow.ellipsis,
+                  if (widget.event.type == 'event' &&
+                      widget.event.organizerId == loggedInUserId)
+                      Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: screenWidth * 0.03,
+                          vertical: screenHeight * 0.01,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.pink.shade50,
+                          border: Border.all(color: Colors.pink, width: 0.4),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.pink.withOpacity(0.1),
+                              spreadRadius: 1,
+                              blurRadius: 5,
+                              offset: const Offset(0, 3),
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          InkWell(
-                              onTap: () {
-                                  debugPrint("👆 Tapped: ${event.id} | ${event.title} | type: ${event.type}");
+                          ],
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  'You have manage access for this event',
+                                  style: TextStyle(
+                                    fontSize: fontSize,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.pink,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              InkWell(
+                                onTap: () {
+                                  debugPrint(
+                                      "👆 Tapped: ${widget.event.id} | ${widget.event.title} | type: ${widget.event.type}");
+                                  debugPrint(
+                                      "👤 Organizer ID: ${widget.event.organizerId}");
+                                  debugPrint(
+                                      "🔐 Logged-in ID: $loggedInUserId");
 
-                                  if (event.id.isNotEmpty && event.type == 'event') {
+                                  if (widget.event.id.isNotEmpty &&
+                                      widget.event.type == 'event') {
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
-                                        builder: (_) => ApproveScreen(eventId: event.id),
+                                        builder: (_) => ApproveScreen(
+                                            eventId: widget.event.id),
                                       ),
                                     );
                                   } else {
-                                    debugPrint("❌ Blocked navigation to ApproveScreen. Not a valid event.");
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text("This is not a valid event.")),
+                                      const SnackBar(
+                                          content: Text(
+                                              "This is not a valid event.")),
                                     );
                                   }
-                              },
-                            child: Container(
-                              width: screenWidth * 0.2,
-                              height: screenHeight * 0.04,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(20),
-                                color: Colors.pink,
-                              ),
-                              child: Center(
-                                child: RichText(
-                                  text: TextSpan(
-                                    children: [
-                                      const TextSpan(
-                                        text: "Manage ",
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(20),
+                                    color: Colors.pink,
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: const [
+                                      Text(
+                                        "Manage ",
                                         style: TextStyle(
                                             color: Colors.white, fontSize: 12),
                                       ),
-                                      WidgetSpan(
-                                        child: Icon(
-                                          Icons.north_east,
-                                          color: Colors.white,
-                                          size: 15,
-                                        ),
-                                      ),
+                                      Icon(Icons.north_east,
+                                          color: Colors.white, size: 15),
                                     ],
                                   ),
                                 ),
                               ),
-                            ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
-                    ),
                   const SizedBox(height: 18),
                   const Text('About',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   Text(
                     eventContent,
@@ -351,9 +338,12 @@ class EventDetailScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 14),
-                  Divider(color: Colors.grey.shade300,),
+                  Divider(
+                    color: Colors.grey.shade300,
+                  ),
                   const Text('Organizers and Attendees',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 10),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
@@ -378,11 +368,13 @@ class EventDetailScreen extends StatelessWidget {
                     ),
                     trailing: GestureDetector(
                       onTap: () {
-                        final currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
-                        final peerUserId = event.organizerId;
-                        final peerName = event.organizer;
+                        final currentUserId =
+                            FirebaseAuth.instance.currentUser?.uid ?? '';
+                        final peerUserId = widget.event.organizerId;
+                        final peerName = widget.event.organizer;
 
-                        final chatId = generateChatId(currentUserId, peerUserId);
+                        final chatId =
+                            generateChatId(currentUserId, peerUserId);
 
                         Navigator.push(
                           context,
@@ -403,9 +395,13 @@ class EventDetailScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                   Divider(color: Colors.grey.shade300,height: 30,),
+                  Divider(
+                    color: Colors.grey.shade300,
+                    height: 30,
+                  ),
                   const Text('Location',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 18),
                   SizedBox(
                     height: 180,
@@ -444,23 +440,29 @@ class EventDetailScreen extends StatelessWidget {
                           left: 12,
                           child: GestureDetector(
                             onTap: () async {
-                              final lat = event.latitude;
-                              final lng = event.longitude;
+                              final lat = widget.event
+                                  .latitude; // This variable was declared but not used.
+                              final lng = widget.event
+                                  .longitude; // This variable was declared but not used.
 
                               final Uri googleMapsUrl = Uri.parse(
                                 'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng&travelmode=driving',
                               );
 
                               if (await canLaunchUrl(googleMapsUrl)) {
-                                await launchUrl(googleMapsUrl, mode: LaunchMode.externalApplication);
+                                await launchUrl(googleMapsUrl,
+                                    mode: LaunchMode.externalApplication);
                               } else {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Could not open Google Maps')),
+                                  const SnackBar(
+                                      content:
+                                          Text('Could not open Google Maps')),
                                 );
                               }
                             },
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 9),
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(12),
@@ -488,20 +490,22 @@ class EventDetailScreen extends StatelessWidget {
                   const SizedBox(height: 24),
                   ElevatedButton(
                     onPressed: () {
-                      final String currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
+                      final String currentUserId = loggedInUserId ?? '';
 
                       Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (_) => OrderSummaryScreen(
                             eventName: eventTitle,
-                            eventDate: DateFormat('EEE d MMM').format(startTime),
+                            eventDate:
+                                DateFormat('EEE d MMM').format(startTime),
                             eventTime: DateFormat('hh:mm a').format(startTime),
                             eventLocation: eventLocation,
                             eventImageUrl: imageUrl,
                             ticketPrice: price,
-                            eventId: event.id,           // ✅ actual event ID
-                            joinedBy: currentUserId,    // ✅ actual user ID (e.g. from Firebase or auth state)
+                            eventId: widget.event.id, // ✅ actual event ID
+                            joinedBy:
+                                currentUserId, // ✅ actual user ID (e.g. from Firebase or auth state)
                           ),
                         ),
                       );
