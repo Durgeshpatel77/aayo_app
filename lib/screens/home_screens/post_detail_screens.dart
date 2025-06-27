@@ -366,11 +366,17 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 const SizedBox(height: 30),
 
                 // Comment
+                // Comment
                 GestureDetector(
                   onTap: _openCommentSheet,
                   child: Column(
                     children: [
-                      const Icon(Icons.comment_outlined, color: Colors.white, size: 30),
+                      Image.asset(
+                        'images/chat_icon.png',
+                        width: 28,
+                        height: 28,
+                        color: Colors.white, // optional: remove if image is full-color
+                      ),
                       const SizedBox(height: 4),
                       Text(
                         '$_commentCount',
@@ -379,16 +385,22 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                     ],
                   ),
                 ),
+
                 const SizedBox(height: 30),
 
-                // Share
+// Share
                 GestureDetector(
-                  onTap: _sharePost, // ← connected here
+                  onTap: _sharePost,
                   child: Column(
-                    children: const [
-                      Icon(Icons.send_outlined, color: Colors.white, size: 28),
-                      SizedBox(height: 4),
-                      Text('Share', style: TextStyle(color: Colors.white, fontSize: 12)),
+                    children: [
+                      Image.asset(
+                        'images/share_icon.png',
+                        width: 26,
+                        height: 26,
+                        color: Colors.white
+                      ),
+                      const SizedBox(height: 4),
+                      const Text('Share', style: TextStyle(color: Colors.white, fontSize: 12)),
                     ],
                   ),
                 ),

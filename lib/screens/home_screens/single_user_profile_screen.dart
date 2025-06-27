@@ -66,7 +66,7 @@ class _SingleUserProfileScreenState extends State<SingleUserProfileScreen> with 
       });
     } catch (e) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to load profile')));
+      //ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to load profile')));
     }
   }
 

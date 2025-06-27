@@ -147,61 +147,61 @@ class _CommentSheetState extends State<CommentSheet> {
 
                       Widget tile = Padding(
                         padding: const EdgeInsets.symmetric(vertical: 6),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            GestureDetector(
-                              onTap: () {
-                                if (c.userId != loggedInUserId) {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => SingleUserProfileScreen(userId: c.userId),
-                                    ),
-                                  );
-                                }
-                              },
-                              child: CircleAvatar(
-                                radius: 18,
-                                backgroundImage: c.userProfile.isNotEmpty
-                                    ? NetworkImage(c.userProfile)
-                                    : const AssetImage('images/onbording/unkown.jpg') as ImageProvider,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // First row: Username + time
-                                  Row(
-                                    children: [
-                                      Text(
-                                        c.userName,
-                                        style: theme.textTheme.bodyMedium?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.black,
+                        child:                  GestureDetector(
+                          onTap: () {
+                            if (c.userId != loggedInUserId) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => SingleUserProfileScreen(userId: c.userId),
+                                ),
+                              );
+                            }
+                          },
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              CircleAvatar(
+                                  radius: 18,
+                                  backgroundImage: c.userProfile.isNotEmpty
+                                      ? NetworkImage(c.userProfile)
+                                      : const AssetImage('images/onbording/unkown.jpg') as ImageProvider,
+                                ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // First row: Username + time
+                                    Row(
+                                      children: [
+                                        Text(
+                                          c.userName,
+                                          style: theme.textTheme.bodyMedium?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.black,
+                                          ),
                                         ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        timeAgo(c.createdAt),
-                                        style: const TextStyle(fontSize: 12, color: Colors.grey),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 4),
-                                  // Second row: Comment content
-                                  Text(
-                                    c.content,
-                                    style: theme.textTheme.bodyMedium?.copyWith(
-                                      color: Colors.black87,
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          timeAgo(c.createdAt),
+                                          style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                        ),
+                                      ],
                                     ),
-                                  ),
-                                ],
+                                    const SizedBox(height: 4),
+                                    // Second row: Comment content
+                                    Text(
+                                      c.content,
+                                      style: theme.textTheme.bodyMedium?.copyWith(
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       );
 

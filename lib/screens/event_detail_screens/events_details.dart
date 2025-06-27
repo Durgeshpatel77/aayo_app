@@ -67,15 +67,15 @@ class EventDetailScreen extends StatelessWidget {
 
     String priceDisplay = isFree ? "Free" : '₹${price.toStringAsFixed(0)}';
 
-    final int totalAttendees = 45;
-    final List<String> visibleAttendeeAvatars = [
-      'https://randomuser.me/api/portraits/women/68.jpg',
-      'https://randomuser.me/api/portraits/women/65.jpg',
-      'https://randomuser.me/api/portraits/women/66.jpg',
-      'https://randomuser.me/api/portraits/women/67.jpg',
-      'https://randomuser.me/api/portraits/men/45.jpg',
-    ];
-    final int otherAttendees = totalAttendees - visibleAttendeeAvatars.length;
+   // final int totalAttendees = 45;
+    // final List<String> visibleAttendeeAvatars = [
+    //   'https://randomuser.me/api/portraits/women/68.jpg',
+    //   'https://randomuser.me/api/portraits/women/65.jpg',
+    //   'https://randomuser.me/api/portraits/women/66.jpg',
+    //   'https://randomuser.me/api/portraits/women/67.jpg',
+    //   'https://randomuser.me/api/portraits/men/45.jpg',
+    // ];
+   // final int otherAttendees = totalAttendees - visibleAttendeeAvatars.length;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -147,7 +147,7 @@ class EventDetailScreen extends StatelessWidget {
                               Expanded(
                                 child: Text(
                                   eventTitle,
-                                  maxLines: 1,
+                                  maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
                                     fontSize: 20,
@@ -184,43 +184,43 @@ class EventDetailScreen extends StatelessWidget {
                                   ),
                                 ),
                               ),
-                              SizedBox(
-                                width: (visibleAttendeeAvatars.length * 23 +
-                                    (otherAttendees > 0 ? 30 : 0))
-                                    .toDouble(),
-                                height: 36,
-                                child: Stack(
-                                  children: [
-                                    ...List.generate(
-                                      visibleAttendeeAvatars.length,
-                                          (index) {
-                                        return Positioned(
-                                          left: (index * 20).toDouble(),
-                                          child: CircleAvatar(
-                                            radius: 18,
-                                            backgroundImage: NetworkImage(
-                                                visibleAttendeeAvatars[index]),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                    if (otherAttendees > 0)
-                                      Positioned(
-                                        left: (visibleAttendeeAvatars.length * 20)
-                                            .toDouble(),
-                                        child: CircleAvatar(
-                                          backgroundColor: Colors.pinkAccent,
-                                          radius: 18,
-                                          child: Text(
-                                            "+$otherAttendees",
-                                            style: const TextStyle(
-                                                color: Colors.white, fontSize: 12),
-                                          ),
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              ),
+                              // SizedBox(
+                              //   width: (visibleAttendeeAvatars.length * 23 +
+                              //       (otherAttendees > 0 ? 30 : 0))
+                              //       .toDouble(),
+                              //   height: 36,
+                              //   child: Stack(
+                              //     children: [
+                              //       ...List.generate(
+                              //         visibleAttendeeAvatars.length,
+                              //             (index) {
+                              //           return Positioned(
+                              //             left: (index * 20).toDouble(),
+                              //             child: CircleAvatar(
+                              //               radius: 18,
+                              //               backgroundImage: NetworkImage(
+                              //                   visibleAttendeeAvatars[index]),
+                              //             ),
+                              //           );
+                              //         },
+                              //       ),
+                              //       if (otherAttendees > 0)
+                              //         Positioned(
+                              //           left: (visibleAttendeeAvatars.length * 20)
+                              //               .toDouble(),
+                              //           child: CircleAvatar(
+                              //             backgroundColor: Colors.pinkAccent,
+                              //             radius: 18,
+                              //             child: Text(
+                              //               "+$otherAttendees",
+                              //               style: const TextStyle(
+                              //                   color: Colors.white, fontSize: 12),
+                              //             ),
+                              //           ),
+                              //         ),
+                              //     ],
+                              //   ),
+                              // ),
                             ],
                           ),
                           const SizedBox(height: 6),
@@ -341,9 +341,13 @@ class EventDetailScreen extends StatelessWidget {
                   const Text('About',
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-                  ExpandableText(
-                    content: eventContent,
-                    textColor: Colors.grey[700]!,
+                  Text(
+                    eventContent,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[700],
+                      height: 1.5,
+                    ),
                   ),
                   const SizedBox(height: 14),
                   Divider(color: Colors.grey.shade300,),
@@ -412,8 +416,8 @@ class EventDetailScreen extends StatelessWidget {
                       GestureDetector(
                         onTap: () {
                           final currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
-                          final peerUserId = event.organizerId;   // ✅ organizerId from your Event model
-                          final peerName = event.organizer;       // ✅ organizer name from your Event model
+                          final peerUserId = event.organizerId;
+                          final peerName = event.organizer;
 
                           final chatId = generateChatId(currentUserId, peerUserId);
 
@@ -429,10 +433,11 @@ class EventDetailScreen extends StatelessWidget {
                             ),
                           );
                         },
-                        child: Icon(
-                          Icons.forum_outlined,
-                          size: 36,
-                          color: Colors.pink.shade400,
+                        child: Image.asset(
+                          'images/message_send.png', // 🔁 your image path
+                          width: 32,                 // ✅ adjust size as needed
+                          height: 32,
+                          //color: Colors.pink.shade400, // Optional: apply tint if image is monochrome
                         ),
                       ),
                     ],

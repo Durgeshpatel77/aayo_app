@@ -68,6 +68,7 @@ dependencies:
   razorpay_flutter: ^1.4.0
   fluttertoast: ^8.2.12
   share_plus: ^11.0.0
+  url_launcher: ^6.3.1
 flutter_launcher_icons:
   android: true
   ios: true
@@ -113,6 +114,7 @@ flutter:
     - images/onbording/onbordiing2/fireworks1.jpg
     - images/onbording/onbordiing2/hands.jpg
     - images/onbording/onbordiing2/lake.jpg
+
     - images/onbording/onbording3/guitar.jpg
     - images/onbording/onbording3/music.jpg
     - images/onbording/onbording3/people3.jpg
@@ -132,6 +134,7 @@ flutter:
     - images/message.png
     - images/chat_icon.png
     - images/share_icon.png
+    - images/message_send.png
 
       #   - images/a_dot_ham.jpeg
 
