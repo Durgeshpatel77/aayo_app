@@ -7,6 +7,7 @@ import '../../models/create_event_model.dart';
 import '../../models/event_model.dart';
 import '../../providers/home_screens_providers/add_post_provider.dart';
 import '../../providers/onording_login_screens_providers/user_profile_provider.dart';
+import '../event_detail_screens/events_details.dart';
 import 'follow_list_screen.dart';
 
 class SingleUserProfileScreen extends StatefulWidget {
@@ -21,10 +22,12 @@ class SingleUserProfileScreen extends StatefulWidget {
 class _SingleUserProfileScreenState extends State<SingleUserProfileScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   Map<String, dynamic> _userProfileData = {};
-  List<Event> _userEventPosts = []; // ✅ Matches what fetchUserPostsById returns
-  bool _isLoading = true;
-  bool isFollowing = false;
-  String? backendUserId;
+    bool _isLoading = true;
+    bool isFollowing = false;
+    String? backendUserId;
+  List<EventModel> _userEventModels = []; // For Tab 1: Events (Calendar View)
+  List<Event> _userPostHistory = [];      // For Tab 2: Posts (Normal posts)
+
 
   @override
   void initState() {
@@ -69,11 +72,67 @@ class _SingleUserProfileScreenState extends State<SingleUserProfileScreen> with 
 
   Future<void> _fetchUserPosts() async {
     try {
-      final provider = Provider.of<AddPostProvider>(context, listen: false);
-      final posts = await provider.fetchUserPostsById(widget.userId);
-      setState(() => _userEventPosts = posts);
+      final postProvider = Provider.of<AddPostProvider>(context, listen: false);
+      final allPosts = await postProvider.fetchUserPostsById(widget.userId); // get all
+      final onlyEvents = await postProvider.fetchUserPostsById(widget.userId, type: 'event'); // get events
+
+      debugPrint("👤 Fetching posts for userId: ${widget.userId}");
+
+      final events = await postProvider.fetchUserPostsById(widget.userId); // This should return List<Event>
+
+      debugPrint("📦 Total events fetched: ${events.length}");
+
+      if (events.isEmpty) {
+        debugPrint("🚫 No events returned from fetchUserPostsById");
+      }
+
+      for (var e in events) {
+        debugPrint("🔎 Raw event type: ${e.type}, title: ${e.title}, media: ${e.media}");
+      }
+
+      final eventModels = events
+          .where((e) => e.type?.toLowerCase() == 'event')
+          .map((e) => EventModel(
+        id: e.id,
+        title: e.title,
+        content: e.content,
+        media: e.media,
+        likes: e.likes,
+        comments: e.comments,
+        type: e.type,
+        createdAt: e.createdAt,
+        updatedAt: e.createdAt,
+        user: UserInfo(
+          id: e.organizerId,
+          name: e.organizer,
+          profile: e.organizerProfile,
+        ),
+        eventDetails: EventDetails(
+          title: e.title,
+          location: e.location,
+          city: '',
+          latitude: 0.0,
+          longitude: 0.0,
+          description: e.content,
+          startTime: e.startTime,
+          endTime: e.endTime,
+          isFree: e.isFree,
+          price: e.price,
+        ),
+      ))
+          .toList();
+
+      debugPrint("🎯 EventModels created: ${eventModels.length}");
+      for (var e in eventModels) {
+        debugPrint("✅ EventModel: ${e.title}, media count: ${e.media.length}, media: ${e.media}");
+      }
+
+      setState(() {
+        _userPostHistory = events;
+        _userEventModels = eventModels;
+      });
     } catch (e) {
-      debugPrint("Failed to fetch posts: $e");
+      debugPrint("❌ Failed to fetch posts: $e");
     }
   }
 
@@ -130,6 +189,7 @@ class _SingleUserProfileScreenState extends State<SingleUserProfileScreen> with 
     final profilePath = _userProfileData['profile'] ?? '';
     final followers = _userProfileData['followers'] as List? ?? [];
     final following = _userProfileData['following'] as List? ?? [];
+    final eventsWithMedia = _userEventModels.where((e) => e.media.isNotEmpty).toList();
 
     final profileImage = profilePath.isNotEmpty
         ? NetworkImage(_fullImageUrl(profilePath))
@@ -288,39 +348,93 @@ class _SingleUserProfileScreenState extends State<SingleUserProfileScreen> with 
                 TabBarView(
                   controller: _tabController,
                   children: [
-                    _userEventPosts.isEmpty
-                        ? const Center(child: Text("No posts available."))
+
+
+                    // Inside TabBarView (Tab 1)
+                    Builder(
+                      builder: (_) {
+                        final postOnly = _userPostHistory
+                            .where((e) => e.type?.toLowerCase() == 'post')
+                            .toList();
+
+                        return postOnly.isEmpty
+                            ? const Center(child: Text('No posts available'))
+                            : GridView.builder(
+                          itemCount: postOnly.length,
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 3,
+                            crossAxisSpacing: 2,
+                            mainAxisSpacing: 2,
+                          ),
+                          itemBuilder: (_, i) {
+                            final post = postOnly[i];
+                            final imageUrl = post.media.isNotEmpty ? post.media.first : post.image;
+
+                            return GestureDetector(
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => PostDetailScreen(post: post)),
+                              ),
+                              child: Image.network(
+                                imageUrl,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => const Icon(Icons.broken_image),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+
+                    _userEventModels.isEmpty
+                        ? const Center(child: Text('No event media found'))
                         : GridView.builder(
-                      itemCount: _userEventPosts.length,
-                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: eventsWithMedia.length,
                       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 3,
                         crossAxisSpacing: 2,
                         mainAxisSpacing: 2,
                       ),
-                      itemBuilder: (context, index) {
-                        final event = _userEventPosts[index];
-                        final imageUrl = event.media.isNotEmpty ? event.media.first : event.image;
-
+                      itemBuilder: (_, i) {
+                        final event = eventsWithMedia[i];
                         return GestureDetector(
                           onTap: () {
+                            final convertedEvent = Event(
+                              id: event.id,
+                              title: event.title,
+                              content: event.content,
+                              location: event.eventDetails?.location ?? '',
+                              startTime: event.eventDetails?.startTime ?? DateTime.now(),
+                              endTime: event.eventDetails?.endTime ?? DateTime.now(),
+                              isFree: event.eventDetails?.isFree ?? true,
+                              price: event.eventDetails?.price ?? 0,
+                              organizerId: event.user.id,
+                              likes: event.likes.map((e) => e.toString()).toList(),
+                              comments: [],
+                              image: event.media.first,
+                              media: event.media,
+                              organizer: event.user.name,
+                              organizerProfile: event.user.profile ?? '',
+                              createdAt: event.createdAt,
+                              type: event.type,
+                            );
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => PostDetailScreen(post: event),
+                                builder: (_) => EventDetailScreen(event: convertedEvent),
                               ),
                             );
                           },
                           child: Image.network(
-                            imageUrl,
+                            event.media.first, // ✅ use as-is
                             fit: BoxFit.cover,
                             errorBuilder: (_, __, ___) => const Icon(Icons.broken_image),
                           ),
                         );
                       },
                     ),
-                    const Center(child: Text("Scheduled Activities")),
-                    const Center(child: Text("Past Activities")),
+
+                    const Center(child: Text('Past Activities')),
                   ],
                 ),
               )

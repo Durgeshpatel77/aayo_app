@@ -2,6 +2,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../models/event_model.dart';
 import '../../models/comment_model.dart';
 import '../../providers/home_screens_providers/home_provider.dart';
@@ -118,6 +119,23 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     }
   }
 
+  Future<void> _sharePost() async {
+    final post = widget.post;
+
+    final text = '${post.title}\n\n${post.content}\n\n'
+        'Check it out on Aayo!\n'
+        '🖼 ${post.media.isNotEmpty ? getFullImageUrl(post.media.first) : getFullImageUrl(post.image)}';
+
+    try {
+      await Share.share(text);
+      debugPrint('✅ Post shared successfully');
+    } catch (e) {
+      debugPrint('❌ Failed to share post: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Failed to share the post")),
+      );
+    }
+  }
 
   String getFullImageUrl(String relativePath) {
     const baseUrl = 'http://srv861272.hstgr.cloud:8000';
@@ -364,7 +382,16 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 const SizedBox(height: 30),
 
                 // Share
-                const Icon(Icons.send_outlined, color: Colors.white, size: 28),
+                GestureDetector(
+                  onTap: _sharePost, // ← connected here
+                  child: Column(
+                    children: const [
+                      Icon(Icons.send_outlined, color: Colors.white, size: 28),
+                      SizedBox(height: 4),
+                      Text('Share', style: TextStyle(color: Colors.white, fontSize: 12)),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),

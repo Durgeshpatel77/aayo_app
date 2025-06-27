@@ -202,10 +202,14 @@ class AddPostProvider with ChangeNotifier {
     }
   }
   /// ✅ 7. FETCH POSTS FOR A SPECIFIC USER (with full Event objects)
-  Future<List<Event>> fetchUserPostsById(String userId) async {
+  Future<List<Event>> fetchUserPostsById(String userId, {String? type}) async {
     try {
-      final url = Uri.parse('$_apiBaseUrl/api/post?type=post&user=$userId');
-      final response = await http.get(url);
+      String url = '$_apiBaseUrl/api/post?user=$userId';
+      if (type != null && type.isNotEmpty) {
+        url += '&type=$type';
+      }
+
+      final response = await http.get(Uri.parse(url));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
