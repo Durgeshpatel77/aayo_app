@@ -6,6 +6,7 @@ import 'package:aayo/screens/home_screens/single_user_profile_screen.dart';
 import 'package:aayo/screens/home_screens/userprofile_list.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -92,9 +93,109 @@ class _EventCardState extends State<EventCard> {
     }
   }
 
+  // void _toggleLike() async {
+  //   final userProfileProvider =
+  //   Provider.of<FetchEditUserProvider>(context, listen: false);
+  //   final currentUserId = userProfileProvider.userId;
+  //
+  //   if (currentUserId == null) {
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       const SnackBar(content: Text("You must be logged in to like this.")),
+  //     );
+  //     return;
+  //   }
+  //
+  //   final wasLiked = isLiked;
+  //
+  //   // 🔁 Optimistic UI update
+  //   setState(() {
+  //     isLiked = !isLiked;
+  //     likeCount += isLiked ? 1 : -1;
+  //   });
+  //
+  //   if (isLiked && !wasLiked) {
+  //     _playLikeSound(); // 🔊 Play only on like
+  //   }
+  //
+  //   try {
+  //     final response = await userProfileProvider.toggleLike(
+  //       postId: widget.event.id,
+  //       userId: currentUserId,
+  //     );
+  //
+  //     if (response['success'] == true) {
+  //       final updatedLikes = List<String>.from(response['likes'] ?? []);
+  //       Provider.of<HomeProvider>(context, listen: false)
+  //           .updateEventLikes(widget.event.id, updatedLikes);
+  //
+  //       debugPrint("🔎 Organizer ID: ${widget.event.organizerId}");
+  //       debugPrint("🔎 Current User ID: $currentUserId");
+  //
+  //       // ✅ Send notification ONLY if:
+  //       // 1. It’s a new like
+  //       // 2. It's not your own post
+  //       if (isLiked && widget.event.organizerId != currentUserId) {
+  //         final recipientFcmToken = widget.event.organizerFcmToken;
+  //
+  //         if (recipientFcmToken != null && recipientFcmToken.isNotEmpty) {
+  //           final fcmResponse = await http.post(
+  //             Uri.parse('http://srv861272.hstgr.cloud:8000/api/send-notification'),
+  //             headers: {'Content-Type': 'application/json'},
+  //             body: jsonEncode({
+  //               "fcmToken": recipientFcmToken,
+  //               "title": "❤️ New Like",
+  //               "body": "${userProfileProvider.name ?? "Someone"} liked your post",
+  //               "data": {
+  //                 "userId": currentUserId,
+  //                 "userName": userProfileProvider.name ?? "",
+  //                 "userAvatar": userProfileProvider.userData['profile'] ?? "",
+  //                 "vendorId": widget.event.id,
+  //                 "vendorName": widget.event.organizer,
+  //               }
+  //             }),
+  //           );
+  //
+  //           debugPrint('📨 Notification Response: ${fcmResponse.statusCode}');
+  //           debugPrint('📨 Notification Body: ${fcmResponse.body}');
+  //
+  //           // 🔗 Log notification
+  //           final logResponse = await http.post(
+  //             Uri.parse('http://srv861272.hstgr.cloud:8000/api/notification'),
+  //             headers: {'Content-Type': 'application/json'},
+  //             body: jsonEncode({
+  //               "user": widget.event.organizerId,
+  //               "message": "${userProfileProvider.name ?? "Someone"} liked your post"
+  //             }),
+  //           );
+  //
+  //           debugPrint('📝 Notification log status: ${logResponse.statusCode}');
+  //         } else {
+  //           debugPrint("🚫 Organizer FCM token is missing");
+  //         }
+  //       } else {
+  //         debugPrint("🔕 No notification sent (self-like or unlike)");
+  //       }
+  //     } else {
+  //       // ❌ Revert UI on failure
+  //       setState(() {
+  //         isLiked = wasLiked;
+  //         likeCount += isLiked ? 1 : -1;
+  //       });
+  //     }
+  //   } catch (e) {
+  //     setState(() {
+  //       isLiked = wasLiked;
+  //       likeCount += isLiked ? 1 : -1;
+  //     });
+  //     debugPrint('❌ Error toggling like: $e');
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(content: Text("Failed to update like: $e")),
+  //     );
+  //   }
+  // }
   void _toggleLike() async {
     final userProfileProvider =
-        Provider.of<FetchEditUserProvider>(context, listen: false);
+    Provider.of<FetchEditUserProvider>(context, listen: false);
     final currentUserId = userProfileProvider.userId;
 
     if (currentUserId == null) {
@@ -104,17 +205,14 @@ class _EventCardState extends State<EventCard> {
       return;
     }
 
-    final homeProvider = Provider.of<HomeProvider>(context, listen: false);
-
-    // Optimistic update
     final wasLiked = isLiked;
 
+    // Optimistic UI update
     setState(() {
       isLiked = !isLiked;
       likeCount += isLiked ? 1 : -1;
     });
 
-// 🔊 Play sound if now liked
     if (!wasLiked) {
       _playLikeSound();
     }
@@ -125,45 +223,67 @@ class _EventCardState extends State<EventCard> {
         userId: currentUserId,
       );
 
-      debugPrint('✅ Like API response: $response');
+      if (response['success'] == true) {
+        final updatedLikes = List<String>.from(response['likes'] ?? []);
+        Provider.of<HomeProvider>(context, listen: false)
+            .updateEventLikes(widget.event.id, updatedLikes);
 
-      if (response['success']) {
-        final updatedLikes = (response['likes'] as List)
-            .map((like) {
-              if (like is String) return like;
-              if (like is Map && like['_id'] is String)
-                return like['_id'] as String;
-              return null;
-            })
-            .whereType<String>()
-            .toList();
-        debugPrint('✅ Updated Likes: $updatedLikes');
+        debugPrint("🔎 Organizer ID: ${widget.event.organizerId}");
+        debugPrint("🔎 Current User ID: $currentUserId");
 
-        homeProvider.updateEventLikes(widget.event.id, updatedLikes);
+        // ✅ Send notification only on new like, not unlike or self-like
+        if (isLiked && widget.event.organizerId != currentUserId) {
+          const staticFcmToken =
+              'egxd4BvUTEy2_VBTiT6g6t:APA91bFhC7TQVRWSKan7-gKlyAjy6yn2HoOceBUANxZBefnqILQxVdUydd36M4s-U3IO0hAeugb-nJMuqEjwcEUwibhcTeFCNUNKHFf6vaoZzX2VfuQCq_U';
+
+          final fcmResponse = await http.post(
+            Uri.parse('http://srv861272.hstgr.cloud:8000/api/send-notification'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              "fcmToken": staticFcmToken, // ✅ use static
+              "title": "❤️ New Like",
+              "body": "${userProfileProvider.name ?? "Someone"} liked your post",
+              "data": {
+                "userId": currentUserId,
+                "userName": userProfileProvider.name ?? "",
+                "userAvatar": userProfileProvider.userData['profile'] ?? "",
+                "vendorId": widget.event.id,
+                "vendorName": widget.event.organizer,
+              }
+            }),
+          );
+
+          debugPrint('📨 Static Notification Response: ${fcmResponse.statusCode}');
+          debugPrint('📨 Body: ${fcmResponse.body}');
+
+          // Optional: Log in database
+          await http.post(
+            Uri.parse('http://srv861272.hstgr.cloud:8000/api/notification'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              "user": widget.event.organizerId,
+              "message": "${userProfileProvider.name ?? "Someone"} liked your post"
+            }),
+          );
+        } else {
+          debugPrint("🚫 No notification (unlike or self-like)");
+        }
       } else {
-        // Revert optimistic update on failure
+        // Revert UI if failed
         setState(() {
-          isLiked = !isLiked;
+          isLiked = wasLiked;
           likeCount += isLiked ? 1 : -1;
         });
-        final msg = response['message'] ?? 'Failed to update like.';
-        debugPrint('❌ Like failed: $msg');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(msg)),
-        );
       }
-    } catch (e, stackTrace) {
-      // Revert optimistic update on error
+    } catch (e) {
       setState(() {
-        isLiked = !isLiked;
+        isLiked = wasLiked;
         likeCount += isLiked ? 1 : -1;
       });
 
-      debugPrint('❌ Like error: $e');
-      debugPrint('📍 StackTrace: $stackTrace');
-
+      debugPrint('❌ Error liking post: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.toString()}')),
+        SnackBar(content: Text("Failed to like post: $e")),
       );
     }
   }
@@ -180,9 +300,12 @@ class _EventCardState extends State<EventCard> {
         initialComments: widget.event.comments,
         postId: widget.event.id,
         postOwnerId: widget.event.organizerId,
+        event: widget.event, // ✅ ADD THIS
+        recipientFcmToken: widget.event.organizerFcmToken ??'', // ✅ pass this dynamically
         onCommentCountChange: (newCount) {
           setState(() => _commentCount = newCount);
         },
+
       ),
     );
 
@@ -323,9 +446,11 @@ class _EventCardState extends State<EventCard> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 5),
-                SelectableText.rich(
-                  _buildHighlightedText(widget.event.content, widget.highlight),
-                  style: const TextStyle(fontSize: 15),
+                ExpandableText(
+                  content: widget.event.content,
+                  wordLimit: 20, // You can customize this
+                  textColor: Colors.black,
+                  linkColor: Colors.pink,
                 )
               ],
             ),
@@ -661,12 +786,28 @@ class _HomeScreenState extends State<HomeScreen> {
   int likeCount = 0;
 
   @override
-  @override
   void initState() {
     super.initState();
     _userProfileProvider =
         Provider.of<FetchEditUserProvider>(context, listen: false);
     _userProfileProvider.addListener(_onUserProviderChange);
+
+    _initFCMAndLoadData(); // NEW
+  }
+
+  Future<void> _initFCMAndLoadData() async {
+    await _userProfileProvider.loadUserId();
+
+    if (_userProfileProvider.userId != null) {
+      // 👇 Fetch the FCM token (ensure firebase_messaging is configured)
+      final fcmToken = await FirebaseMessaging.instance.getToken();
+      if (fcmToken != null) {
+        debugPrint('📡 FCM Token: $fcmToken');
+        await _userProfileProvider.updateFcmToken(fcmToken);
+      }
+
+      await Provider.of<HomeProvider>(context, listen: false).fetchAll();
+    }
   }
 
   @override

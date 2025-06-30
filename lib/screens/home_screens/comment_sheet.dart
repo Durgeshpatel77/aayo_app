@@ -1,8 +1,12 @@
+import 'dart:convert';
+
 import 'package:aayo/screens/home_screens/single_user_profile_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 
 import '../../models/comment_model.dart';
+import '../../models/event_model.dart';
 import '../../providers/home_screens_providers/home_provider.dart';
 import '../../providers/onording_login_screens_providers/user_profile_provider.dart';
 import '../other_for_use/utils.dart';
@@ -12,13 +16,19 @@ class CommentSheet extends StatefulWidget {
   final String postId;
   final String postOwnerId;
   final void Function(int newCount) onCommentCountChange;
+  final Event event; // ✅ ADD THIS
+  final String? recipientFcmToken; // <-- ADD this
 
   const CommentSheet({
     required this.initialComments,
     required this.postId,
     required this.postOwnerId,
     required this.onCommentCountChange,
+    required this.event,
+    this.recipientFcmToken, // <-- ADD this
+
     super.key,
+
   });
 
   @override
@@ -33,8 +43,78 @@ class _CommentSheetState extends State<CommentSheet> {
   @override
   void initState() {
     super.initState();
-    _comments = List.from(widget.initialComments);
+    _comments = List.from(widget.initialComments)
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt)); // newest first
+
   }
+  // Future<void> _submit() async {
+  //   final text = _controller.text.trim();
+  //   if (text.isEmpty) {
+  //     debugPrint("⚠️ Comment text is empty");
+  //     return;
+  //   }
+  //
+  //   final userProvider = Provider.of<FetchEditUserProvider>(context, listen: false);
+  //   final userId = userProvider.userId;
+  //
+  //   if (userId == null) {
+  //     debugPrint("❌ User not logged in");
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       const SnackBar(content: Text("Login required to comment.")),
+  //     );
+  //     return;
+  //   }
+  //
+  //   try {
+  //     debugPrint("📤 Submitting comment: $text");
+  //
+  //     final commentJson = await Provider.of<HomeProvider>(context, listen: false)
+  //         .addCommentToPost(
+  //       postId: widget.postId,
+  //       userId: userId,
+  //       content: text,
+  //     );
+  //
+  //     final newComment = CommentModel.fromJson(commentJson);
+  //
+  //     setState(() {
+  //       _comments.insert(0, newComment);
+ // _comments.sort((a, b) => b.createdAt.compareTo(a.createdAt)); // ⬅️ newest first
+
+  //       _controller.clear();
+  //     });
+  //
+  //     widget.onCommentCountChange(_comments.length);
+  //
+  //     await Future.delayed(const Duration(milliseconds: 80));
+  //     _scrollController.animateTo(
+  //       0,
+  //       duration: const Duration(milliseconds: 300),
+  //       curve: Curves.easeOut,
+  //     );
+  //
+  //     debugPrint("✅ Comment added successfully");
+  //
+  //     final recipientFcm = widget.event.organizerFcmToken ?? '';
+  //     final organizerId = widget.postOwnerId;
+  //
+  //     debugPrint("📦 Organizer ID: $organizerId");
+  //     debugPrint("📦 Organizer FCM Token: $recipientFcm");
+  //
+  //     await _sendCommentNotification(
+  //       recipientFcmToken: recipientFcm,
+  //       organizerId: organizerId,
+  //       commentContent: text,
+  //     );
+  //   } catch (e, stackTrace) {
+  //     debugPrint("❌ Error submitting comment: $e");
+  //     debugPrint("🔍 Stack trace:\n$stackTrace");
+  //
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(content: Text("❌ Failed to add comment: $e")),
+  //     );
+  //   }
+  // }
 
   Future<void> _submit() async {
     final text = _controller.text.trim();
@@ -61,7 +141,8 @@ class _CommentSheetState extends State<CommentSheet> {
       final newComment = CommentModel.fromJson(commentJson);
 
       setState(() {
-        _comments.insert(0, newComment); // ✅ Add to top
+        _comments.insert(0, newComment);
+        _comments.sort((a, b) => b.createdAt.compareTo(a.createdAt)); // ⬅️ newest first
         _controller.clear();
       });
 
@@ -73,10 +154,125 @@ class _CommentSheetState extends State<CommentSheet> {
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOut,
       );
+
+      // 🔔 Send comment notification
+      const fallbackFcm = 'egxd4BvUTEy2_VBTiT6g6t:APA91bFhC7TQVRWSKan7-gKlyAjy6yn2HoOceBUANxZBefnqILQxVdUydd36M4s-U3IO0hAeugb-nJMuqEjwcEUwibhcTeFCNUNKHFf6vaoZzX2VfuQCq_U';
+
+      await _sendCommentNotification(
+        recipientFcmToken: fallbackFcm, // replace with actual token if available
+        organizerId: widget.postOwnerId,
+        commentContent: text,
+      );
+
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Failed to add comment: $e")),
       );
+    }
+  }
+  // Future<void> _sendCommentNotification({
+  //   required String recipientFcmToken,
+  //   required String organizerId,
+  //   required String commentContent,
+  // }) async {
+  //   final profile = Provider.of<FetchEditUserProvider>(context, listen: false);
+  //   final userId = profile.userId;
+  //
+  //   if (userId == null || recipientFcmToken.isEmpty) {
+  //     debugPrint("🚫 Skipping notification: missing user ID or FCM token");
+  //     return;
+  //   }
+  //
+  //   debugPrint("📤 Sending notification...");
+  //   debugPrint("📤 FCM Token: $recipientFcmToken");
+  //
+  //   try {
+  //     final response = await http.post(
+  //       Uri.parse('http://srv861272.hstgr.cloud:8000/api/send-notification'),
+  //       headers: {'Content-Type': 'application/json'},
+  //       body: jsonEncode({
+  //         "fcmToken": recipientFcmToken,
+  //         "title": "💬 New Comment",
+  //         "body": "${profile.name ?? "Someone"} commented: \"$commentContent\"",
+  //         "data": {
+  //           "userId": userId,
+  //           "userName": profile.name ?? "",
+  //           "userAvatar": profile.userData['profile'] ?? "",
+  //           "vendorId": widget.postId,
+  //           "vendorName": widget.event.organizer,
+  //         }
+  //       }),
+  //     );
+  //
+  //     debugPrint("📨 Notification status: ${response.statusCode}");
+  //     debugPrint("📨 Notification response: ${response.body}");
+  //
+  //     final logRes = await http.post(
+  //       Uri.parse('http://srv861272.hstgr.cloud:8000/api/notification'),
+  //       headers: {'Content-Type': 'application/json'},
+  //       body: jsonEncode({
+  //         "user": organizerId,
+  //         "message": "${profile.name ?? "Someone"} commented on your post"
+  //       }),
+  //     );
+  //
+  //     debugPrint("📝 Notification log saved: ${logRes.statusCode}");
+  //   } catch (e, st) {
+  //     debugPrint("❌ Notification error: $e");
+  //     debugPrint("📌 Stack Trace:\n$st");
+  //   }
+  // }
+
+  Future<void> _sendCommentNotification({
+    required String? recipientFcmToken,
+    required String organizerId,
+    required String commentContent,
+  }) async {
+    final profile = Provider.of<FetchEditUserProvider>(context, listen: false);
+    final userId = profile.userId;
+    if (userId == null) return;
+
+    // Static fallback for testing
+    const staticToken = 'egxd4BvUTEy2_VBTiT6g6t:APA91bFhC7TQVRWSKan7-gKlyAjy6yn2HoOceBUANxZBefnqILQxVdUydd36M4s-U3IO0hAeugb-nJMuqEjwcEUwibhcTeFCNUNKHFf6vaoZzX2VfuQCq_U';
+    final fcmToken = (recipientFcmToken != null && recipientFcmToken.isNotEmpty)
+        ? recipientFcmToken
+        : staticToken;
+    // final fcmToken = (widget.recipientFcmToken?.isNotEmpty ?? false)
+    //     ? widget.recipientFcmToken
+    //     : staticToken;
+
+    try {
+      final response = await http.post(
+        Uri.parse('http://srv861272.hstgr.cloud:8000/api/send-notification'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          "fcmToken": fcmToken,
+          "title": "💬 New Comment",
+          "body": "${profile.name ?? "Someone"} commented: \"$commentContent\"",
+          "data": {
+            "userId": userId,
+            "userName": profile.name ?? "",
+            "userAvatar": profile.userData['profile'] ?? "",
+            "vendorId": widget.postId,
+            "vendorName": "", // optional
+          }
+        }),
+      );
+
+      debugPrint("📨 Comment Notification Response: ${response.statusCode}");
+      debugPrint("📨 Body: ${response.body}");
+
+      // Save to backend logs
+      await http.post(
+        Uri.parse('http://srv861272.hstgr.cloud:8000/api/notification'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          "user": organizerId,
+          "message": "${profile.name ?? "Someone"} commented on your post"
+        }),
+      );
+    } catch (e) {
+      debugPrint('❌ Failed to send comment notification: $e');
     }
   }
 

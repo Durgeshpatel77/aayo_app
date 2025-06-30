@@ -264,5 +264,46 @@ class FetchEditUserProvider with ChangeNotifier {
       };
     }
   }
+  //---------------------------- FCM token update -----------------
+  Future<void> updateFcmToken(String newToken) async {
+    debugPrint('🚀 Starting FCM token update...');
+
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getString('backendUserId');
+    debugPrint('🔍 Loaded backendUserId from SharedPreferences: $userId');
+
+    if (userId == null) {
+      debugPrint('❗ No backendUserId found, aborting FCM update.');
+      return;
+    }
+
+    final url = Uri.parse('$_baseUrl/api/user/$userId');
+    final body = jsonEncode({'fcmToken': newToken});
+    debugPrint('📡 Sending PUT request to: $url');
+    debugPrint('🧾 Request Body: $body');
+
+    try {
+      final response = await http.put(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: body,
+      );
+
+      debugPrint('📥 Response Status Code: ${response.statusCode}');
+      debugPrint('📥 Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final result = json.decode(response.body);
+        _userData = result['data'];
+        notifyListeners();
+        debugPrint('✅ FCM token updated successfully on server.');
+      } else {
+        debugPrint('❌ Failed to update FCM token. Server returned error.');
+      }
+    } catch (e) {
+      debugPrint('💥 Exception occurred during FCM token update: $e');
+    }
+  }
+
 
 }

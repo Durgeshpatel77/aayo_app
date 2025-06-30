@@ -18,10 +18,12 @@ class Event {
   final String organizerProfile;
   final DateTime createdAt;
   final String type;
-
-  // ✅ NEW
   final double latitude;
   final double longitude;
+
+  // ✅ NEW FIELDS
+  final String? organizerFcmToken;
+  final String? organizerMobile;
 
   Event({
     required this.id,
@@ -41,8 +43,10 @@ class Event {
     this.organizerProfile = '',
     required this.createdAt,
     required this.type,
-    required this.latitude, // ✅ NEW
-    required this.longitude, // ✅ NEW
+    required this.latitude,
+    required this.longitude,
+    this.organizerFcmToken, // ✅ added to constructor
+    this.organizerMobile,   // ✅ added to constructor
   });
 
   factory Event.fromJson(Map<String, dynamic> json) {
@@ -87,11 +91,10 @@ class Event {
       isFree: eventDetails['isFree'] ?? true,
       organizerId: user['_id'] as String? ?? '',
       price: (eventDetails['price'] ?? 0).toDouble(),
-      likes: (json['likes'] as List<dynamic>?)
-          ?.map((e) => e is Map && e['_id'] is String ? e['_id'] as String : null)
+      likes: (json['likes'] as List<dynamic>? ?? [])
+          .map((e) => e is Map && e['_id'] is String ? e['_id'] as String : null)
           .whereType<String>()
-          .toList() ??
-          [],
+          .toList(),
       comments: commentsJson.map((c) => CommentModel.fromJson(c)).toList(),
       image: formatUrl(json['image']),
       media: parsedMedia,
@@ -99,8 +102,10 @@ class Event {
       organizerProfile: fullOrganizerProfileUrl,
       createdAt: DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
       type: parsedType,
-      latitude: (eventDetails['latitude'] ?? 0.0).toDouble(), // ✅
-      longitude: (eventDetails['longitude'] ?? 0.0).toDouble(), // ✅
+      latitude: (eventDetails['latitude'] ?? 0.0).toDouble(),
+      longitude: (eventDetails['longitude'] ?? 0.0).toDouble(),
+      organizerFcmToken: user['fcmToken'],   // ✅ new field parsed from user
+      organizerMobile: user['mobile'],       // ✅ new field parsed from user
     );
   }
 

@@ -46,6 +46,7 @@ class NotificationService {
 
     // Foreground message listener
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      print('📥 Foreground message received: ${message.data}');
       _showFlutterNotification(message);
 
       // Notify UI with message while app is in foreground
@@ -95,54 +96,32 @@ class NotificationService {
 
   /// Show notification using flutter_local_notifications
   static Future<void> _showFlutterNotification(RemoteMessage message) async {
-    final notification = message.notification;
-    final android = message.notification?.android;
+    String? title = message.notification?.title ?? message.data['title'];
+    String? body = message.notification?.body ?? message.data['body'];
 
-    if (notification != null && android != null) {
-      String? imageUrl = notification.android?.imageUrl ?? message.data['image'];
+    print('🔔 Preparing notification: $title — $body');
 
-      NotificationDetails notificationDetails;
+    final androidDetails = AndroidNotificationDetails(
+      'high_importance_channel',
+      'High Importance Notifications',
+      channelDescription: 'Used for important notifications',
+      importance: Importance.max,
+      priority: Priority.high,
+      icon: 'logo',
+    );
 
-      if (imageUrl != null && imageUrl.isNotEmpty) {
-        final String largeIconPath = await _downloadAndSaveFile(imageUrl, 'largeIcon');
-        final bigPictureStyleInformation = BigPictureStyleInformation(
-          FilePathAndroidBitmap(largeIconPath),
-          largeIcon: FilePathAndroidBitmap(largeIconPath),
-          contentTitle: notification.title,
-          summaryText: notification.body,
-        );
+    final notificationDetails = NotificationDetails(android: androidDetails);
 
-        final androidDetails = AndroidNotificationDetails(
-          'high_importance_channel',
-          'High Importance Notifications',
-          channelDescription: 'Used for important notifications',
-          importance: Importance.max,
-          priority: Priority.high,
-          icon: 'logo', // <-- custom icon in drawable folder
-          styleInformation: bigPictureStyleInformation,
-        );
-
-        notificationDetails = NotificationDetails(android: androidDetails);
-      } else {
-        final androidDetails = AndroidNotificationDetails(
-          'high_importance_channel',
-          'High Importance Notifications',
-          channelDescription: 'Used for important notifications',
-          importance: Importance.max,
-          priority: Priority.high,
-          icon: 'logo', // <-- custom icon
-        );
-
-        notificationDetails = NotificationDetails(android: androidDetails);
-      }
-
+    if (title != null && body != null) {
       await flutterLocalNotificationsPlugin.show(
-        notification.hashCode,
-        notification.title,
-        notification.body,
+        title.hashCode,
+        title,
+        body,
         notificationDetails,
-        payload: message.data['route'] ?? '',
       );
+      print('✅ Notification shown!');
+    } else {
+      print('⚠️ Notification title or body was null. Nothing shown.');
     }
   }
 

@@ -16,6 +16,17 @@ class HomeProvider extends ChangeNotifier {
   List<Event> get allEvents => _allEvents;
 
   int get selectedIndex => _selectedIndex;
+  String? getFcmTokenByUserId(String userId) {
+    try {
+      final matchingEvent = _allEvents.firstWhere(
+            (event) => event.organizerId == userId,
+      );
+      return matchingEvent.organizerFcmToken;
+    } catch (e) {
+      debugPrint("⚠️ FCM token not found for userId: $userId");
+      return null;
+    }
+  }
 
   void setSelectedIndex(int i) {
     _selectedIndex = i;
