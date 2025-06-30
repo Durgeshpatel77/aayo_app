@@ -144,6 +144,18 @@ class _SingleUserProfileScreenState extends State<SingleUserProfileScreen> with 
 
   Future<void> _toggleFollow() async {
     final provider = Provider.of<FetchEditUserProvider>(context, listen: false);
+    final prefs = await SharedPreferences.getInstance();
+    final currentUserId = prefs.getString('backendUserId');
+    final currentUserName = prefs.getString('backendUserName') ?? 'Someone';
+
+    if (currentUserId == widget.userId) {
+      debugPrint('❌ Attempted to follow self');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("You can't follow yourself.")),
+      );
+      return;
+    }
+
     final result = await provider.toggleFollow(widget.userId);
 
     if (!mounted) return;
@@ -152,7 +164,6 @@ class _SingleUserProfileScreenState extends State<SingleUserProfileScreen> with 
       setState(() {
         List<dynamic> followers = _userProfileData['followers'] ?? [];
 
-        final currentUserId = backendUserId;
         final isAlreadyFollowing = followers.any((user) => user['_id'] == currentUserId);
 
         if (isAlreadyFollowing) {
@@ -163,10 +174,21 @@ class _SingleUserProfileScreenState extends State<SingleUserProfileScreen> with 
           // ✅ FOLLOW
           followers.add({
             '_id': currentUserId,
-            'name': 'You',
+            'name': currentUserName,
             'profile': '',
           });
           isFollowing = true;
+
+          /// 🔔 Send follow notification
+          final toFcmToken = _userProfileData['fcmToken'];
+          if (toFcmToken != null && toFcmToken.trim().isNotEmpty) {
+            provider.sendFollowNotification(
+              toUserFcmToken: toFcmToken,
+              fromUserName: currentUserName,
+            );
+          } else {
+            debugPrint('⚠️ No FCM token available — skipping notification');
+          }
         }
 
         _userProfileData['followers'] = followers;

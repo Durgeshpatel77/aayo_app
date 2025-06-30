@@ -305,5 +305,38 @@ class FetchEditUserProvider with ChangeNotifier {
     }
   }
 
+  //----------------------------send follow notification --------------------
+  Future<void> sendFollowNotification({
+    required String toUserFcmToken,
+    required String fromUserName,
+  }) async {
+    if (toUserFcmToken.trim().isEmpty) {
+      debugPrint('❌ FCM token is empty — skipping notification.');
+      return;
+    }
+
+    debugPrint('📛 Raw token used for notification: $toUserFcmToken');
+
+    const url = 'http://srv861272.hstgr.cloud:8000/api/send-notification';
+    final body = {
+      'title': 'New Follower',
+      'body': '$fromUserName started following you!',
+      'token': toUserFcmToken,
+    };
+
+    try {
+      debugPrint('📤 Sending notification: $body');
+      final res = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(body),
+      );
+
+      debugPrint('📥 Notification response: ${res.statusCode} ${res.body}');
+    } catch (e, stack) {
+      debugPrint('❌ Exception while sending notification: $e');
+      debugPrint('🧱 Stacktrace:\n$stack');
+    }
+  }
 
 }
