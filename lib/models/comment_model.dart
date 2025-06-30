@@ -4,7 +4,7 @@ class CommentModel {
   final DateTime createdAt;
   final String userName;
   final String userProfile;
-  final String userId; // 👈 Add this line
+  final String userId;
 
   CommentModel({
     required this.id,
@@ -12,7 +12,7 @@ class CommentModel {
     required this.createdAt,
     required this.userName,
     required this.userProfile,
-    required this.userId, // 👈 Add this
+    required this.userId,
   });
 
   factory CommentModel.fromJson(Map<String, dynamic> json) {
@@ -25,7 +25,21 @@ class CommentModel {
       userProfile: user['profile'] != null
           ? 'http://srv861272.hstgr.cloud:8000/${user['profile']}'
           : '',
-      userId: user['_id'] ?? '', // 👈 Parse userId
+      userId: user['_id'] ?? '',
     );
+  }
+
+  // ✅ This method enables saving comment data with Event.toJson()
+  Map<String, dynamic> toJson() {
+    return {
+      '_id': id,
+      'content': content,
+      'createdAt': createdAt.toIso8601String(),
+      'user': {
+        '_id': userId,
+        'name': userName,
+        'profile': userProfile,
+      },
+    };
   }
 }

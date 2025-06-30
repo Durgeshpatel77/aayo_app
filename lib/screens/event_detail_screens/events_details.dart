@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'dart:convert'; // ✅ Required for jsonEncode
 
 import '../approve_event_screens/approve_screen.dart';
 import 'chat_page.dart';
@@ -23,6 +24,8 @@ class EventDetailScreen extends StatefulWidget {
 }
 
 class _EventDetailScreenState extends State<EventDetailScreen> {
+  bool isSaved = false;
+
   String generateChatId(String user1, String user2) {
     return user1.hashCode <= user2.hashCode
         ? '${user1}_$user2'
@@ -40,6 +43,15 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   void initState() {
     super.initState();
     _loadLoggedInUserId();
+    _checkIfEventIsSaved();
+  }
+  Future<void> _checkIfEventIsSaved() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedEvents = prefs.getStringList('savedEvents') ?? [];
+    final eventJsonString = jsonEncode(widget.event.toJson());
+    setState(() {
+      isSaved = savedEvents.contains(eventJsonString);
+    });
   }
 
   String? loggedInUserId;
@@ -51,6 +63,28 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     setState(() {
       loggedInUserId = userId;
     });
+  }
+
+  Future<void> _toggleSaveEvent(Event event) async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedEvents = prefs.getStringList('savedEvents') ?? [];
+    final eventJsonString = jsonEncode(event.toJson());
+
+    if (savedEvents.contains(eventJsonString)) {
+      savedEvents.remove(eventJsonString);
+      await prefs.setStringList('savedEvents', savedEvents);
+      setState(() => isSaved = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Removed from favorites')),
+      );
+    } else {
+      savedEvents.add(eventJsonString);
+      await prefs.setStringList('savedEvents', savedEvents);
+      setState(() => isSaved = true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Event saved to favorites')),
+      );
+    }
   }
 
   @override
@@ -118,25 +152,28 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   ),
                   Positioned(
                     top: mediaQuery.padding.top + 10,
-                    left: 22,
+                    right: 22,
                     child: InkWell(
-                      onTap: () {
-                        Navigator.pop(context);
-                      },
-                      child: const Icon(
-                        Icons.arrow_back_ios_new,
-                        color: Colors.white,
-                        size: 25,
+                      onTap: () => _toggleSaveEvent(widget.event),
+                      child: Icon(
+                        isSaved ? Icons.favorite : Icons.favorite_border,
+                        color: isSaved ? Colors.red : Colors.white,
+                        size: 30,
                       ),
                     ),
                   ),
                   Positioned(
                     top: mediaQuery.padding.top + 10,
                     right: 22,
-                    child: const Icon(
-                      Icons.favorite_border,
-                      color: Colors.white,
-                      size: 30,
+                    child: InkWell(
+                      onTap: () {
+                        _toggleSaveEvent(widget.event); // ✅ Save the event
+                      },
+                      child: const Icon(
+                        Icons.favorite_border,
+                        color: Colors.white,
+                        size: 30,
+                      ),
                     ),
                   ),
                   Positioned(

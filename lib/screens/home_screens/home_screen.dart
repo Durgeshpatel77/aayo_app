@@ -676,16 +676,9 @@ class _HomeTabContentState extends State<HomeTabContent> {
                   style: const TextStyle(
                       fontSize: 16, fontWeight: FontWeight.bold),
                 ),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.notifications_none),
-                  onPressed: () {
-                    // TODO: Navigate to notification screen
-                  },
-                ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 20),
 
             // Search
             TextField(

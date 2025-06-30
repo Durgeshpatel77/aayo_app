@@ -21,7 +21,6 @@ class Event {
   final double latitude;
   final double longitude;
 
-  // ✅ NEW FIELDS
   final String? organizerFcmToken;
   final String? organizerMobile;
 
@@ -45,8 +44,8 @@ class Event {
     required this.type,
     required this.latitude,
     required this.longitude,
-    this.organizerFcmToken, // ✅ added to constructor
-    this.organizerMobile,   // ✅ added to constructor
+    this.organizerFcmToken,
+    this.organizerMobile,
   });
 
   factory Event.fromJson(Map<String, dynamic> json) {
@@ -65,7 +64,7 @@ class Event {
     final userProfilePath = user['profile'] ?? '';
     final fullOrganizerProfileUrl = userProfilePath.isNotEmpty
         ? formatUrl(userProfilePath)
-        : 'https://randomuser.me/api/portraits/men/75.jpg';
+        : '';
 
     List<String> parsedMedia = [];
     if (json['media'] is List) {
@@ -96,17 +95,58 @@ class Event {
           .whereType<String>()
           .toList(),
       comments: commentsJson.map((c) => CommentModel.fromJson(c)).toList(),
-      image: formatUrl(json['image']),
+      image: (() {
+        final img = json['image'] ?? '';
+        if (img != null && img.toString().trim().isNotEmpty) {
+          return formatUrl(img);
+        } else if (json['media'] is List && json['media'].isNotEmpty) {
+          final mediaList = json['media'] as List;
+          final firstMedia = mediaList.first;
+          if (firstMedia is String) return formatUrl(firstMedia);
+          if (firstMedia is Map && firstMedia['url'] is String) return formatUrl(firstMedia['url']);
+        }
+        return '';
+      })(),
       media: parsedMedia,
-      organizer: user['name'] ?? 'Unknown User',
+      organizer: user['name'] ?? '',
       organizerProfile: fullOrganizerProfileUrl,
       createdAt: DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
       type: parsedType,
       latitude: (eventDetails['latitude'] ?? 0.0).toDouble(),
       longitude: (eventDetails['longitude'] ?? 0.0).toDouble(),
-      organizerFcmToken: user['fcmToken'],   // ✅ new field parsed from user
-      organizerMobile: user['mobile'],       // ✅ new field parsed from user
+      organizerFcmToken: user['fcmToken'],
+      organizerMobile: user['mobile'],
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      '_id': id,
+      'title': title,
+      'content': content,
+      'image': image,
+      'media': media,
+      'likes': likes.map((id) => {'_id': id}).toList(),
+      'comments': comments.map((c) => c.toJson()).toList(),
+      'createdAt': createdAt.toIso8601String(),
+      'type': type,
+      'user': {
+        '_id': organizerId,
+        'name': organizer,
+        'profile': organizerProfile,
+        'fcmToken': organizerFcmToken,
+        'mobile': organizerMobile,
+      },
+      'eventDetails': {
+        'location': location,
+        'startTime': startTime.toIso8601String(),
+        'endTime': endTime.toIso8601String(),
+        'isFree': isFree,
+        'price': price,
+        'latitude': latitude,
+        'longitude': longitude,
+      }
+    };
   }
 
   bool get isEvent => type == 'event';
