@@ -39,8 +39,11 @@ import 'dart:convert';
 // ---- EventCard ----
 class EventCard extends StatefulWidget {
   final Event event;
+  final String highlight;
+  final bool isBooked;
 
-  const EventCard({required this.event, super.key});
+
+  const EventCard({required this.event,required this.highlight,  this.isBooked=false,super.key});
 
   @override
   State<EventCard> createState() => _EventCardState();
@@ -51,7 +54,6 @@ class _EventCardState extends State<EventCard> {
   int likeCount = 0;
   late int _commentCount;
   final AudioPlayer _audioPlayer = AudioPlayer();
-
 
   @override
   void initState() {
@@ -71,7 +73,8 @@ class _EventCardState extends State<EventCard> {
   // Helper to set isLiked and likeCount based on current widget.event and userId
   void _updateLikeState() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final userId = Provider.of<FetchEditUserProvider>(context, listen: false).userId;
+      final userId =
+          Provider.of<FetchEditUserProvider>(context, listen: false).userId;
       setState(() {
         isLiked = userId != null && widget.event.likes.contains(userId);
         likeCount = widget.event.likes.length;
@@ -88,9 +91,10 @@ class _EventCardState extends State<EventCard> {
       debugPrint('🔇 Sound error: $e');
     }
   }
+
   void _toggleLike() async {
     final userProfileProvider =
-    Provider.of<FetchEditUserProvider>(context, listen: false);
+        Provider.of<FetchEditUserProvider>(context, listen: false);
     final currentUserId = userProfileProvider.userId;
 
     if (currentUserId == null) {
@@ -126,10 +130,11 @@ class _EventCardState extends State<EventCard> {
       if (response['success']) {
         final updatedLikes = (response['likes'] as List)
             .map((like) {
-          if (like is String) return like;
-          if (like is Map && like['_id'] is String) return like['_id'] as String;
-          return null;
-        })
+              if (like is String) return like;
+              if (like is Map && like['_id'] is String)
+                return like['_id'] as String;
+              return null;
+            })
             .whereType<String>()
             .toList();
         debugPrint('✅ Updated Likes: $updatedLikes');
@@ -187,6 +192,38 @@ class _EventCardState extends State<EventCard> {
     }
   }
 
+  TextSpan _buildHighlightedText(String text, String highlight) {
+    if (highlight.isEmpty) {
+      return TextSpan(text: text, style: const TextStyle(color: Colors.black));
+    }
+
+    final matches = <TextSpan>[];
+    final lowerText = text.toLowerCase();
+    final lowerHighlight = highlight.toLowerCase();
+
+    int start = 0;
+    int index;
+    while ((index = lowerText.indexOf(lowerHighlight, start)) != -1) {
+      if (index > start) {
+        matches.add(TextSpan(text: text.substring(start, index)));
+      }
+      matches.add(TextSpan(
+        text: text.substring(index, index + highlight.length),
+        style: const TextStyle(
+          backgroundColor: Colors.pinkAccent, // 🎨 pink highlight
+          fontWeight: FontWeight.bold,
+        ),
+      ));
+      start = index + highlight.length;
+    }
+    if (start < text.length) {
+      matches.add(TextSpan(text: text.substring(start)));
+    }
+
+    return TextSpan(
+        children: matches, style: const TextStyle(color: Colors.black));
+  }
+
   String getFullImageUrl(String relativePath) {
     const baseUrl = 'http://srv861272.hstgr.cloud:8000';
     if (relativePath.startsWith('http')) return relativePath;
@@ -196,15 +233,14 @@ class _EventCardState extends State<EventCard> {
 
   @override
   Widget build(BuildContext context) {
-
     final userProfileProvider = Provider.of<FetchEditUserProvider>(context);
     final currentUserId = userProfileProvider.userId;
 
     final String imageUrl = widget.event.media.isNotEmpty
         ? getFullImageUrl(widget.event.media.first)
         : (widget.event.image.isNotEmpty
-        ? getFullImageUrl(widget.event.image)
-        : '');
+            ? getFullImageUrl(widget.event.image)
+            : '');
 
     final String profileUrl = widget.event.organizerProfile.isNotEmpty
         ? getFullImageUrl(widget.event.organizerProfile)
@@ -244,7 +280,7 @@ class _EventCardState extends State<EventCard> {
                 backgroundImage: profileUrl.isNotEmpty
                     ? NetworkImage(profileUrl)
                     : const AssetImage('images/onbording/unkown.jpg')
-                as ImageProvider,
+                        as ImageProvider,
                 onBackgroundImageError: (exception, stackTrace) {
                   debugPrint(
                       'Error loading profile image for ${widget.event.organizer}: $exception');
@@ -255,22 +291,22 @@ class _EventCardState extends State<EventCard> {
               ),
               trailing: widget.event.type == 'event'
                   ? Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.pink.shade100,
-                  borderRadius: BorderRadius.circular(15),
-                  border: Border.all(color: Colors.pink, width: 1),
-                ),
-                child: Text(
-                  'EVENT',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: Colors.pink.shade800,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              )
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.pink.shade100,
+                        borderRadius: BorderRadius.circular(15),
+                        border: Border.all(color: Colors.pink, width: 1),
+                      ),
+                      child: Text(
+                        'EVENT',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: Colors.pink.shade800,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    )
                   : null,
               title: Text(
                 widget.event.organizer,
@@ -287,7 +323,10 @@ class _EventCardState extends State<EventCard> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 5),
-                ExpandableText(content: widget.event.content),
+                SelectableText.rich(
+                  _buildHighlightedText(widget.event.content, widget.highlight),
+                  style: const TextStyle(fontSize: 15),
+                )
               ],
             ),
           ),
@@ -317,7 +356,7 @@ class _EventCardState extends State<EventCard> {
                     ),
                   ),
                   errorWidget: (context, url, error) =>
-                  const Icon(Icons.broken_image, size: 40),
+                      const Icon(Icons.broken_image, size: 40),
                   fadeInDuration: const Duration(milliseconds: 300),
                 ),
               ),
@@ -365,7 +404,6 @@ class _EventCardState extends State<EventCard> {
                         ],
                       ),
                     ),
-
                   ],
                 ),
                 const Spacer(), // pushes register button to the right
@@ -375,12 +413,14 @@ class _EventCardState extends State<EventCard> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => EventDetailScreen(event: widget.event),
+                          builder: (_) =>
+                              EventDetailScreen(event: widget.event),
                         ),
                       );
                     },
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
                         color: Colors.pink.shade100,
                         borderRadius: BorderRadius.circular(20),
@@ -420,8 +460,6 @@ class _EventCardState extends State<EventCard> {
   }
 }
 
-
-// ---- CommentSheet (No changes needed, including for your reference) ----
 // ---- HomeTabContent (No changes needed, including for your reference) ----
 
 class HomeTabContent extends StatefulWidget {
@@ -442,11 +480,18 @@ class HomeTabContent extends StatefulWidget {
 
 class _HomeTabContentState extends State<HomeTabContent> {
   String? _currentCity;
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _fetchCurrentLocation();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchCurrentLocation() async {
@@ -519,11 +564,36 @@ class _HomeTabContentState extends State<HomeTabContent> {
 
             // Search
             TextField(
+              controller: _searchController,
+              onChanged: (value) {
+                final query = value.trim();
+                if (query.isNotEmpty) {
+                  Provider.of<HomeProvider>(context, listen: false)
+                      .searchPostsAndEvents(query);
+                } else {
+                  Provider.of<HomeProvider>(context, listen: false).fetchAll();
+                }
+              },
               decoration: InputDecoration(
                 hintText: "Search Events and Posts",
                 prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                  icon: const Icon(Icons.close, color: Colors.black),
+                  onPressed: () {
+                    _searchController.clear();
+                    Provider.of<HomeProvider>(context, listen: false).fetchAll();
+                    FocusScope.of(context).unfocus(); // optionally hide keyboard
+                  },
+                )
+                    : null,
+                enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Colors.pink),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Colors.pink, width: 2),
                 ),
                 filled: true,
                 fillColor: Colors.grey[100],
@@ -540,14 +610,31 @@ class _HomeTabContentState extends State<HomeTabContent> {
             ),
 
             Column(
-              children: widget.isLoading
-                  ? List.generate(5, (_) => const EventCardShimmer())
-                  : widget.allEvents.map((event) {
-                return GestureDetector(
-                  onTap: () => widget.onItemTapped(event),
-                  child: EventCard(event: event), // ✅ use original event
-                );
-              }).toList(),
+              children: [
+                if (widget.isLoading)
+                  ...List.generate(5, (_) => const EventCardShimmer())
+                else if (widget.allEvents.isEmpty)
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 40),
+                      child: Text(
+                        'No relevant search found.',
+                        style: TextStyle(fontSize: 16, color: Colors.grey),
+                      ),
+                    ),
+                  )
+                else
+                  ...widget.allEvents.map((event) {
+                    return GestureDetector(
+                      onTap: () => widget.onItemTapped(event),
+                      child: EventCard(
+                        event: event,
+                        highlight: _searchController.text
+                            .trim(), // 👈 add this if using highlight
+                      ),
+                    );
+                  }).toList(),
+              ],
             ),
             const SizedBox(height: 12),
           ],
@@ -591,7 +678,8 @@ class _HomeScreenState extends State<HomeScreen> {
         await _userProfileProvider.loadUserId(); // <-- Wait for this
         if (_userProfileProvider.userId != null) {
           await Provider.of<HomeProvider>(context, listen: false).fetchAll();
-        }});
+        }
+      });
     }
   }
 
@@ -644,21 +732,31 @@ class _HomeScreenState extends State<HomeScreen> {
         ];
         return WillPopScope(
           onWillPop: () async {
+            // ✅ Close keyboard first if open
+            final currentFocus = FocusScope.of(context);
+            if (!currentFocus.hasPrimaryFocus && currentFocus.focusedChild != null) {
+              FocusManager.instance.primaryFocus?.unfocus();
+              return false; // handled back press to close keyboard
+            }
+
+            // ✅ If not on home tab, go to home tab
             if (homeProvider.selectedIndex != 0) {
               homeProvider.setSelectedIndex(0);
               return false;
             }
+
+            // ✅ Show exit confirmation
             DateTime now = DateTime.now();
             if (_lastBackPressTime == null ||
-                now.difference(_lastBackPressTime!) >
-                    const Duration(seconds: 2)) {
+                now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
               _lastBackPressTime = now;
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Tap again to exit')),
               );
               return false;
             }
-            return true;
+
+            return true; // exit app
           },
           child: Scaffold(
             backgroundColor: Colors.white,

@@ -22,6 +22,11 @@ class EventCreationProvider with ChangeNotifier {
   String? _errorMessage;
   bool _isLoading = false;
   bool _isFetchingEvents = false;
+  final List<EventModel> _createdEvents = [];
+  final List<EventModel> _joinedEvents = [];
+
+  List<EventModel> get createdEvents => _createdEvents;
+  List<EventModel> get joinedEvents => _joinedEvents;
 
   // New state variables for CreateEventScreen logic
   File? _pickedEventImage;
@@ -398,7 +403,7 @@ class EventCreationProvider with ChangeNotifier {
   Future<void> fetchUserPostsFromPrefs({String? type}) async {
     _clearError();
     _setFetchingEvents(true);
-    _allEvents.clear();
+    _createdEvents.clear();
 
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -433,8 +438,7 @@ class EventCreationProvider with ChangeNotifier {
           for (var i = 0; i < postsJson.length; i++) {
             debugPrint("🔍 Post[$i]: ${jsonEncode(postsJson[i])}");
           }
-
-          _allEvents.addAll(
+          _createdEvents.addAll(
             postsJson.map((json) => EventModel.fromJson(json)).toList(),
           );
           _errorMessage = null;
@@ -443,7 +447,7 @@ class EventCreationProvider with ChangeNotifier {
         }
       } else if (response.statusCode == 404 &&
           decoded['message'] == 'Posts not found') {
-        _allEvents.clear();
+        _joinedEvents.clear();
         _errorMessage = null;
       } else {
         _errorMessage = 'Error ${response.statusCode}: ${decoded['message']}';
@@ -713,6 +717,35 @@ class EventCreationProvider with ChangeNotifier {
       );
     }
     return result; // Return the result to the UI for displaying messages
+  }
+
+  Future<void> fetchJoinedEventsFromPrefs() async {
+    _clearError();
+    _setFetchingEvents(true);
+    _allEvents.clear();
+    _joinedEvents.clear(); // ✅ Clear the list to avoid duplicates
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final joinedEventIds = prefs.getStringList('joinedEvents') ?? [];
+
+      for (final id in joinedEventIds) {
+        final response = await http.get(Uri.parse('http://srv861272.hstgr.cloud:8000/api/post/$id'));
+
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body)['data'];
+          if (data != null) {
+            _joinedEvents.add(EventModel.fromJson(data));
+          }
+        }
+      }
+    } catch (e) {
+      _errorMessage = 'Failed to fetch joined events: $e';
+    } finally {
+      _setFetchingEvents(false);
+    }
+
+    notifyListeners();
   }
 
 }

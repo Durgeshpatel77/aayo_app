@@ -22,6 +22,40 @@ class HomeProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> searchPostsAndEvents(String searchText) async {
+    _loading = true;
+    notifyListeners();
+
+    try {
+      final url = Uri.parse('$_base?search=$searchText');
+      debugPrint('🔍 Searching from: $url');
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+        final data = json['data'];
+
+        if (data != null && data['posts'] is List) {
+          _allEvents = (data['posts'] as List)
+              .map((item) => Event.fromJson(item))
+              .toList();
+        } else {
+          _allEvents = [];
+          debugPrint('⚠️ No posts found in data.');
+        }
+      } else {
+        debugPrint('❌ Search failed: ${response.statusCode}');
+        _allEvents = [];
+      }
+    } catch (e) {
+      debugPrint('❌ Exception during search: $e');
+      _allEvents = [];
+    }
+
+    _loading = false;
+    notifyListeners();
+  }
+
   Future<void> fetchAll() async {
     _loading = true;
 

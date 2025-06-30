@@ -267,10 +267,7 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
           _hasJoined = true;
           _isJoining = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('⚠️ You already booked this event')),
-        );
-      } else {
+        } else {
         setState(() => _isJoining = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('❌ Failed to book: ${resBody['message']}')),

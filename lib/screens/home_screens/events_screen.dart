@@ -20,10 +20,9 @@ class _EventsscreenState extends State<Eventsscreen> {
   @override
   void initState() {
     super.initState();
-    SchedulerBinding.instance.addPostFrameCallback((_) {
-      Provider.of<EventCreationProvider>(context, listen: false)
-          .fetchUserPostsFromPrefs(type: 'event');
-    });
+    final provider = Provider.of<EventCreationProvider>(context, listen: false);
+    provider.fetchUserPostsFromPrefs(type: 'event');
+    provider.fetchJoinedEventsFromPrefs();
   }
 
   String _buildFullImageUrl(String relativePath) {
@@ -40,6 +39,7 @@ class _EventsscreenState extends State<Eventsscreen> {
       appBar: AppBar(
         title: const Text('Your Events'),
         centerTitle: true,
+        scrolledUnderElevation: 0,
         backgroundColor: Colors.white,
         actions: [
           Padding(
@@ -78,16 +78,26 @@ class _EventsscreenState extends State<Eventsscreen> {
             );
           }
 
-          final allEvents = eventProvider.allEvents;
+          final createdEvents = eventProvider.createdEvents;
+          final joinedEvents = eventProvider.joinedEvents;
           final now = DateTime.now();
 
-          // 🔹 Separate previous and upcoming events
+// ✅ Show message if both lists are empty
+          if (createdEvents.isEmpty && joinedEvents.isEmpty) {
+            return const Center(child: Text('No events found'));
+          }
+
+// ✅ Combine both lists
+          final allEvents = [...createdEvents, ...joinedEvents];
+
+// 🔹 Separate previous and upcoming events
           final previousEvents = <EventModel>[];
           final upcomingEvents = <EventModel>[];
 
           for (final event in allEvents) {
             final startTime = event.eventDetails?.startTime;
-            if (startTime != null && startTime.isBefore(DateTime(now.year, now.month, now.day))) {
+            if (startTime != null &&
+                startTime.isBefore(DateTime(now.year, now.month, now.day))) {
               previousEvents.add(event);
             } else {
               upcomingEvents.add(event);
@@ -96,57 +106,51 @@ class _EventsscreenState extends State<Eventsscreen> {
 
           return RefreshIndicator(
             color: Colors.pink,
-            onRefresh: () async {
-              await Provider.of<EventCreationProvider>(context, listen: false)
-                  .fetchUserPostsFromPrefs(type: 'event');
-            },
-            child: ListView(
+              onRefresh: () async {
+                final provider = Provider.of<EventCreationProvider>(context, listen: false);
+                await provider.fetchUserPostsFromPrefs(type: 'event');
+                await provider.fetchJoinedEventsFromPrefs();
+              },
+              child:
+            ListView(
               padding: EdgeInsets.all(screenWidth * 0.04),
               children: [
-                // 🔽 Previous Events collapsible section
-                ExpansionTile(
-                  initiallyExpanded: false,
-                  tilePadding: EdgeInsets.zero,
-                  childrenPadding: EdgeInsets.zero,
-                  collapsedBackgroundColor: Colors.transparent,
-                  backgroundColor: Colors.transparent,
 
-                  title: Text("Previous Events",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
-                  ),
-                  children: previousEvents.isEmpty
-                      ? [
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Text("No previous events."),
-                    ),
-                  ]
-                      : List.generate(previousEvents.length, (index) {
-                    return _buildEventCard(previousEvents[index], screenWidth, screenHeight);
-                  }),
-                ),
-
+                /// 🎟️ Booked Events (Joined)
+                Text("Booked Events",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 10),
 
-                // 🔼 Upcoming Events shown directly
-                Text(
-                  "Upcoming Events",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
-                ),
-                const SizedBox(height: 10),
-
-                upcomingEvents.isEmpty
-                    ? Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Text("No upcoming events."),
+                joinedEvents.isEmpty
+                    ? const Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Text("You haven’t booked any events."),
                 )
                     : Column(
-                  children: List.generate(upcomingEvents.length, (index) {
-                    return _buildEventCard(upcomingEvents[index], screenWidth, screenHeight);
-                  }),
+                  children: joinedEvents.map((event) {
+                    return _buildEventCard(event, screenWidth, screenHeight, isBooked: true);
+                  }).toList(),
+                ),
+
+                const SizedBox(height: 30),
+
+                /// ✍️ Created Events
+                Text("My Created Events",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 10),
+
+                createdEvents.isEmpty
+                    ? const Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Text("You haven’t created any events."),
+                )
+                    : Column(
+                  children: createdEvents.map((event) {
+                    return _buildEventCard(event, screenWidth, screenHeight, isBooked: false);
+                  }).toList(),
                 ),
               ],
-            ),
+            )
           );
         },
       ),
@@ -154,7 +158,8 @@ class _EventsscreenState extends State<Eventsscreen> {
   }
 
   // 🔧 Reusable event card widget
-  Widget _buildEventCard(EventModel event, double screenWidth, double screenHeight) {
+  Widget _buildEventCard(EventModel event, double screenWidth, double screenHeight, {bool isBooked = false})
+  {
     final details = event.eventDetails;
     final title = details?.title ?? event.title;
     final city = details?.city ?? "Unknown";
@@ -272,23 +277,51 @@ class _EventsscreenState extends State<Eventsscreen> {
                     ],
                   ),
                   SizedBox(height: screenHeight * 0.008),
-                  Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: screenWidth * 0.03,
-                      vertical: screenHeight * 0.006,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.pink.shade50,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      price,
-                      style: TextStyle(
-                        fontSize: screenWidth * 0.035,
-                        color: Colors.pink,
-                        fontWeight: FontWeight.w600,
+                  Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: screenWidth * 0.03,
+                          vertical: screenHeight * 0.006,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.pink.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          price,
+                          style: TextStyle(
+                            fontSize: screenWidth * 0.035,
+                            color: Colors.pink,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
-                    ),
+                      Spacer(),
+                      if (isBooked)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 18.0),
+                          child: Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: screenWidth * 0.03,
+                              vertical: screenHeight * 0.006,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.green.shade50,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: Colors.green),
+                            ),
+                            child: Text(
+                              'Booked',
+                              style: TextStyle(
+                                fontSize: screenWidth * 0.032,
+                                color: Colors.green.shade700,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ],
               ),
