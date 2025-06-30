@@ -606,11 +606,12 @@ class HomeTabContent extends StatefulWidget {
 class _HomeTabContentState extends State<HomeTabContent> {
   String? _currentCity;
   final TextEditingController _searchController = TextEditingController();
+  bool _locationFetched = false;
 
   @override
   void initState() {
     super.initState();
-    _fetchCurrentLocation();
+    _fetchCurrentLocationOnce(); // 👈 fetch location only once
   }
 
   @override
@@ -619,7 +620,10 @@ class _HomeTabContentState extends State<HomeTabContent> {
     super.dispose();
   }
 
-  Future<void> _fetchCurrentLocation() async {
+
+  Future<void> _fetchCurrentLocationOnce() async {
+    if (_locationFetched) return; // ✅ Already fetched
+
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) return;
@@ -627,8 +631,7 @@ class _HomeTabContentState extends State<HomeTabContent> {
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied ||
-            permission == LocationPermission.deniedForever) return;
+        if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) return;
       }
 
       Position position = await Geolocator.getCurrentPosition(
@@ -644,10 +647,11 @@ class _HomeTabContentState extends State<HomeTabContent> {
         if (!mounted) return;
         setState(() {
           _currentCity = '${place.locality}, ${place.administrativeArea}';
+          _locationFetched = true; // ✅ Set flag to true
         });
       }
     } catch (e) {
-      debugPrint('Failed to fetch location: $e');
+      debugPrint('❌ Failed to fetch location: $e');
     }
   }
 
@@ -657,7 +661,6 @@ class _HomeTabContentState extends State<HomeTabContent> {
       color: Colors.pink,
       onRefresh: () async {
         await Provider.of<HomeProvider>(context, listen: false).fetchAll();
-        await _fetchCurrentLocation(); // Refresh location too
       },
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -785,7 +788,9 @@ class _HomeScreenState extends State<HomeScreen> {
         Provider.of<FetchEditUserProvider>(context, listen: false);
     _userProfileProvider.addListener(_onUserProviderChange);
 
-    _initFCMAndLoadData(); // NEW
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initFCMAndLoadData(); // ✅ Safe now
+    });
   }
 
   Future<void> _initFCMAndLoadData() async {
@@ -893,14 +898,17 @@ class _HomeScreenState extends State<HomeScreen> {
             return true; // exit app
           },
           child: Scaffold(
-            backgroundColor: Colors.white,
+            backgroundColor: Colors.transparent,
             body: SafeArea(
               child: Container(
                 color: Colors.grey.shade100, // optional background color
                 child: Column(
                   children: [
                     Expanded(
-                      child: allScreens[homeProvider.selectedIndex],
+                      child: IndexedStack(
+                        index: homeProvider.selectedIndex,
+                        children: allScreens,
+                      ),
                     ),
                   ],
                 ),

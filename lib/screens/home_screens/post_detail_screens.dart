@@ -270,9 +270,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   Future<void> _sharePost() async {
     final post = widget.post;
 
-    final text = '${post.title}\n\n${post.content}\n\n'
-        'Check it out on Aayo!\n'
-        '🖼 ${post.media.isNotEmpty ? getFullImageUrl(post.media.first) : getFullImageUrl(post.image)}';
+    final text = '${post.title}\n\n'
+        '${post.content}\n\n'
+        'Check this post out on Aayo App!';
 
     try {
       await Share.share(text);
@@ -387,16 +387,17 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         : 'https://randomuser.me/api/portraits/men/75.jpg';
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Color(0xFF121212),
       body: Stack(
         children: [
           // Zoomable image
           Positioned(
-            top: 50,
+            top: 0,
             left: 0,
             right: 0,
-            child: SizedBox(
-              height: MediaQuery.of(context).size.height * 0.75, // ✅ 75% of screen
+            child: Container(
+              height: MediaQuery.of(context).size.height * 0.92, // Or 1.0 for full
+              color: Color(0xFF121212),
               child: GestureDetector(
                 onDoubleTap: _handleDoubleTap,
                 child: Stack(
@@ -410,7 +411,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                       child: postImageUrl.isNotEmpty
                           ? CachedNetworkImage(
                         imageUrl: postImageUrl,
-                        fit: BoxFit.cover,
+                        fit: BoxFit.contain, // keep aspect ratio
                         placeholder: (context, url) => const Center(
                           child: CircularProgressIndicator(color: Colors.white),
                         ),
