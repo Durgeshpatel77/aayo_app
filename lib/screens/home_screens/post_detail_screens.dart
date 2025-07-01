@@ -51,111 +51,16 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     _likeCount = widget.post.likes.length;
     _isLiked = userId != null && widget.post.likes.contains(userId);
   }
-  // void _toggleLike() async {
-  //   final userProfileProvider = Provider.of<FetchEditUserProvider>(context, listen: false);
-  //   final homeProvider = Provider.of<HomeProvider>(context, listen: false);
-  //   final userId = userProfileProvider.userId;
-  //
-  //   if (userId == null) {
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       const SnackBar(content: Text("You must be logged in to like this.")),
-  //     );
-  //     return;
-  //   }
-  //
-  //   final wasLiked = _isLiked;
-  //
-  //   // 🔁 Optimistic UI update
-  //   setState(() {
-  //     _isLiked = !_isLiked;
-  //     _likeCount += _isLiked ? 1 : -1;
-  //     _isLiked
-  //         ? widget.post.likes.add(userId)
-  //         : widget.post.likes.remove(userId);
-  //   });
-  //
-  //   if (!wasLiked) {
-  //     await _playLikeSound();
-  //     HapticFeedback.mediumImpact();
-  //   }
-  //
-  //   try {
-  //     final response = await userProfileProvider.toggleLike(
-  //       postId: widget.post.id,
-  //       userId: userId,
-  //     );
-  //
-  //     if (response['success'] == true) {
-  //       final updatedLikes = List<String>.from(response['likes'] ?? []);
-  //       homeProvider.updateEventLikes(widget.post.id, updatedLikes);
-  //
-  //       final organizerId = widget.post.organizerId;
-  //       final organizerFcm = widget.post.organizerFcmToken ?? '';
-  //
-  //       debugPrint("✅ Like successful");
-  //       debugPrint("👤 Organizer ID: $organizerId");
-  //       debugPrint("📱 Organizer FCM Token: $organizerFcm");
-  //       debugPrint("🙋 Current User ID: $userId");
-  //
-  //       // ✅ Only send notification if it was a like (not unlike) and not to self
-  //       if (_isLiked && organizerId != userId && organizerFcm.isNotEmpty) {
-  //         final notificationPayload = {
-  //           "fcmToken": organizerFcm,
-  //           "title": "❤️ New Like",
-  //           "body": "${userProfileProvider.name ?? "Someone"} liked your post",
-  //           "data": {
-  //             "userId": userId,
-  //             "userName": userProfileProvider.name ?? "",
-  //             "userAvatar": userProfileProvider.userData['profile'] ?? "",
-  //             "userFcmToken": userProfileProvider.userData['fcmToken'] ?? "",
-  //             "vendorId": widget.post.id,
-  //             "vendorName": widget.post.organizer,
-  //             "totalRemainingMinute": "0"
-  //           }
-  //         };
-  //
-  //         final notifRes = await http.post(
-  //           Uri.parse('http://srv861272.hstgr.cloud:8000/api/send-notification'),
-  //           headers: {'Content-Type': 'application/json'},
-  //           body: jsonEncode(notificationPayload),
-  //         );
-  //
-  //         debugPrint("📨 Notification Status: ${notifRes.statusCode}");
-  //         debugPrint("📨 Notification Body: ${notifRes.body}");
-  //
-  //         final logRes = await http.post(
-  //           Uri.parse('http://srv861272.hstgr.cloud:8000/api/notification'),
-  //           headers: {'Content-Type': 'application/json'},
-  //           body: jsonEncode({
-  //             "user": organizerId,
-  //             "message": "${userProfileProvider.name ?? "Someone"} liked your post"
-  //           }),
-  //         );
-  //
-  //         debugPrint("📝 Log Response: ${logRes.statusCode}");
-  //       } else {
-  //         debugPrint("⚠️ Notification skipped (unlike, own post, or missing token)");
-  //       }
-  //     } else {
-  //       throw Exception(response['message']);
-  //     }
-  //   } catch (e) {
-  //     // ⛔ Revert UI on failure
-  //     setState(() {
-  //       _isLiked = wasLiked;
-  //       _likeCount += _isLiked ? 1 : -1;
-  //       _isLiked
-  //           ? widget.post.likes.add(userId)
-  //           : widget.post.likes.remove(userId);
-  //     });
-  //
-  //     debugPrint("❌ Like toggle error: $e");
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       SnackBar(content: Text("Failed to like post: $e")),
-  //     );
-  //   }
-  // }
 
+  Future<void> _playLikeSound() async {
+    try {
+      debugPrint('🔊 Attempting to play sound...');
+      await _audioPlayer.play(AssetSource('sounds/like.mp3'));
+      debugPrint('✅ Sound played!');
+    } catch (e) {
+      debugPrint('🔇 Failed to play like sound: $e');
+    }
+  }
   void _toggleLike() async {
     final userProfileProvider = Provider.of<FetchEditUserProvider>(context, listen: false);
     final homeProvider = Provider.of<HomeProvider>(context, listen: false);
@@ -170,7 +75,6 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
 
     final wasLiked = _isLiked;
 
-    // 🔁 Optimistic UI update
     setState(() {
       _isLiked = !_isLiked;
       _likeCount += _isLiked ? 1 : -1;
@@ -196,14 +100,17 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         final updatedLikes = List<String>.from(response['likes'] ?? []);
         homeProvider.updateEventLikes(widget.post.id, updatedLikes);
 
-        // ✅ Only send notification if it was a like, not an unlike
         if (_isLiked && widget.post.organizerId != userId) {
-          final fcmToken = widget.post.organizerFcmToken?.isNotEmpty == true
-              ? widget.post.organizerFcmToken
-              : 'egxd4BvUTEy2_VBTiT6g6t:APA91bFhC7TQVRWSKan7-gKlyAjy6yn2HoOceBUANxZBefnqILQxVdUydd36M4s-U3IO0hAeugb-nJMuqEjwcEUwibhcTeFCNUNKHFf6vaoZzX2VfuQCq_U';
+          final fcmToken = widget.post.organizerFcmToken;
+
+          // ✅ Get full post image URL
+          final postImageUrl = widget.post.image.startsWith('http')
+              ? widget.post.image
+              : 'http://srv861272.hstgr.cloud:8000/${widget.post.image}';
 
           debugPrint("📦 Post Like FCM Target: ${widget.post.organizerId}");
           debugPrint("📦 Post Like FCM Token: $fcmToken");
+          debugPrint("🖼️ Post Image sent: $postImageUrl");
 
           final res = await http.post(
             Uri.parse('http://srv861272.hstgr.cloud:8000/api/send-notification'),
@@ -212,12 +119,13 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
               "fcmToken": fcmToken,
               "title": "❤️ New Like",
               "body": "${userProfileProvider.name ?? 'Someone'} liked your post",
+              "postImage": postImageUrl,  // ✅ THIS must match the key used in NotificationService
               "data": {
                 "userId": userId,
                 "userName": userProfileProvider.name ?? "",
-                "userAvatar": userProfileProvider.userData['profile'] ?? "",
                 "vendorId": widget.post.id,
                 "vendorName": widget.post.organizer,
+                "type": "post"
               }
             }),
           );
@@ -225,7 +133,6 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
           debugPrint('📨 Like Notif Sent: ${res.statusCode}');
           debugPrint('📨 Body: ${res.body}');
 
-          // ✅ Log the notification
           await http.post(
             Uri.parse('http://srv861272.hstgr.cloud:8000/api/notification'),
             headers: {'Content-Type': 'application/json'},
@@ -235,13 +142,12 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
             }),
           );
         } else {
-          debugPrint("⚠️ Notification skipped (either own post or unliked)");
+          debugPrint("⚠️ Notification skipped (own post or unliked)");
         }
       } else {
         throw Exception(response['message']);
       }
     } catch (e) {
-      // Revert optimistic update
       setState(() {
         _isLiked = wasLiked;
         _likeCount += _isLiked ? 1 : -1;
@@ -255,15 +161,6 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to update like: $e')),
       );
-    }
-  }
-  Future<void> _playLikeSound() async {
-    try {
-      debugPrint('🔊 Attempting to play sound...');
-      await _audioPlayer.play(AssetSource('sounds/like.mp3'));
-      debugPrint('✅ Sound played!');
-    } catch (e) {
-      debugPrint('🔇 Failed to play like sound: $e');
     }
   }
 

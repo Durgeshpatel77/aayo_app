@@ -98,6 +98,28 @@ class NotificationService {
   static Future<void> _showFlutterNotification(RemoteMessage message) async {
     String? title = message.notification?.title ?? message.data['title'];
     String? body = message.notification?.body ?? message.data['body'];
+    String? imageUrl = message.data['userAvatar']; // ✅ Likers's profile photo
+
+    print('🔔 Preparing notification: $title — $body');
+    print('🖼️ Avatar URL: $imageUrl');
+
+    BigPictureStyleInformation? styleInfo;
+
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      try {
+        final String largeIconPath = await _downloadAndSaveFile(imageUrl, 'largeIcon');
+        final String bigPicturePath = await _downloadAndSaveFile(imageUrl, 'bigPicture');
+
+        styleInfo = BigPictureStyleInformation(
+          FilePathAndroidBitmap(bigPicturePath),
+          largeIcon: FilePathAndroidBitmap(largeIconPath),
+          contentTitle: title,
+          summaryText: body,
+        );
+      } catch (e) {
+        print("❌ Failed to load image for notification: $e");
+      }
+    }
 
     final androidDetails = AndroidNotificationDetails(
       'high_importance_channel',
@@ -105,21 +127,22 @@ class NotificationService {
       channelDescription: 'Used for important notifications',
       importance: Importance.max,
       priority: Priority.high,
-      icon: 'logo', // your app icon
+      styleInformation: styleInfo,
+      icon: 'logo',
     );
 
     final notificationDetails = NotificationDetails(android: androidDetails);
 
     if (title != null && body != null) {
-      print('🔔 Showing notification: $title — $body');
       await flutterLocalNotificationsPlugin.show(
         title.hashCode,
         title,
         body,
         notificationDetails,
       );
+      print('✅ Notification shown!');
     } else {
-      print('⚠️ Notification title/body is null. Skipping display.');
+      print('⚠️ Notification title or body was null. Nothing shown.');
     }
   }
 
