@@ -208,6 +208,7 @@ class _EventCardState extends State<EventCard> {
         postOwnerId: widget.event.organizerId,
         event: widget.event, // ✅ ADD THIS
         recipientFcmToken: widget.event.organizerFcmToken ??'', // ✅ pass this dynamically
+
         onCommentCountChange: (newCount) {
           setState(() => _commentCount = newCount);
         },

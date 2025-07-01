@@ -17,20 +17,22 @@ class LogoutScreen extends StatelessWidget {
     final logoutProvider = LogoutProvider(googleProvider);
 
     try {
-      // ✅ Delete FCM token from device
-      final messaging = FirebaseMessaging.instance;
-      final fcmToken = await messaging.getToken();
+      /*
+    // ✅ Delete FCM token from device
+    final messaging = FirebaseMessaging.instance;
+    final fcmToken = await messaging.getToken();
 
-      // ✅ Send request to backend to remove token from DB
-      await http.put(
-        Uri.parse('http://srv861272.hstgr.cloud:8000/api/user/remove-token'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'fcmToken': fcmToken}),
-      );
+    // ✅ Send request to backend to remove token from DB
+    await http.put(
+      Uri.parse('http://srv861272.hstgr.cloud:8000/api/user/remove-token'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'fcmToken': fcmToken}),
+    );
 
-      // ✅ Delete it locally
-      await messaging.deleteToken();
-      debugPrint('🧹 Deleted FCM token: $fcmToken');
+    // ✅ Delete it locally
+    await messaging.deleteToken();
+    debugPrint('🧹 Deleted FCM token: $fcmToken');
+    */
     } catch (e) {
       debugPrint('⚠️ Error deleting FCM token: $e');
     }

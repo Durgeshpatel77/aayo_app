@@ -98,27 +98,48 @@ class NotificationService {
   static Future<void> _showFlutterNotification(RemoteMessage message) async {
     String? title = message.notification?.title ?? message.data['title'];
     String? body = message.notification?.body ?? message.data['body'];
-    String? imageUrl = message.data['userAvatar']; // ✅ Likers's profile photo
+
+    String? postImage = message.data['postImage'];
+    String? userAvatar = message.data['userAvatar'];
+
+    // Base URL for resolving relative paths
+    const baseUrl = 'http://srv861272.hstgr.cloud:8000/';
+
+    // Make sure both are full URLs
+    if (postImage != null && !postImage.startsWith('http')) {
+      postImage = '$baseUrl$postImage';
+    }
+    if (userAvatar != null && !userAvatar.startsWith('http')) {
+      userAvatar = '$baseUrl$userAvatar';
+    }
 
     print('🔔 Preparing notification: $title — $body');
-    print('🖼️ Avatar URL: $imageUrl');
+    print('🖼️ Post Image: $postImage');
+    print('👤 User Avatar: $userAvatar');
 
     BigPictureStyleInformation? styleInfo;
 
-    if (imageUrl != null && imageUrl.isNotEmpty) {
-      try {
-        final String largeIconPath = await _downloadAndSaveFile(imageUrl, 'largeIcon');
-        final String bigPicturePath = await _downloadAndSaveFile(imageUrl, 'bigPicture');
+    try {
+      final String? bigPicturePath = postImage != null && postImage.isNotEmpty
+          ? await _downloadAndSaveFile(postImage, 'bigPicture')
+          : null;
 
+      final String? largeIconPath = userAvatar != null && userAvatar.isNotEmpty
+          ? await _downloadAndSaveFile(userAvatar, 'largeIcon')
+          : null;
+
+      if (bigPicturePath != null) {
         styleInfo = BigPictureStyleInformation(
           FilePathAndroidBitmap(bigPicturePath),
-          largeIcon: FilePathAndroidBitmap(largeIconPath),
+          largeIcon: largeIconPath != null
+              ? FilePathAndroidBitmap(largeIconPath)
+              : null,
           contentTitle: title,
           summaryText: body,
         );
-      } catch (e) {
-        print("❌ Failed to load image for notification: $e");
       }
+    } catch (e) {
+      print("❌ Failed to load image for notification: $e");
     }
 
     final androidDetails = AndroidNotificationDetails(

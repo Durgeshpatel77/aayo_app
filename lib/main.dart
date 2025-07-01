@@ -19,12 +19,18 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+/// ✅ ADD GLOBAL navigator key
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
   await NotificationService.initialize();
-  FirebaseMessaging.onBackgroundMessage(NotificationService.firebaseMessagingBackgroundHandler);
-  final RouteObserver<ModalRoute<void>> routeObserver = RouteObserver<ModalRoute<void>>();
+
+  FirebaseMessaging.onBackgroundMessage(
+    NotificationService.firebaseMessagingBackgroundHandler,
+  );
 
   runApp(const MyApp());
 }
@@ -49,12 +55,14 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AddPostProvider()),
         ChangeNotifierProvider(create: (_) => GuestProvider()),
         ChangeNotifierProvider(create: (_) => EventRegistrationProvider()),
-
-
       ],
-      child:  MaterialApp(
+      child: MaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'Aayo App',
+
+        /// ✅ Set global navigatorKey
+        navigatorKey: navigatorKey,
+
         home: SplashScreen(), // Always show splash first
       ),
     );

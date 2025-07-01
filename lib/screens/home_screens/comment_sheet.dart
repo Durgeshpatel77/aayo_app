@@ -74,7 +74,7 @@ class _CommentSheetState extends State<CommentSheet> {
 
       setState(() {
         _comments.insert(0, newComment);
-        _comments.sort((a, b) => b.createdAt.compareTo(a.createdAt)); // ⬅️ newest first
+        _comments.sort((a, b) => b.createdAt.compareTo(a.createdAt));
         _controller.clear();
       });
 
@@ -87,15 +87,25 @@ class _CommentSheetState extends State<CommentSheet> {
         curve: Curves.easeOut,
       );
 
-      // 🔔 Send comment notification
-      const fallbackFcm = 'egxd4BvUTEy2_VBTiT6g6t:APA91bFhC7TQVRWSKan7-gKlyAjy6yn2HoOceBUANxZBefnqILQxVdUydd36M4s-U3IO0hAeugb-nJMuqEjwcEUwibhcTeFCNUNKHFf6vaoZzX2VfuQCq_U';
+      // ✅ Get post image URL for notification
+      final imagePath = widget.event.image;
+      final postImageUrl = imagePath.startsWith('http')
+          ? imagePath
+          : 'http://srv861272.hstgr.cloud:8000/$imagePath';
 
-      await _sendCommentNotification(
-        recipientFcmToken: fallbackFcm, // replace with actual token if available
-        organizerId: widget.postOwnerId,
-        commentContent: text,
-      );
+      // 🔔 Send notification if token exists
+      final recipientFcmToken = widget.recipientFcmToken;
 
+      if (recipientFcmToken != null && recipientFcmToken.isNotEmpty) {
+        await _sendCommentNotification(
+          recipientFcmToken: recipientFcmToken,
+          organizerId: widget.postOwnerId,
+          commentContent: text,
+          postImageUrl: postImageUrl, // ✅ send post image
+        );
+      } else {
+        debugPrint('🚫 No valid FCM token. Notification not sent.');
+      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Failed to add comment: $e")),
@@ -104,37 +114,30 @@ class _CommentSheetState extends State<CommentSheet> {
   }
 
   Future<void> _sendCommentNotification({
-    required String? recipientFcmToken,
+    required String recipientFcmToken,
     required String organizerId,
     required String commentContent,
+    required String postImageUrl, // ✅ Add this
   }) async {
     final profile = Provider.of<FetchEditUserProvider>(context, listen: false);
     final userId = profile.userId;
-    if (userId == null) return;
-
-    // Static fallback for testing
-    const staticToken = 'egxd4BvUTEy2_VBTiT6g6t:APA91bFhC7TQVRWSKan7-gKlyAjy6yn2HoOceBUANxZBefnqILQxVdUydd36M4s-U3IO0hAeugb-nJMuqEjwcEUwibhcTeFCNUNKHFf6vaoZzX2VfuQCq_U';
-    final fcmToken = (recipientFcmToken != null && recipientFcmToken.isNotEmpty)
-        ? recipientFcmToken
-        : staticToken;
-    // final fcmToken = (widget.recipientFcmToken?.isNotEmpty ?? false)
-    //     ? widget.recipientFcmToken
-    //     : staticToken;
+    if (userId == null || recipientFcmToken.isEmpty) return;
 
     try {
       final response = await http.post(
         Uri.parse('http://srv861272.hstgr.cloud:8000/api/send-notification'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          "fcmToken": fcmToken,
+          "fcmToken": recipientFcmToken,
           "title": "💬 New Comment",
           "body": "${profile.name ?? "Someone"} commented: \"$commentContent\"",
           "data": {
             "userId": userId,
             "userName": profile.name ?? "",
-            "userAvatar": profile.userData['profile'] ?? "",
+            "postImage": postImageUrl, // ✅ Use post image here
             "vendorId": widget.postId,
-            "vendorName": "", // optional
+            "vendorName": widget.event.organizer,
+            "type": "post"
           }
         }),
       );
@@ -142,7 +145,6 @@ class _CommentSheetState extends State<CommentSheet> {
       debugPrint("📨 Comment Notification Response: ${response.statusCode}");
       debugPrint("📨 Body: ${response.body}");
 
-      // Save to backend logs
       await http.post(
         Uri.parse('http://srv861272.hstgr.cloud:8000/api/notification'),
         headers: {'Content-Type': 'application/json'},
@@ -155,7 +157,6 @@ class _CommentSheetState extends State<CommentSheet> {
       debugPrint('❌ Failed to send comment notification: $e');
     }
   }
-
   Future<void> _deleteComment(CommentModel c) async {
     try {
       await Provider.of<HomeProvider>(context, listen: false).deleteCommentFromPost(
