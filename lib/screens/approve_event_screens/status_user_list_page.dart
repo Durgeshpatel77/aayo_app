@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/event_registration_model.dart';
+import '../home_screens/single_user_profile_screen.dart';
 
 class StatusUserListPage extends StatelessWidget {
   final String title;
@@ -38,11 +39,25 @@ class StatusUserListPage extends StatelessWidget {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             margin: const EdgeInsets.symmetric(vertical: 6),
             child: ListTile(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => SingleUserProfileScreen(userId: reg.id),
+                  ),
+                );
+              },
               leading: CircleAvatar(
                 backgroundColor: Colors.pink.shade100,
                 child: const Icon(Icons.person, color: Colors.pink),
               ),
-              title: Text(reg.name),
+              title: Text(
+                reg.name,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: Colors.blue,
+                ),
+              ),
               trailing: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(

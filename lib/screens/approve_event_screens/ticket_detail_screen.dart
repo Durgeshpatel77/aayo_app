@@ -10,6 +10,7 @@ class TicketDetailScreen extends StatelessWidget {
   final String eventTime;
   final String eventLocation;
   final double ticketPrice;
+  final String venueName;
 
   const TicketDetailScreen({
     Key? key,
@@ -19,6 +20,8 @@ class TicketDetailScreen extends StatelessWidget {
     required this.eventTime,
     required this.eventLocation,
     required this.ticketPrice,
+    required this.venueName, // ✅ new
+
   }) : super(key: key);
 
   String capitalize(String text) {
@@ -77,6 +80,7 @@ class TicketDetailScreen extends StatelessWidget {
 
               _sectionTitle('Event Details'),
               _infoRow('Event Name', capitalize(eventName)),
+              _infoRow('Venue', capitalize(venueName)),
               _infoRow('Date & Time', '$eventDate, $eventTime'),
               _infoRow('Location', eventLocation),
               const Divider(height: 32),

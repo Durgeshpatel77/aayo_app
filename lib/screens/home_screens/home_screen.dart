@@ -55,6 +55,7 @@ class _EventCardState extends State<EventCard> {
   int likeCount = 0;
   late int _commentCount;
   final AudioPlayer _audioPlayer = AudioPlayer();
+  bool _showHeart = false;
 
   @override
   void initState() {
@@ -366,31 +367,41 @@ class _EventCardState extends State<EventCard> {
 
           // Image
           if (imageUrl.isNotEmpty)
-            AspectRatio(
-              aspectRatio: 4 / 5,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: CachedNetworkImage(
-                  imageUrl: imageUrl,
-                  fit: BoxFit.cover,
-                  width: double.infinity,
-                  placeholder: (context, url) => Container(
-                    color: Colors.grey.shade300,
-                    child: const Center(
-                      child: SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.pink,
-                        ),
-                      ),
+            GestureDetector(
+              onDoubleTap: () {
+                _toggleLike();
+                setState(() => _showHeart = true);
+                Future.delayed(const Duration(milliseconds: 700), () {
+                  if (mounted) {
+                    setState(() => _showHeart = false);
+                  }
+                });
+              },
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: CachedNetworkImage(
+                      imageUrl: imageUrl, // your event image
+                      fit: BoxFit.cover,
+                      placeholder: (_, __) =>
+                      const Center(child: CircularProgressIndicator()),
+                      errorWidget: (_, __, ___) => const Icon(Icons.broken_image),
                     ),
                   ),
-                  errorWidget: (context, url, error) =>
-                      const Icon(Icons.broken_image, size: 40),
-                  fadeInDuration: const Duration(milliseconds: 300),
-                ),
+
+                  // ❤️ Big Heart animation
+                  AnimatedOpacity(
+                    opacity: _showHeart ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 300),
+                    child: const Icon(
+                      Icons.favorite,
+                      color: Colors.redAccent,
+                      size: 100,
+                    ),
+                  ),
+                ],
               ),
             ),
 

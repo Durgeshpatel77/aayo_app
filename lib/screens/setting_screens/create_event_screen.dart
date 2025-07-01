@@ -536,6 +536,11 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                               bool success = await eventProvider.createEvent(
                                 eventName: _eventNameController.text,
                                 description: _eventDescriptionController.text,
+                                venueAddress: _eventLandmarkController.text, // This is the landmark
+                                venueName: eventProvider.useManualVenueEntry
+                                    ? _manualVenueNameController.text
+                                    : eventProvider.selectedVenueName ?? '',
+
                               );
 
                               if (success) {

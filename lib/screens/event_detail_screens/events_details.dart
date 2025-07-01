@@ -243,8 +243,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                           const SizedBox(height: 8),
                           Row(
                             children: [
-                              Icon(Icons.location_on,
-                                  size: 16, color: Colors.grey[600]),
+                              Icon(Icons.location_on, size: 16, color: Colors.grey[600]),
                               const SizedBox(width: 6),
                               Expanded(
                                 child: Text(
@@ -259,11 +258,30 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 6),
+                          if ((widget.event.venueName ?? '').isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4.0),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.store, size: 16, color: Colors.grey[600]),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      widget.event.venueName!,
+                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 1,
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           Row(
                             children: [
-                              Icon(Icons.calendar_today,
-                                  size: 16, color: Colors.grey[600]),
+                              Icon(Icons.calendar_today, size: 16, color: Colors.grey[600]),
                               const SizedBox(width: 6),
                               Expanded(
                                 child: Text(
@@ -283,7 +301,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 ],
               ),
             ),
-            SizedBox(height: screenHeight * 0.1),
+            SizedBox(height: screenHeight * 0.13),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Column(
@@ -613,6 +631,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                 ticketPrice: widget.event.price,
                                 eventId: widget.event.id,
                                 joinedBy: currentUserId,
+                                venueName: widget.event.venueName??'',
                               ),
                             ),
                           );

@@ -20,6 +20,7 @@ class OrderSummaryScreen extends StatefulWidget {
   final double ticketPrice;
   final String eventId;
   final String joinedBy;
+  final String venueName;
 
   const OrderSummaryScreen({
     Key? key,
@@ -30,7 +31,7 @@ class OrderSummaryScreen extends StatefulWidget {
     required this.eventImageUrl,
     required this.ticketPrice,
     required this.eventId,
-    required this.joinedBy,
+    required this.joinedBy, required this.venueName,
   }) : super(key: key);
 
   @override
@@ -97,7 +98,7 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
           eventDate: widget.eventDate,
           eventTime: widget.eventTime,
           eventLocation: widget.eventLocation,
-          ticketPrice: widget.ticketPrice,
+          ticketPrice: widget.ticketPrice, venueName: widget.venueName,
         ),
       ),
     );
@@ -295,7 +296,7 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          "Order Detail",
+          "Ticket Detail",
           style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,

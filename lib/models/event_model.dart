@@ -24,6 +24,9 @@ class Event {
 
   final String? organizerFcmToken;
   final String? organizerMobile;
+  final String? venueName;
+  final String? venueAddress;
+
 
   Event({
     required this.id,
@@ -47,6 +50,9 @@ class Event {
     required this.longitude,
     this.organizerFcmToken,
     this.organizerMobile,
+    this.venueName,
+    this.venueAddress,
+
   });
 
   factory Event.fromJson(Map<String, dynamic> json) {
@@ -121,6 +127,8 @@ class Event {
       longitude: (eventDetails['longitude'] ?? 0.0).toDouble(),
       organizerFcmToken: user['fcmToken'],
       organizerMobile: user['mobile'],
+      venueName: eventDetails['venueName'],
+      venueAddress: eventDetails['venueAddress'],
     );
   }
 
@@ -150,6 +158,9 @@ class Event {
         'price': price,
         'latitude': latitude,
         'longitude': longitude,
+        'venueName': venueName,
+        'venueAddress': venueAddress,
+
       }
     };
   }

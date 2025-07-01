@@ -38,6 +38,9 @@ class OverviewTab extends StatelessWidget {
                 const SizedBox(height: 20),
                 _buildInfoTile(Icons.event, 'Event Name', event.title),
                 _buildInfoTile(Icons.location_on, 'Location', event.location),
+                if ((event.venueName ?? '').isNotEmpty)
+                  _buildInfoTile(Icons.store, 'Venue Name', event.venueName!),
+
                 _buildInfoTile(Icons.calendar_today, 'Start Date',
                     _formatDate(event.startTime)),
                 _buildInfoTile(Icons.calendar_month, 'End Date',

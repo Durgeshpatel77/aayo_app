@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../models/event_registration_model.dart';
 import '../../providers/approve_events_provider/event_registration_provider.dart';
 import '../../providers/approve_events_provider/guest_page_provider.dart';
+import '../home_screens/single_user_profile_screen.dart';
 
 class GuestPage extends StatefulWidget {
   final String eventId;
@@ -176,9 +177,22 @@ class _GuestPageState extends State<GuestPage> {
           backgroundColor: Colors.pink.shade100,
           child: const Icon(Icons.person, color: Colors.pink),
         ),
-        title: Text(
-          guest.name,
-          style: const TextStyle(fontWeight: FontWeight.w600),
+        title: GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => SingleUserProfileScreen(userId: guest.id),
+              ),
+            );
+          },
+          child: Text(
+            guest.name,
+            style: const TextStyle(
+              fontWeight: FontWeight.w600,
+              color: Colors.blue, // Optional: Add underline or color to indicate it's clickable
+            ),
+          ),
         ),
         trailing: _buildTrailing(),
       ),
