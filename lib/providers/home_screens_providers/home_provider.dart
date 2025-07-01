@@ -133,23 +133,25 @@ class HomeProvider extends ChangeNotifier {
           organizerId: event.organizerId,
           price: event.price,
           likes: newLikes,
+          comments: event.comments,
           image: event.image,
           media: event.media,
           organizer: event.organizer,
           organizerProfile: event.organizerProfile,
           createdAt: event.createdAt,
           type: event.type,
-          comments: event.comments,
-
-          // ✅ Add these two
           latitude: event.latitude,
           longitude: event.longitude,
+
+          // ✅ ADD THESE TWO MISSING FIELDS
+          organizerFcmToken: event.organizerFcmToken,
+          organizerMobile: event.organizerMobile,
         );
       }
       return event;
     }).toList();
 
-    notifyListeners(); // ✅ called once after update
+    notifyListeners();
   }
 
   /// ✅ NEW: Add a comment to a post or event by its ID

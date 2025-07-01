@@ -55,6 +55,10 @@ class FetchEditUserProvider with ChangeNotifier {
   Future<void> clearUserId() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('backendUserId');
+
+    // ❌ Do NOT delete FCM token here
+    // await FirebaseMessaging.instance.deleteToken(); ❌ Remove this
+
     _userId = null;
     _userData = {};
     notifyListeners();
@@ -265,7 +269,7 @@ class FetchEditUserProvider with ChangeNotifier {
     }
   }
   //---------------------------- FCM token update -----------------
-  Future<void> updateFcmToken(String newToken) async {
+  Future<void> updateFcmToken(String newToken) async  {
     debugPrint('🚀 Starting FCM token update...');
 
     final prefs = await SharedPreferences.getInstance();
@@ -274,6 +278,12 @@ class FetchEditUserProvider with ChangeNotifier {
 
     if (userId == null) {
       debugPrint('❗ No backendUserId found, aborting FCM update.');
+      return;
+    }
+
+    final savedToken = prefs.getString('savedFcmToken');
+    if (savedToken == newToken) {
+      debugPrint('⚠️ FCM token unchanged. Skipping update.');
       return;
     }
 
@@ -293,6 +303,7 @@ class FetchEditUserProvider with ChangeNotifier {
       debugPrint('📥 Response Body: ${response.body}');
 
       if (response.statusCode == 200) {
+        await prefs.setString('savedFcmToken', newToken); // ✅ Save token
         final result = json.decode(response.body);
         _userData = result['data'];
         notifyListeners();

@@ -93,106 +93,6 @@ class _EventCardState extends State<EventCard> {
     }
   }
 
-  // void _toggleLike() async {
-  //   final userProfileProvider =
-  //   Provider.of<FetchEditUserProvider>(context, listen: false);
-  //   final currentUserId = userProfileProvider.userId;
-  //
-  //   if (currentUserId == null) {
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       const SnackBar(content: Text("You must be logged in to like this.")),
-  //     );
-  //     return;
-  //   }
-  //
-  //   final wasLiked = isLiked;
-  //
-  //   // 🔁 Optimistic UI update
-  //   setState(() {
-  //     isLiked = !isLiked;
-  //     likeCount += isLiked ? 1 : -1;
-  //   });
-  //
-  //   if (isLiked && !wasLiked) {
-  //     _playLikeSound(); // 🔊 Play only on like
-  //   }
-  //
-  //   try {
-  //     final response = await userProfileProvider.toggleLike(
-  //       postId: widget.event.id,
-  //       userId: currentUserId,
-  //     );
-  //
-  //     if (response['success'] == true) {
-  //       final updatedLikes = List<String>.from(response['likes'] ?? []);
-  //       Provider.of<HomeProvider>(context, listen: false)
-  //           .updateEventLikes(widget.event.id, updatedLikes);
-  //
-  //       debugPrint("🔎 Organizer ID: ${widget.event.organizerId}");
-  //       debugPrint("🔎 Current User ID: $currentUserId");
-  //
-  //       // ✅ Send notification ONLY if:
-  //       // 1. It’s a new like
-  //       // 2. It's not your own post
-  //       if (isLiked && widget.event.organizerId != currentUserId) {
-  //         final recipientFcmToken = widget.event.organizerFcmToken;
-  //
-  //         if (recipientFcmToken != null && recipientFcmToken.isNotEmpty) {
-  //           final fcmResponse = await http.post(
-  //             Uri.parse('http://srv861272.hstgr.cloud:8000/api/send-notification'),
-  //             headers: {'Content-Type': 'application/json'},
-  //             body: jsonEncode({
-  //               "fcmToken": recipientFcmToken,
-  //               "title": "❤️ New Like",
-  //               "body": "${userProfileProvider.name ?? "Someone"} liked your post",
-  //               "data": {
-  //                 "userId": currentUserId,
-  //                 "userName": userProfileProvider.name ?? "",
-  //                 "userAvatar": userProfileProvider.userData['profile'] ?? "",
-  //                 "vendorId": widget.event.id,
-  //                 "vendorName": widget.event.organizer,
-  //               }
-  //             }),
-  //           );
-  //
-  //           debugPrint('📨 Notification Response: ${fcmResponse.statusCode}');
-  //           debugPrint('📨 Notification Body: ${fcmResponse.body}');
-  //
-  //           // 🔗 Log notification
-  //           final logResponse = await http.post(
-  //             Uri.parse('http://srv861272.hstgr.cloud:8000/api/notification'),
-  //             headers: {'Content-Type': 'application/json'},
-  //             body: jsonEncode({
-  //               "user": widget.event.organizerId,
-  //               "message": "${userProfileProvider.name ?? "Someone"} liked your post"
-  //             }),
-  //           );
-  //
-  //           debugPrint('📝 Notification log status: ${logResponse.statusCode}');
-  //         } else {
-  //           debugPrint("🚫 Organizer FCM token is missing");
-  //         }
-  //       } else {
-  //         debugPrint("🔕 No notification sent (self-like or unlike)");
-  //       }
-  //     } else {
-  //       // ❌ Revert UI on failure
-  //       setState(() {
-  //         isLiked = wasLiked;
-  //         likeCount += isLiked ? 1 : -1;
-  //       });
-  //     }
-  //   } catch (e) {
-  //     setState(() {
-  //       isLiked = wasLiked;
-  //       likeCount += isLiked ? 1 : -1;
-  //     });
-  //     debugPrint('❌ Error toggling like: $e');
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       SnackBar(content: Text("Failed to update like: $e")),
-  //     );
-  //   }
-  // }
   void _toggleLike() async {
     final userProfileProvider =
     Provider.of<FetchEditUserProvider>(context, listen: false);
@@ -207,13 +107,13 @@ class _EventCardState extends State<EventCard> {
 
     final wasLiked = isLiked;
 
-    // Optimistic UI update
+    // ✅ Optimistic UI update
     setState(() {
       isLiked = !isLiked;
       likeCount += isLiked ? 1 : -1;
     });
 
-    if (!wasLiked) {
+    if (isLiked && !wasLiked) {
       _playLikeSound();
     }
 
@@ -228,48 +128,55 @@ class _EventCardState extends State<EventCard> {
         Provider.of<HomeProvider>(context, listen: false)
             .updateEventLikes(widget.event.id, updatedLikes);
 
-        debugPrint("🔎 Organizer ID: ${widget.event.organizerId}");
-        debugPrint("🔎 Current User ID: $currentUserId");
-
-        // ✅ Send notification only on new like, not unlike or self-like
         if (isLiked && widget.event.organizerId != currentUserId) {
-          const staticFcmToken =
-              'egxd4BvUTEy2_VBTiT6g6t:APA91bFhC7TQVRWSKan7-gKlyAjy6yn2HoOceBUANxZBefnqILQxVdUydd36M4s-U3IO0hAeugb-nJMuqEjwcEUwibhcTeFCNUNKHFf6vaoZzX2VfuQCq_U';
+          final recipientFcmToken = widget.event.organizerFcmToken;
+          debugPrint("📦 Organizer FCM token in EventCard: $recipientFcmToken");
 
-          final fcmResponse = await http.post(
-            Uri.parse('http://srv861272.hstgr.cloud:8000/api/send-notification'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              "fcmToken": staticFcmToken, // ✅ use static
-              "title": "❤️ New Like",
-              "body": "${userProfileProvider.name ?? "Someone"} liked your post",
-              "data": {
-                "userId": currentUserId,
-                "userName": userProfileProvider.name ?? "",
-                "userAvatar": userProfileProvider.userData['profile'] ?? "",
-                "vendorId": widget.event.id,
-                "vendorName": widget.event.organizer,
-              }
-            }),
-          );
+          if (recipientFcmToken != null && recipientFcmToken.isNotEmpty) {
+            // ✅ Use post or event image for notification
+            final contentImage = widget.event.image;
+            debugPrint("🖼️ Post/Event image sent: $contentImage");
 
-          debugPrint('📨 Static Notification Response: ${fcmResponse.statusCode}');
-          debugPrint('📨 Body: ${fcmResponse.body}');
+            final isEvent = widget.event.type == "event";
+            final likeTypeText = isEvent ? "event" : "post";
+            final bodyText =
+                "${userProfileProvider.name ?? "Someone"} liked your $likeTypeText";
 
-          // Optional: Log in database
-          await http.post(
-            Uri.parse('http://srv861272.hstgr.cloud:8000/api/notification'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              "user": widget.event.organizerId,
-              "message": "${userProfileProvider.name ?? "Someone"} liked your post"
-            }),
-          );
-        } else {
-          debugPrint("🚫 No notification (unlike or self-like)");
+            final fcmResponse = await http.post(
+              Uri.parse('http://srv861272.hstgr.cloud:8000/api/send-notification'),
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode({
+                "fcmToken": recipientFcmToken,
+                "title": "❤️ New Like",
+                "body": bodyText,
+                "image": contentImage, // ✅ Shows post/event image in notification
+                "data": {
+                  "userId": currentUserId,
+                  "userName": userProfileProvider.name ?? "",
+                  "userAvatar": contentImage, // ✅ Also update avatar to match
+                  "vendorId": widget.event.id,
+                  "vendorName": widget.event.organizer,
+                }
+              }),
+            );
+
+            debugPrint('📨 Notification Response: ${fcmResponse.statusCode}');
+            debugPrint('📨 Notification Body: ${fcmResponse.body}');
+
+            // ✅ Log notification
+            await http.post(
+              Uri.parse('http://srv861272.hstgr.cloud:8000/api/notification'),
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode({
+                "user": widget.event.organizerId,
+                "message": bodyText,
+              }),
+            );
+          } else {
+            debugPrint("🚫 Organizer FCM token is missing or empty");
+          }
         }
       } else {
-        // Revert UI if failed
         setState(() {
           isLiked = wasLiked;
           likeCount += isLiked ? 1 : -1;
@@ -280,10 +187,9 @@ class _EventCardState extends State<EventCard> {
         isLiked = wasLiked;
         likeCount += isLiked ? 1 : -1;
       });
-
-      debugPrint('❌ Error liking post: $e');
+      debugPrint('❌ Error toggling like: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Failed to like post: $e")),
+        SnackBar(content: Text("Failed to update like: $e")),
       );
     }
   }
@@ -797,11 +703,10 @@ class _HomeScreenState extends State<HomeScreen> {
     await _userProfileProvider.loadUserId();
 
     if (_userProfileProvider.userId != null) {
-      // 👇 Fetch the FCM token (ensure firebase_messaging is configured)
       final fcmToken = await FirebaseMessaging.instance.getToken();
       if (fcmToken != null) {
         debugPrint('📡 FCM Token: $fcmToken');
-        await _userProfileProvider.updateFcmToken(fcmToken);
+        await _userProfileProvider.updateFcmToken(fcmToken); // ✅ Dynamic and cached
       }
 
       await Provider.of<HomeProvider>(context, listen: false).fetchAll();

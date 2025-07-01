@@ -99,29 +99,27 @@ class NotificationService {
     String? title = message.notification?.title ?? message.data['title'];
     String? body = message.notification?.body ?? message.data['body'];
 
-    print('🔔 Preparing notification: $title — $body');
-
     final androidDetails = AndroidNotificationDetails(
       'high_importance_channel',
       'High Importance Notifications',
       channelDescription: 'Used for important notifications',
       importance: Importance.max,
       priority: Priority.high,
-      icon: 'logo',
+      icon: 'logo', // your app icon
     );
 
     final notificationDetails = NotificationDetails(android: androidDetails);
 
     if (title != null && body != null) {
+      print('🔔 Showing notification: $title — $body');
       await flutterLocalNotificationsPlugin.show(
         title.hashCode,
         title,
         body,
         notificationDetails,
       );
-      print('✅ Notification shown!');
     } else {
-      print('⚠️ Notification title or body was null. Nothing shown.');
+      print('⚠️ Notification title/body is null. Skipping display.');
     }
   }
 

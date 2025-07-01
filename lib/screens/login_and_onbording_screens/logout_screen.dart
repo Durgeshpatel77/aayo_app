@@ -1,4 +1,8 @@
+import 'dart:convert';
+
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 
 import '../../providers/onording_login_screens_providers/google_signin_provider.dart';
@@ -11,6 +15,26 @@ class LogoutScreen extends StatelessWidget {
   Future<void> _handleLogout(BuildContext context) async {
     final googleProvider = Provider.of<GoogleSignInProvider>(context, listen: false);
     final logoutProvider = LogoutProvider(googleProvider);
+
+    try {
+      // ✅ Delete FCM token from device
+      final messaging = FirebaseMessaging.instance;
+      final fcmToken = await messaging.getToken();
+
+      // ✅ Send request to backend to remove token from DB
+      await http.put(
+        Uri.parse('http://srv861272.hstgr.cloud:8000/api/user/remove-token'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'fcmToken': fcmToken}),
+      );
+
+      // ✅ Delete it locally
+      await messaging.deleteToken();
+      debugPrint('🧹 Deleted FCM token: $fcmToken');
+    } catch (e) {
+      debugPrint('⚠️ Error deleting FCM token: $e');
+    }
+
     final success = await logoutProvider.performLogout();
 
     if (!context.mounted) return;

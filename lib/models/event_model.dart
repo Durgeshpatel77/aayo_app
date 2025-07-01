@@ -1,4 +1,5 @@
 import 'comment_model.dart';
+import 'package:flutter/foundation.dart';
 
 class Event {
   final String id;
@@ -62,9 +63,8 @@ class Event {
     }
 
     final userProfilePath = user['profile'] ?? '';
-    final fullOrganizerProfileUrl = userProfilePath.isNotEmpty
-        ? formatUrl(userProfilePath)
-        : '';
+    final fullOrganizerProfileUrl =
+    userProfilePath.isNotEmpty ? formatUrl(userProfilePath) : '';
 
     List<String> parsedMedia = [];
     if (json['media'] is List) {
@@ -80,8 +80,10 @@ class Event {
 
     final commentsJson = json['comments'] as List<dynamic>? ?? [];
 
-    // ✅ Fallback to eventDetails if createdAt is nested
     final rawCreatedAt = json['createdAt'] ?? eventDetails['createdAt'];
+
+    /// ✅ Debug print for FCM Token from server
+    //debugPrint("📨 Parsed Organizer FCM Token: ${user['fcmToken']}");
 
     return Event(
       id: json['_id'] ?? '',
@@ -100,7 +102,7 @@ class Event {
       comments: commentsJson.map((c) => CommentModel.fromJson(c)).toList(),
       image: (() {
         final img = json['image'] ?? '';
-        if (img != null && img.toString().trim().isNotEmpty) {
+        if (img.toString().trim().isNotEmpty) {
           return formatUrl(img);
         } else if (json['media'] is List && json['media'].isNotEmpty) {
           final mediaList = json['media'] as List;
@@ -113,7 +115,7 @@ class Event {
       media: parsedMedia,
       organizer: user['name'] ?? '',
       organizerProfile: fullOrganizerProfileUrl,
-      createdAt: DateTime.tryParse(json['createdAt'] ?? '')?.toLocal() ?? DateTime.now(),
+      createdAt: DateTime.tryParse(rawCreatedAt ?? '')?.toLocal() ?? DateTime.now(),
       type: parsedType,
       latitude: (eventDetails['latitude'] ?? 0.0).toDouble(),
       longitude: (eventDetails['longitude'] ?? 0.0).toDouble(),
