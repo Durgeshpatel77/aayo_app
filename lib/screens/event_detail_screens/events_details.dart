@@ -87,6 +87,20 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     }
   }
 
+  String _getBookingCountdownText() {
+    final now = DateTime.now();
+    final eventStart = widget.event.startTime;
+
+    // Show "Booking closed" after event starts
+    if (now.isAfter(eventStart)) {
+      return 'Booking closed..';
+    }
+
+    // Show "Booking open" before event starts
+    return 'Booking open..';
+  }
+
+
   @override
   Widget build(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
@@ -121,10 +135,13 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     if (startTime.day == endTime.day &&
         startTime.month == endTime.month &&
         startTime.year == endTime.year) {
-      formattedDateTime = '${DateFormat('EEE dMMM').format(startTime)} • '
-          '${DateFormat('hh:mma').format(startTime)}  ';
+      formattedDateTime =
+      '${DateFormat('EEE d MMM').format(startTime)} • '
+          '${DateFormat('hh:mma').format(startTime)} - ${DateFormat('hh:mma').format(endTime)}';
     } else {
-      formattedDateTime = '${DateFormat('EEEE,dMMM,hh:mma').format(startTime)}';
+      formattedDateTime =
+      '${DateFormat('EEE d MMM, hh:mma').format(startTime)} - '
+          '${DateFormat('EEE d MMM, hh:mma').format(endTime)}';
     }
 
     String priceDisplay = isFree ? "Free" : '₹${price.toStringAsFixed(0)}';
@@ -525,39 +542,110 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  ElevatedButton(
-                    onPressed: () {
-                      final String currentUserId = loggedInUserId ?? '';
+                  StreamBuilder(
+                    stream: Stream.periodic(const Duration(seconds: 1)),
+                    builder: (context, snapshot) {
+                      final countdownText = _getBookingCountdownText();
+                      final isClosed = countdownText.contains("closed");
 
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => OrderSummaryScreen(
-                            eventName: eventTitle,
-                            eventDate:
-                                DateFormat('EEE d MMM').format(startTime),
-                            eventTime: DateFormat('hh:mm a').format(startTime),
-                            eventLocation: eventLocation,
-                            eventImageUrl: imageUrl,
-                            ticketPrice: price,
-                            eventId: widget.event.id, // ✅ actual event ID
-                            joinedBy:
-                                currentUserId, // ✅ actual user ID (e.g. from Firebase or auth state)
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 8.0, bottom: 16),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              isClosed ? Icons.lock_outline : Icons.timer,
+                              color: isClosed ? Colors.orange : Colors.green,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              countdownText,
+                              style: TextStyle(
+                                color: isClosed ? Colors.orange : Colors.green,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+
+                  Builder(
+                    builder: (context) {
+                      final now = DateTime.now();
+                      final startTime = widget.event.startTime;
+                      final endTime = widget.event.endTime;
+
+                      final hasEventEnded = now.isAfter(endTime);
+                      final isBookingClosed = now.isAfter(startTime); // Booking closes when event starts
+
+                      // Determine button state
+                      String buttonText = 'Buy Ticket';
+                      bool isButtonEnabled = true;
+
+                      if (hasEventEnded) {
+                        buttonText = 'Event is already completed';
+                        isButtonEnabled = false;
+                      } else if (isBookingClosed) {
+                        buttonText = 'Booking is closed';
+                        isButtonEnabled = false;
+                      }
+
+                      return GestureDetector(
+                        onTap: isButtonEnabled
+                            ? () {
+                          final String currentUserId = loggedInUserId ?? '';
+
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => OrderSummaryScreen(
+                                eventName: widget.event.title,
+                                eventDate: DateFormat('EEE d MMM').format(startTime),
+                                eventTime: DateFormat('hh:mm a').format(startTime),
+                                eventLocation: widget.event.location,
+                                eventImageUrl: widget.event.media.isNotEmpty
+                                    ? widget.event.media.first
+                                    : widget.event.image,
+                                ticketPrice: widget.event.price,
+                                eventId: widget.event.id,
+                                joinedBy: currentUserId,
+                              ),
+                            ),
+                          );
+                        }
+                            : null,
+                        child: Container(
+                          width: double.infinity,
+                          height: 60,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: isButtonEnabled ? Colors.pinkAccent : const Color(0xFFB0BEC5), // Better grey
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: isButtonEnabled
+                                ? [
+                              BoxShadow(
+                                color: Colors.pinkAccent.withOpacity(0.3),
+                                blurRadius: 8,
+                                offset: Offset(0, 4),
+                              )
+                            ]
+                                : [],
+                          ),
+                          child: Text(
+                            buttonText,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       );
                     },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.pinkAccent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      minimumSize: const Size(double.infinity, 60),
-                    ),
-                    child: const Text(
-                      'Buy Ticket',
-                      style: TextStyle(fontSize: 18, color: Colors.white),
-                    ),
                   ),
                   const SizedBox(height: 20),
                 ],

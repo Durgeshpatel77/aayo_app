@@ -18,11 +18,15 @@ class Eventsscreen extends StatefulWidget {
 
 class _EventsscreenState extends State<Eventsscreen> {
   @override
+  @override
   void initState() {
     super.initState();
-    final provider = Provider.of<EventCreationProvider>(context, listen: false);
-    provider.fetchUserPostsFromPrefs(type: 'event');
-    provider.fetchJoinedEventsFromPrefs();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = Provider.of<EventCreationProvider>(context, listen: false);
+      provider.fetchUserPostsFromPrefs(type: 'event');
+      provider.fetchJoinedEventsFromPrefs();
+    });
   }
 
   String _buildFullImageUrl(String relativePath) {

@@ -80,6 +80,9 @@ class Event {
 
     final commentsJson = json['comments'] as List<dynamic>? ?? [];
 
+    // ✅ Fallback to eventDetails if createdAt is nested
+    final rawCreatedAt = json['createdAt'] ?? eventDetails['createdAt'];
+
     return Event(
       id: json['_id'] ?? '',
       title: json['title'] ?? '',
@@ -110,7 +113,7 @@ class Event {
       media: parsedMedia,
       organizer: user['name'] ?? '',
       organizerProfile: fullOrganizerProfileUrl,
-      createdAt: DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
+      createdAt: DateTime.tryParse(json['createdAt'] ?? '')?.toLocal() ?? DateTime.now(),
       type: parsedType,
       latitude: (eventDetails['latitude'] ?? 0.0).toDouble(),
       longitude: (eventDetails['longitude'] ?? 0.0).toDouble(),

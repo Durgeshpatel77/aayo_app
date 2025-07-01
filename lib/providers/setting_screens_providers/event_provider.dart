@@ -724,6 +724,7 @@ class EventCreationProvider with ChangeNotifier {
     _setFetchingEvents(true);
     _allEvents.clear();
     _joinedEvents.clear(); // ✅ Clear the list to avoid duplicates
+    _clearError();
 
     try {
       final prefs = await SharedPreferences.getInstance();
