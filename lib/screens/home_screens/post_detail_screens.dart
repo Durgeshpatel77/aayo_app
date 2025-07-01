@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
@@ -15,6 +16,7 @@ import '../other_for_use/utils.dart';
 import 'comment_sheet.dart';
 import 'package:flutter/services.dart';
 
+import 'package:path_provider/path_provider.dart';
 
 
   class PostDetailScreen extends StatefulWidget {
@@ -167,13 +169,42 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   Future<void> _sharePost() async {
     final post = widget.post;
 
-    final text = '${post.title}\n\n'
+    final String text = '${post.title}\n\n'
         '${post.content}\n\n'
         'Check this post out on Aayo App!';
 
+    final String imageUrl = post.media.isNotEmpty
+        ? getFullImageUrl(post.media.first)
+        : (post.image.isNotEmpty ? getFullImageUrl(post.image) : '');
+
     try {
-      await Share.share(text);
-      debugPrint('✅ Post shared successfully');
+      if (imageUrl.isNotEmpty) {
+        // ⬇️ Download image
+        final response = await http.get(Uri.parse(imageUrl));
+        if (response.statusCode == 200) {
+          final bytes = response.bodyBytes;
+
+          // ⬇️ Get temp directory
+          final tempDir = await getTemporaryDirectory();
+          final file = File('${tempDir.path}/shared_post.jpg');
+
+          // ⬇️ Save image to file
+          await file.writeAsBytes(bytes);
+
+          // ⬇️ Share with image
+          await Share.shareXFiles(
+            [XFile(file.path)],
+            text: text,
+          );
+          debugPrint('✅ Post shared with image');
+        } else {
+          debugPrint(
+              '⚠️ Failed to download image. Status: ${response.statusCode}');
+          await Share.share(text); // fallback to text only
+        }
+      } else {
+        await Share.share(text); // fallback if no image URL
+      }
     } catch (e) {
       debugPrint('❌ Failed to share post: $e');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -181,7 +212,6 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       );
     }
   }
-
   String getFullImageUrl(String relativePath) {
     const baseUrl = 'http://srv861272.hstgr.cloud:8000';
     if (relativePath.startsWith('http')) return relativePath;
@@ -338,7 +368,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
 
           // Post info
           Positioned(
-            bottom: 100,
+            bottom: 30,
             left: 16,
             right: 80,
             child: Column(
@@ -387,77 +417,76 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
             ),
           ),
 
-          // Action icons
-          Positioned(
-            bottom: 130,
-            right: 16,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Like
-                GestureDetector(
-                  onTap: _toggleLike,
-                  child: Column(
-                    children: [
-                      Icon(
-                        _isLiked ? Icons.favorite : Icons.favorite_border,
-                        color: _isLiked ? Colors.red : Colors.white,
-                        size: 30,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '$_likeCount',
-                        style: const TextStyle(color: Colors.white, fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 30),
 
-                // Comment
-                // Comment
-                GestureDetector(
-                  onTap: _openCommentSheet,
-                  child: Column(
-                    children: [
-                      Image.asset(
-                        'images/chat_icon.png',
-                        width: 28,
-                        height: 28,
-                        color: Colors.white, // optional: remove if image is full-color
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '$_commentCount',
-                        style: const TextStyle(color: Colors.white, fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 30),
-
-// Share
-                GestureDetector(
-                  onTap: _sharePost,
-                  child: Column(
-                    children: [
-                      Image.asset(
-                        'images/share_icon.png',
-                        width: 26,
-                        height: 26,
-                        color: Colors.white
-                      ),
-                      const SizedBox(height: 4),
-                      const Text('Share', style: TextStyle(color: Colors.white, fontSize: 12)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
         ],
       ),
+      bottomNavigationBar: Container(
+        color: const Color(0xFF121212),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            // Like button
+            GestureDetector(
+              onTap: _toggleLike,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    _isLiked ? Icons.favorite : Icons.favorite_border,
+                    color: _isLiked ? Colors.red : Colors.white,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '$_likeCount',
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+
+            // Comment button
+            GestureDetector(
+              onTap: _openCommentSheet,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Image.asset(
+                    'images/chat_icon.png',
+                    width: 24,
+                    height: 24,
+                    color: Colors.white,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '$_commentCount',
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+
+            // Share button
+            GestureDetector(
+              onTap: _sharePost,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Image.asset(
+                    'images/share_icon.png',
+                    width: 24,
+                    height: 24,
+                    color: Colors.white,
+                  ),
+                  const SizedBox(height: 4),
+                  const Text('Share', style: TextStyle(color: Colors.white, fontSize: 12)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+
     );
   }
 }

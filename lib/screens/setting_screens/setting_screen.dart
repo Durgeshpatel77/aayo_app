@@ -15,9 +15,11 @@ class SettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Settings'),
-        backgroundColor: Colors.pink,
-        foregroundColor: Colors.white,
+        title: const Text('Settings',style: TextStyle(color: Colors.black),),
+      scrolledUnderElevation: 0,
+      automaticallyImplyLeading: false,
+      centerTitle: true,
+      //  foregroundColor: Colors.black,
       ),
       body: ListView(
         // Apply padding directly to ListView
