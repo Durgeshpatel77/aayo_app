@@ -82,9 +82,14 @@ class _EventsscreenState extends State<Eventsscreen> {
             );
           }
 
-          final createdEvents = eventProvider.createdEvents;
-          final joinedEvents = eventProvider.joinedEvents;
           final now = DateTime.now();
+
+          final createdEvents = eventProvider.createdEvents.where((event) {
+            final endTime = event.eventDetails?.endTime;
+            return endTime == null || endTime.isAfter(now); // show only active
+          }).toList();
+
+          final joinedEvents = eventProvider.joinedEvents;
 
 // ✅ Show message if both lists are empty
           if (createdEvents.isEmpty && joinedEvents.isEmpty) {
