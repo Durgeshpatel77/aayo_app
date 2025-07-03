@@ -169,9 +169,12 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   Future<void> _sharePost() async {
     final post = widget.post;
 
+    // ✅ Construct shareable link
+    final String shareLink = 'https://aayo.page.link/post/${post.id}';
+
     final String text = '${post.title}\n\n'
         '${post.content}\n\n'
-        'Check this post out on Aayo App!';
+        'Check this post out on Aayo App 👇\n$shareLink';
 
     final String imageUrl = post.media.isNotEmpty
         ? getFullImageUrl(post.media.first)
@@ -179,31 +182,24 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
 
     try {
       if (imageUrl.isNotEmpty) {
-        // ⬇️ Download image
         final response = await http.get(Uri.parse(imageUrl));
         if (response.statusCode == 200) {
           final bytes = response.bodyBytes;
-
-          // ⬇️ Get temp directory
           final tempDir = await getTemporaryDirectory();
           final file = File('${tempDir.path}/shared_post.jpg');
-
-          // ⬇️ Save image to file
           await file.writeAsBytes(bytes);
 
-          // ⬇️ Share with image
           await Share.shareXFiles(
             [XFile(file.path)],
             text: text,
           );
-          debugPrint('✅ Post shared with image');
+          debugPrint('✅ Post shared with image + link');
         } else {
-          debugPrint(
-              '⚠️ Failed to download image. Status: ${response.statusCode}');
+          debugPrint('⚠️ Failed to download image. Status: ${response.statusCode}');
           await Share.share(text); // fallback to text only
         }
       } else {
-        await Share.share(text); // fallback if no image URL
+        await Share.share(text); // no image fallback
       }
     } catch (e) {
       debugPrint('❌ Failed to share post: $e');
