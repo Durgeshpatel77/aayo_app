@@ -247,65 +247,99 @@ class AddPostProvider with ChangeNotifier {
   }
   /// ✅ 8 sendPostNotificationToFollowers
   Future<void> sendPostNotificationToFollowers({
+    required BuildContext context,
     required String postImageUrl,
     required String postTitle,
-    required String senderName, required BuildContext context,
+    required String senderName,
   }) async {
-    final prefs = await SharedPreferences.getInstance();
-    final backendUserId = prefs.getString('backendUserId');
-
-    if (backendUserId == null || backendUserId.isEmpty) return;
-
     try {
-      // Step 1: Get all followers
-      final followersUrl = Uri.parse('$_apiBaseUrl/api/user/$backendUserId');
+      final prefs = await SharedPreferences.getInstance();
+      final backendUserId = prefs.getString('backendUserId');
+      final userMobile = prefs.getString('backendUserMobile') ?? '';
+      final rawUserAvatar = prefs.getString('backendUserProfile') ?? '';
+
+      final String userAvatar = rawUserAvatar.startsWith('http')
+          ? rawUserAvatar
+          : 'http://srv861272.hstgr.cloud:8000/$rawUserAvatar';
+
+      if (backendUserId == null || backendUserId.isEmpty) {
+        debugPrint('❌ backendUserId missing — cannot send notification');
+        return;
+      }
+
+      // 🔁 Fetch followers
+      final followersUrl = Uri.parse('http://srv861272.hstgr.cloud:8000/api/user/$backendUserId');
       final followersResponse = await http.get(followersUrl);
 
-      if (followersResponse.statusCode == 200) {
-        final followersData = jsonDecode(followersResponse.body);
-        final followersList = followersData['data']['followers'] as List;
-
-        for (var follower in followersList) {
-          final followerId = follower['_id'];
-
-          // Step 2: Get follower details (including fcmToken)
-          final followerDetailUrl = Uri.parse('$_apiBaseUrl/api/user/$followerId');
-          final detailResponse = await http.get(followerDetailUrl);
-
-          if (detailResponse.statusCode == 200) {
-            final followerData = jsonDecode(detailResponse.body);
-            final fcmToken = followerData['data']['fcmToken'];
-
-            if (fcmToken != null && fcmToken.toString().isNotEmpty) {
-              // Step 3: Send notification
-              final notificationUrl = Uri.parse('$_apiBaseUrl/api/send-notification');
-              final notificationBody = {
-                'fcmToken': fcmToken,
-                'title': '$senderName posted something new!',
-                'body': postTitle.isNotEmpty ? postTitle : 'Check out the latest post!',
-                'imageUrl': postImageUrl,
-              };
-
-              final notificationResponse = await http.post(
-                notificationUrl,
-                headers: {'Content-Type': 'application/json'},
-                body: jsonEncode(notificationBody),
-              );
-
-              debugPrint('✅ Notification sent to $followerId');
-              debugPrint('📥 Response: ${notificationResponse.body}');
-            } else {
-              debugPrint('❌ Follower $followerId has no FCM token');
-            }
-          } else {
-            debugPrint('❌ Failed to fetch follower $followerId details');
-          }
-        }
-      } else {
-        debugPrint('❌ Failed to fetch followers for notification');
+      if (followersResponse.statusCode != 200) {
+        debugPrint('❌ Failed to fetch followers');
+        return;
       }
-    } catch (e) {
-      debugPrint('❌ Error sending post notifications: $e');
+
+      final followersData = jsonDecode(followersResponse.body);
+      final followersList = followersData['data']['followers'] as List;
+
+      for (var follower in followersList) {
+        final followerId = follower['_id'];
+
+        // 🔍 Fetch follower FCM token
+        final followerDetailUrl = Uri.parse('http://srv861272.hstgr.cloud:8000/api/user/$followerId');
+        final detailResponse = await http.get(followerDetailUrl);
+
+        if (detailResponse.statusCode != 200) {
+          debugPrint('❌ Failed to fetch follower $followerId');
+          continue;
+        }
+
+        final followerData = jsonDecode(detailResponse.body);
+        final fcmToken = followerData['data']['fcmToken'];
+
+        if (fcmToken == null || fcmToken.toString().isEmpty) {
+          debugPrint('⚠️ Skipping follower $followerId — no FCM token');
+          continue;
+        }
+
+        // 📤 Send notification
+        final notificationUrl = Uri.parse('http://srv861272.hstgr.cloud:8000/api/send-notification');
+
+        final body = jsonEncode({
+          "fcmToken": fcmToken,
+          "title": "$senderName posted something new!",
+          "body": postTitle.isNotEmpty ? postTitle : 'Check out the latest post!',
+          "imageUrl": postImageUrl, // 🖼️ show post in big picture
+          "data": {
+            "userId": backendUserId,
+            "userName": senderName,
+            "userMobile": userMobile,
+            "userAvatar": userAvatar, // 👤 Avatar passed to client
+            "postImage": postImageUrl,
+            "type": "post"
+          }
+        });
+
+        final response = await http.post(
+          notificationUrl,
+          headers: {'Content-Type': 'application/json'},
+          body: body,
+        );
+
+        if (response.statusCode == 200) {
+          debugPrint('✅ Notification sent to $followerId');
+        } else {
+          debugPrint('❌ Failed to send to $followerId');
+          debugPrint('📥 ${response.body}');
+        }
+      }
+
+      // ✅ Show toast once all done
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('📣 Notifications sent to followers!')),
+        );
+      }
+    } catch (e, stack) {
+      debugPrint('❌ Exception while sending post notification: $e');
+      debugPrint('🧱 Stacktrace:\n$stack');
     }
   }
 
