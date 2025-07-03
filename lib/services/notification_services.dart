@@ -96,12 +96,19 @@ class NotificationService {
 
   /// Show notification using flutter_local_notifications
   static Future<void> _showFlutterNotification(RemoteMessage message) async {
-    String? title = message.notification?.title ?? message.data['title'];
-    String? body = message.notification?.body ?? message.data['body'];
-// Base URL
-    const baseUrl = 'http://srv861272.hstgr.cloud:8000/';
+    print("📨 DEBUG: message.notification?.body = ${message.notification?.body}");
+    print("📨 DEBUG: message.data = ${message.data}");
 
-// Ensure full URL
+    String? title = message.data['title'] ?? message.notification?.title;
+
+    // 👇 use userName from data first, fallback to notification.body
+    String? body = (message.data['type'] == 'follow' && message.data['userName'] != null)
+        ? "${message.data['userName']} started following you!"
+        : message.data['body'] ?? message.notification?.body;
+
+    print('🔔 Preparing notification: $title — $body');
+
+    const baseUrl = 'http://srv861272.hstgr.cloud:8000/';
     String? rawPostImage = message.data['postImage'];
     String? rawUserAvatar = message.data['userAvatar'];
 
@@ -112,16 +119,11 @@ class NotificationService {
       imageUrl = rawUserAvatar.startsWith('http') ? rawUserAvatar : '$baseUrl$rawUserAvatar';
     }
 
-    print('🔔 Preparing notification: $title — $body');
-    print('🖼️ Avatar URL: $imageUrl');
-
     BigPictureStyleInformation? styleInfo;
-
     if (imageUrl != null && imageUrl.isNotEmpty) {
       try {
-        final String largeIconPath = await _downloadAndSaveFile(imageUrl, 'largeIcon');
-        final String bigPicturePath = await _downloadAndSaveFile(imageUrl, 'bigPicture');
-
+        final largeIconPath = await _downloadAndSaveFile(imageUrl, 'largeIcon');
+        final bigPicturePath = await _downloadAndSaveFile(imageUrl, 'bigPicture');
         styleInfo = BigPictureStyleInformation(
           FilePathAndroidBitmap(bigPicturePath),
           largeIcon: FilePathAndroidBitmap(largeIconPath),

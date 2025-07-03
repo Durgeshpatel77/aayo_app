@@ -67,6 +67,12 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
     _razorpay.clear();
     super.dispose();
   }
+  String getFullImageUrl(String path) {
+    const baseUrl = 'http://srv861272.hstgr.cloud:8000'; // ✅ your domain
+    if (path.startsWith('http')) return path;
+    return '$baseUrl/${path.replaceFirst(RegExp(r'^/+'), '')}'; // ensure single slash
+  }
+
   void _showTicketDetails() async {
     showDialog(
       context: context,
@@ -321,9 +327,9 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
                         children: [
                           ClipRRect(
                             borderRadius: BorderRadius.circular(8),
-                            child: Image.network(
-                              widget.eventImageUrl,
-                              width: 100,
+                            child:
+                            Image.network(getFullImageUrl(widget.eventImageUrl),
+                      width: 100,
                               height: 100,
                               fit: BoxFit.cover,
                             ),

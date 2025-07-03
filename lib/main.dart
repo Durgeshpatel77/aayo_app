@@ -24,6 +24,7 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  print('🔧 Initializing Firebase...');
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   await NotificationService.initialize();

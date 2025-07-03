@@ -146,7 +146,9 @@ class _SingleUserProfileScreenState extends State<SingleUserProfileScreen> with 
     final provider = Provider.of<FetchEditUserProvider>(context, listen: false);
     final prefs = await SharedPreferences.getInstance();
     final currentUserId = prefs.getString('backendUserId');
-    final currentUserName = prefs.getString('backendUserName') ?? 'Someone';
+
+// ✅ Get name from provider if available, else fallback
+    final currentUserName = provider.name ?? prefs.getString('backendUserName') ?? 'Someone';
 
     if (currentUserId == widget.userId) {
       debugPrint('❌ Attempted to follow self');

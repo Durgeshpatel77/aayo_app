@@ -19,7 +19,7 @@ import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 
 
-  class PostDetailScreen extends StatefulWidget {
+class PostDetailScreen extends StatefulWidget {
   final Event post;
 
   const PostDetailScreen({required this.post, super.key});
@@ -414,77 +414,81 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                   ),
                 ),
               ],
+
+            ),
+
+          ),
+          Positioned(
+            bottom: 60,
+            right: 16,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Like
+                GestureDetector(
+                  onTap: _toggleLike,
+                  child: Column(
+                    children: [
+                      Icon(
+                        _isLiked ? Icons.favorite : Icons.favorite_border,
+                        color: _isLiked ? Colors.red : Colors.white,
+                        size: 30,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '$_likeCount',
+                        style: const TextStyle(color: Colors.white, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 30),
+
+                // Comment
+                // Comment
+                GestureDetector(
+                  onTap: _openCommentSheet,
+                  child: Column(
+                    children: [
+                      Image.asset(
+                        'images/chat_icon.png',
+                        width: 28,
+                        height: 28,
+                        color: Colors.white, // optional: remove if image is full-color
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '$_commentCount',
+                        style: const TextStyle(color: Colors.white, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 30),
+
+// Share
+                GestureDetector(
+                  onTap: _sharePost,
+                  child: Column(
+                    children: [
+                      Image.asset(
+                          'images/share_icon.png',
+                          width: 26,
+                          height: 26,
+                          color: Colors.white
+                      ),
+                      const SizedBox(height: 4),
+                      const Text('Share', style: TextStyle(color: Colors.white, fontSize: 12)),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
 
-
         ],
-      ),
-      bottomNavigationBar: Container(
-        color: const Color(0xFF121212),
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            // Like button
-            GestureDetector(
-              onTap: _toggleLike,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    _isLiked ? Icons.favorite : Icons.favorite_border,
-                    color: _isLiked ? Colors.red : Colors.white,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '$_likeCount',
-                    style: const TextStyle(color: Colors.white, fontSize: 12),
-                  ),
-                ],
-              ),
-            ),
 
-            // Comment button
-            GestureDetector(
-              onTap: _openCommentSheet,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Image.asset(
-                    'images/chat_icon.png',
-                    width: 24,
-                    height: 24,
-                    color: Colors.white,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '$_commentCount',
-                    style: const TextStyle(color: Colors.white, fontSize: 12),
-                  ),
-                ],
-              ),
-            ),
-
-            // Share button
-            GestureDetector(
-              onTap: _sharePost,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Image.asset(
-                    'images/share_icon.png',
-                    width: 24,
-                    height: 24,
-                    color: Colors.white,
-                  ),
-                  const SizedBox(height: 4),
-                  const Text('Share', style: TextStyle(color: Colors.white, fontSize: 12)),
-                ],
-              ),
-            ),
-          ],
-        ),
       ),
 
     );

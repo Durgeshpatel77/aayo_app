@@ -815,10 +815,10 @@ class _HomeScreenState extends State<HomeScreen> {
             return true; // exit app
           },
           child: Scaffold(
-            backgroundColor: Colors.transparent,
+            backgroundColor: Colors.white,
             body: SafeArea(
               child: Container(
-                color: Colors.grey.shade100, // optional background color
+                color: Colors.white, // optional background color
                 child: Column(
                   children: [
                     Expanded(

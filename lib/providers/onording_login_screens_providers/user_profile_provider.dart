@@ -36,6 +36,7 @@ class FetchEditUserProvider with ChangeNotifier {
   // -------------------- User ID Storage --------------------
   Future<void> loadUserId() async {
     final prefs = await SharedPreferences.getInstance();
+    prefs.setString('backendUserName', _userData['name'] ?? '');
     _userId = prefs.getString('backendUserId');
     debugPrint('📦 Loaded User ID: $_userId');
     notifyListeners();
@@ -332,7 +333,7 @@ class FetchEditUserProvider with ChangeNotifier {
     final body = {
       'title': 'New Follower',
       'body': '$fromUserName started following you!',
-      'token': toUserFcmToken,
+      'fcmToken': toUserFcmToken,
     };
 
     try {
