@@ -53,8 +53,13 @@ class _FollowListScreenState extends State<FollowListScreen> {
     final provider = Provider.of<FetchEditUserProvider>(context, listen: false);
     final isCurrentlyFollowing = followStatusMap[userId] ?? false;
 
+    // Get backendUserId and Name for notification
+    final prefs = await SharedPreferences.getInstance();
+    final currentUserId = prefs.getString('backendUserId');
+    final currentUserName = provider.name ?? prefs.getString('backendUserName') ?? 'Someone';
+
+    // Show unfollow confirmation if needed
     if (isCurrentlyFollowing) {
-      // Show confirmation bottom sheet for unfollow
       final confirmed = await showModalBottomSheet<bool>(
         context: context,
         isScrollControlled: true,
@@ -69,23 +74,17 @@ class _FollowListScreenState extends State<FollowListScreen> {
             children: [
               const Icon(Icons.remove_circle_outline, color: Colors.red, size: 40),
               const SizedBox(height: 12),
-              const Text(
-                "Remove Follower?",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
+              const Text("Remove Follower?", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
-              const Text(
-                "They won't be notified and will no longer follow you.",
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.black54),
-              ),
+              const Text("They won't be notified and will no longer follow you.",
+                  textAlign: TextAlign.center, style: TextStyle(color: Colors.black54)),
               const SizedBox(height: 24),
               Row(
                 children: [
                   Expanded(
                     child: OutlinedButton(
                       onPressed: () => Navigator.pop(ctx, false),
-                      child:  Text("Cancel",style: TextStyle(color: Colors.pink),),
+                      child: const Text("Cancel", style: TextStyle(color: Colors.pink)),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -93,17 +92,15 @@ class _FollowListScreenState extends State<FollowListScreen> {
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
                       onPressed: () => Navigator.pop(ctx, true),
-                      child:  Text("Remove",style: TextStyle(color: Colors.white),),
+                      child: const Text("Remove", style: TextStyle(color: Colors.white)),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
             ],
           ),
         ),
       );
-
 
       if (confirmed != true) return;
     }
@@ -117,7 +114,6 @@ class _FollowListScreenState extends State<FollowListScreen> {
     if (!mounted) return;
 
     if (!result['success']) {
-      // Revert if API failed
       setState(() {
         followStatusMap[userId] = isCurrentlyFollowing;
       });
@@ -125,6 +121,47 @@ class _FollowListScreenState extends State<FollowListScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(result['message'] ?? 'Failed to update follow')),
       );
+      return;
+    }
+
+    // 🔔 Send follow notification if just followed
+    if (!isCurrentlyFollowing) {
+      final followedUserIndex = widget.users.indexWhere((u) => u['_id'] == userId);
+      Map<String, dynamic> followedUser = {};
+
+      if (followedUserIndex != -1) {
+        final rawUser = widget.users[followedUserIndex];
+        followedUser = Map<String, dynamic>.from(rawUser); // ✅ safe cast
+      }
+
+      String? toFcmToken = followedUser['fcmToken'];
+
+      // Fallback: try getting from result if missing
+      if (toFcmToken == null || toFcmToken.trim().isEmpty) {
+        final apiUserData = result['data'];
+        if (apiUserData != null && apiUserData is Map) {
+          final castedUser = Map<String, dynamic>.from(apiUserData);
+          toFcmToken = castedUser['fcmToken'];
+
+          // Update local user list
+          if (toFcmToken != null && followedUserIndex != -1) {
+            widget.users[followedUserIndex] = {
+              ...Map<String, dynamic>.from(widget.users[followedUserIndex]),
+              'fcmToken': toFcmToken,
+            };
+          }
+        }
+      }
+
+      // 🔔 Send notification if valid token
+      if (toFcmToken != null && toFcmToken.trim().isNotEmpty) {
+        provider.sendFollowNotification(
+          toUserFcmToken: toFcmToken,
+          fromUserName: currentUserName,
+        );
+      } else {
+        debugPrint('⚠️ No FCM token available for user $userId — skipping notification');
+      }
     }
   }
 

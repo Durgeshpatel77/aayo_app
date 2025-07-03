@@ -182,6 +182,7 @@ class _SingleUserProfileScreenState extends State<SingleUserProfileScreen> with 
           isFollowing = true;
 
           /// 🔔 Send follow notification
+          /// 🔔 Send follow notification
           final toFcmToken = _userProfileData['fcmToken'];
           if (toFcmToken != null && toFcmToken.trim().isNotEmpty) {
             provider.sendFollowNotification(
@@ -277,7 +278,10 @@ class _SingleUserProfileScreenState extends State<SingleUserProfileScreen> with 
                       MaterialPageRoute(
                         builder: (_) => FollowListScreen(
                           title: 'Followers',
-                          users: followers,
+                          users: followers.map((user) => {
+                            ...user,
+                            'fcmToken': user['fcmToken'] ?? '',
+                          }).toList(),
                         ),
                       ),
                     );
@@ -289,7 +293,10 @@ class _SingleUserProfileScreenState extends State<SingleUserProfileScreen> with 
                       MaterialPageRoute(
                         builder: (_) => FollowListScreen(
                           title: 'Following',
-                          users: following,
+                          users: following.map((user) => {
+                            ...user,
+                            'fcmToken': user['fcmToken'] ?? '',
+                          }).toList(),
                         ),
                       ),
                     );

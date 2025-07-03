@@ -24,15 +24,17 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
   print('🔧 Initializing Firebase...');
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  await NotificationService.initialize();
+  print('🔧 Registering background message handler...');
+  FirebaseMessaging.onBackgroundMessage(NotificationService.firebaseMessagingBackgroundHandler);
 
-  FirebaseMessaging.onBackgroundMessage(
-    NotificationService.firebaseMessagingBackgroundHandler,
-  );
+  print('🔧 Initializing NotificationService...');
+  await NotificationService.initialize(); // This will wait for token
 
+  print('🚀 Running app...');
   runApp(const MyApp());
 }
 

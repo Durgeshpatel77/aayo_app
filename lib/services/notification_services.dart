@@ -31,47 +31,54 @@ class NotificationService {
 
   /// Initialize Firebase, request permissions, set up listeners.
   static Future<void> initialize() async {
-    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    final messaging = FirebaseMessaging.instance;
 
-    // Request permission for iOS
-    await _firebaseMessaging.requestPermission();
+    // ✅ Request permissions
+    await messaging.requestPermission();
 
-    // Get FCM token (optional)
-    try {
-      final token = await _firebaseMessaging.getToken();
-      print('✅ FCM Token: $token');
-    } catch (e) {
-      print('❌ Failed to fetch FCM token: $e');
+    // ✅ Ensure token is available
+    String? token;
+    int retryCount = 0;
+    do {
+      token = await messaging.getToken();
+      if (token != null) break;
+      retryCount++;
+      await Future.delayed(const Duration(seconds: 1));
+    } while (retryCount < 5);
+
+    if (token != null) {
+      print('📡 FCM Token: $token');
+      // TODO: Send token to your backend if needed
+    } else {
+      print('❌ Failed to fetch FCM token after 5 retries.');
     }
 
-    // Foreground message listener
+    // ✅ Foreground message listener
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       print('📥 Foreground message received: ${message.data}');
       _showFlutterNotification(message);
 
-      // Notify UI with message while app is in foreground
+      // Update UI if needed
       latestMessage.value = message.notification?.body ?? '';
-
-      // Clear message after 3 seconds
       Future.delayed(const Duration(seconds: 3), () {
         latestMessage.value = null;
       });
     });
 
-    // Background/terminated notification tap listener
+    // ✅ Notification opened when app in background
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      print('Notification tapped!');
-
+      print('📲 Notification opened from background!');
       tappedMessage = message.notification?.body ?? message.data['message'] ?? null;
-      // You can notify UI or handle opening drawer in your main widget listening for this change
     });
 
-    // Check if app was opened from terminated state via notification
-    RemoteMessage? initialMessage = await _firebaseMessaging.getInitialMessage();
+    // ✅ Handle app opened from terminated state
+    RemoteMessage? initialMessage = await messaging.getInitialMessage();
     if (initialMessage != null) {
+      print('🟡 App launched via notification.');
       tappedMessage = initialMessage.notification?.body ?? initialMessage.data['message'] ?? null;
     }
 
+    // ✅ Setup local notification plugin
     await _initializeLocalNotification();
   }
 

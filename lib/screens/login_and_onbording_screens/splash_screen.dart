@@ -1,9 +1,7 @@
-// splash_screen.dart
 import 'package:aayo/screens/home_screens/home_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
-
-import 'choose_your_fav_screen.dart';
 import 'onboarding_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -21,23 +19,34 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _checkLoginStatus() async {
-    await Future.delayed(const Duration(seconds: 2));
+    await Future.delayed(const Duration(milliseconds: 1500));
+
+    // ✅ Wait until FirebaseMessaging token is ready
+    String? token;
+    int retry = 0;
+    do {
+      token = await FirebaseMessaging.instance.getToken();
+      if (token != null) break;
+      await Future.delayed(const Duration(seconds: 1));
+      retry++;
+    } while (retry < 5);
+
+    print("📡 Splash FCM Token = $token");
 
     final user = FirebaseAuth.instance.currentUser;
 
+    if (!mounted) return;
+
     if (user != null) {
-      // User is logged in
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const HomeScreen()),
       );
     } else {
-      // User not logged in
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const OnboardingScreen()),
       );
-
     }
   }
 
