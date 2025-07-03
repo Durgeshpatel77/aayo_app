@@ -85,7 +85,7 @@ class AddPostProvider with ChangeNotifier {
   }
 
   /// ✅ 4. CREATE POST
-  Future<String?> createPost() async {
+  Future<String?> createPost(BuildContext context) async {
     if (!isPostEnabled) {
       return "Please add a title or content, or select an image to post.";
     }
@@ -124,9 +124,30 @@ class AddPostProvider with ChangeNotifier {
       final responseBody = await http.Response.fromStream(response);
 
       if (response.statusCode == 201) {
+        final responseData = json.decode(responseBody.body);
+        final mediaList = responseData['data']['media'] as List?;
+        final title = responseData['data']['title'] ?? 'New Post';
+
+        if (mediaList != null && mediaList.isNotEmpty) {
+          final imageUrl = '$_apiBaseUrl/${mediaList[0]}';
+
+          final prefs = await SharedPreferences.getInstance();
+          final senderName =
+              prefs.getString('backendUserName') ?? 'Someone';
+
+          await sendPostNotificationToFollowers(
+            context: context,
+            postImageUrl: imageUrl,
+            postTitle: title,
+            senderName: senderName,
+          );
+
+        }
+
         clearPost();
         errorMessage = null;
-      } else {
+      }
+      else {
         final error = json.decode(responseBody.body);
         errorMessage =
         'Failed to share post: ${error['message'] ?? response.statusCode}';
@@ -222,6 +243,69 @@ class AddPostProvider with ChangeNotifier {
     } catch (e) {
       debugPrint('❌ fetchUserPostsById error: $e');
       return [];
+    }
+  }
+  /// ✅ 8 sendPostNotificationToFollowers
+  Future<void> sendPostNotificationToFollowers({
+    required String postImageUrl,
+    required String postTitle,
+    required String senderName, required BuildContext context,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final backendUserId = prefs.getString('backendUserId');
+
+    if (backendUserId == null || backendUserId.isEmpty) return;
+
+    try {
+      // Step 1: Get all followers
+      final followersUrl = Uri.parse('$_apiBaseUrl/api/user/$backendUserId');
+      final followersResponse = await http.get(followersUrl);
+
+      if (followersResponse.statusCode == 200) {
+        final followersData = jsonDecode(followersResponse.body);
+        final followersList = followersData['data']['followers'] as List;
+
+        for (var follower in followersList) {
+          final followerId = follower['_id'];
+
+          // Step 2: Get follower details (including fcmToken)
+          final followerDetailUrl = Uri.parse('$_apiBaseUrl/api/user/$followerId');
+          final detailResponse = await http.get(followerDetailUrl);
+
+          if (detailResponse.statusCode == 200) {
+            final followerData = jsonDecode(detailResponse.body);
+            final fcmToken = followerData['data']['fcmToken'];
+
+            if (fcmToken != null && fcmToken.toString().isNotEmpty) {
+              // Step 3: Send notification
+              final notificationUrl = Uri.parse('$_apiBaseUrl/api/send-notification');
+              final notificationBody = {
+                'fcmToken': fcmToken,
+                'title': '$senderName posted something new!',
+                'body': postTitle.isNotEmpty ? postTitle : 'Check out the latest post!',
+                'imageUrl': postImageUrl,
+              };
+
+              final notificationResponse = await http.post(
+                notificationUrl,
+                headers: {'Content-Type': 'application/json'},
+                body: jsonEncode(notificationBody),
+              );
+
+              debugPrint('✅ Notification sent to $followerId');
+              debugPrint('📥 Response: ${notificationResponse.body}');
+            } else {
+              debugPrint('❌ Follower $followerId has no FCM token');
+            }
+          } else {
+            debugPrint('❌ Failed to fetch follower $followerId details');
+          }
+        }
+      } else {
+        debugPrint('❌ Failed to fetch followers for notification');
+      }
+    } catch (e) {
+      debugPrint('❌ Error sending post notifications: $e');
     }
   }
 

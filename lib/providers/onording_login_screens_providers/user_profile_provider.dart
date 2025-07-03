@@ -322,12 +322,14 @@ class FetchEditUserProvider with ChangeNotifier {
     required String toUserFcmToken,
     required String fromUserName,
   }) async {
-    if (toUserFcmToken.trim().isEmpty) {
-      debugPrint('❌ FCM token is empty — skipping notification.');
+    if (toUserFcmToken.trim().isEmpty ||
+        !toUserFcmToken.contains(':') ||
+        toUserFcmToken.length < 30) {
+      debugPrint('❌ Invalid FCM token — skipping notification.');
       return;
     }
 
-    debugPrint('📛 Raw token used for notification: $toUserFcmToken');
+    debugPrint('📛 Valid token used: $toUserFcmToken');
 
     const url = 'http://srv861272.hstgr.cloud:8000/api/send-notification';
     final body = {
@@ -337,17 +339,17 @@ class FetchEditUserProvider with ChangeNotifier {
     };
 
     try {
-      debugPrint('📤 Sending notification: $body');
+      debugPrint('📤 Sending follow notification...');
       final res = await http.post(
         Uri.parse(url),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(body),
       );
 
-      debugPrint('📥 Notification response: ${res.statusCode} ${res.body}');
-    } catch (e, stack) {
-      debugPrint('❌ Exception while sending notification: $e');
-      debugPrint('🧱 Stacktrace:\n$stack');
+      debugPrint('✅ Follow notification response: ${res.statusCode}');
+      debugPrint('📥 Response: ${res.body}');
+    } catch (e) {
+      debugPrint('❌ Error sending follow notification: $e');
     }
   }
 

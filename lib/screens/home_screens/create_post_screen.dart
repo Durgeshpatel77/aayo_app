@@ -161,7 +161,7 @@ class _AddPostScreenState extends State<AddPostScreen> {
                   child: ElevatedButton(
                     onPressed: addPostProvider.isPostEnabled
                         ? () async {
-                            final message = await addPostProvider.createPost();
+                      final message = await addPostProvider.createPost(context);
                             if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
