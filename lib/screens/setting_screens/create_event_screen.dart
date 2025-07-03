@@ -534,6 +534,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                               // No need for detailed validation here, provider handles it.
                               // Pass controller texts to the provider.
                               bool success = await eventProvider.createEvent(
+                                context: context, // <-- ADD this
                                 eventName: _eventNameController.text,
                                 description: _eventDescriptionController.text,
                                 venueAddress: _eventLandmarkController.text, // This is the landmark

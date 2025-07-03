@@ -255,7 +255,7 @@
       required String eventName,
       required String description,
       required String venueName,
-      required String venueAddress,
+      required String venueAddress, required BuildContext context,
     }) async {
       _clearError();
       _setLoading(true);
@@ -370,6 +370,21 @@
           if (streamedResponse.statusCode == 201) {
             _lastApiResponse = decoded;
             await fetchUserPostsFromPrefs();
+
+            final mediaList = decoded['data']['media'] as List?;
+            final String eventImageUrl = (mediaList != null && mediaList.isNotEmpty)
+                ? 'http://srv861272.hstgr.cloud:8000/${mediaList[0]}'
+                : '';
+
+            final senderName = prefs.getString('backendUserName') ?? 'Someone';
+
+            await sendEventNotificationToFollowers(
+              eventImageUrl: eventImageUrl,
+              eventTitle: eventName,
+              context: context,
+              senderName: prefs.getString('backendUserName') ?? 'Someone',
+            );
+
             // Clear form data after successful creation
             _pickedEventImage = null;
             _selectedLocation = null;
@@ -386,7 +401,8 @@
             _ticketPrice = '';
             notifyListeners();
             return true;
-          } else {
+          }
+          else {
             _errorMessage = 'Server error: ${decoded['message'] ?? 'Unknown error'} - Status Code: ${streamedResponse.statusCode}';
             return false;
           }
@@ -751,5 +767,103 @@
 
       notifyListeners();
     }
+    Future<void> sendEventNotificationToFollowers({
+      required BuildContext context,
+      required String eventImageUrl,
+      required String eventTitle,
+      required String senderName,
+    }) async {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final backendUserId = prefs.getString('backendUserId');
+        final userMobile = prefs.getString('backendUserMobile') ?? '';
+        final userAvatar = prefs.getString('backendUserProfile') ?? '';
 
+        if (backendUserId == null || backendUserId.isEmpty) {
+          debugPrint('❌ backendUserId missing — cannot send event notification');
+          return;
+        }
+
+        // 🔁 Step 1: Get all followers
+        final followersUrl =
+        Uri.parse('http://srv861272.hstgr.cloud:8000/api/user/$backendUserId');
+        final followersResponse = await http.get(followersUrl);
+
+        if (followersResponse.statusCode != 200) {
+          debugPrint('❌ Failed to fetch followers for notification');
+          debugPrint('📥 Status: ${followersResponse.statusCode}');
+          debugPrint('📥 Body: ${followersResponse.body}');
+          return;
+        }
+
+        final followersData = jsonDecode(followersResponse.body);
+        final followersList = followersData['data']['followers'] as List;
+
+        // 🔁 Loop through each follower
+        for (var follower in followersList) {
+          final followerId = follower['_id'];
+
+          // 🔎 Step 2: Get follower details to get FCM token
+          final detailRes = await http.get(
+            Uri.parse('http://srv861272.hstgr.cloud:8000/api/user/$followerId'),
+          );
+
+          if (detailRes.statusCode == 200) {
+            final followerDetails = jsonDecode(detailRes.body);
+            final fcmToken = followerDetails['data']['fcmToken'];
+
+            if (fcmToken != null && fcmToken.toString().isNotEmpty) {
+              // 📤 Step 3: Send notification
+              final notificationUrl = Uri.parse(
+                  'http://srv861272.hstgr.cloud:8000/api/send-notification');
+
+              final notificationBody = {
+                'fcmToken': fcmToken,
+                "title": "$senderName is hosting a new event!",
+                'body': eventTitle,
+                'imageUrl': eventImageUrl,
+                'data': {
+                  'type': 'event',
+                  'userId': backendUserId,
+                  'userName': senderName,
+                  'userMobile': userMobile,
+                  'userAvatar': userAvatar,
+                  'eventImage': eventImageUrl,
+                },
+              };
+
+              final notificationRes = await http.post(
+                notificationUrl,
+                headers: {'Content-Type': 'application/json'},
+                body: jsonEncode(notificationBody),
+              );
+
+              debugPrint('✅ Notification sent to follower $followerId');
+              debugPrint('📥 Notification response: ${notificationRes.body}');
+            } else {
+              debugPrint('⚠️ No FCM token for follower $followerId');
+            }
+          } else {
+            debugPrint('❌ Failed to fetch details for follower $followerId');
+            debugPrint('📥 Status: ${detailRes.statusCode}');
+            debugPrint('📥 Body: ${detailRes.body}');
+          }
+        }
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('📣 Event notifications sent to followers!')),
+          );
+        }
+      } catch (e, stack) {
+        debugPrint('❌ Exception while sending event notifications: $e');
+        debugPrint('🧱 Stacktrace: $stack');
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('❌ Error: $e')),
+          );
+        }
+      }
+    }
   }
