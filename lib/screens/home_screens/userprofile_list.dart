@@ -21,12 +21,13 @@ class UserProfileList extends StatefulWidget {
   State<UserProfileList> createState() => _UserProfileListState();
 }
 
-class _UserProfileListState extends State<UserProfileList> with SingleTickerProviderStateMixin {
+class _UserProfileListState extends State<UserProfileList>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   User? _currentUser;
   List<Event> _userPostPhotos = [];
   List<EventModel> _userEvents = [];
-
+  List<EventModel> _pastEvents = [];
 
   @override
   void initState() {
@@ -51,21 +52,22 @@ class _UserProfileListState extends State<UserProfileList> with SingleTickerProv
   Future<void> _fetchPostImages() async {
     try {
       final postProvider = Provider.of<AddPostProvider>(context, listen: false);
-      final eventsProvider = Provider.of<EventCreationProvider>(
-          context, listen: false);
+      final eventsProvider =
+          Provider.of<EventCreationProvider>(context, listen: false);
 
       final posts = await postProvider.fetchMyPosts();
       await eventsProvider.fetchUserPostsFromPrefs(type: 'event');
+      await eventsProvider.fetchPastEventsFromPrefs(); // 🆕 fetch past events
 
       setState(() {
         _userPostPhotos = posts;
-        _userEvents = eventsProvider.allEvents;
+        _userEvents = eventsProvider.createdEvents;
+        _pastEvents = eventsProvider.pastEvents; // 🆕 store in state
       });
     } catch (e) {
       debugPrint('Failed to fetch posts or events: $e');
     }
   }
-
 
   @override
   void dispose() {
@@ -91,9 +93,7 @@ class _UserProfileListState extends State<UserProfileList> with SingleTickerProv
           ImageProvider profileImg;
           if (profilePath.isNotEmpty) {
             final fullUrl = provider.profileImageUrl;
-            profileImg = (fullUrl != null && Uri
-                .parse(fullUrl)
-                .isAbsolute)
+            profileImg = (fullUrl != null && Uri.parse(fullUrl).isAbsolute)
                 ? NetworkImage(fullUrl)
                 : const AssetImage('images/default_avatar.png');
           } else if (_currentUser?.photoURL != null) {
@@ -112,12 +112,10 @@ class _UserProfileListState extends State<UserProfileList> with SingleTickerProv
               actions: [
                 IconButton(
                   icon: const Icon(Icons.settings, color: Colors.pink),
-                  onPressed: () =>
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => const SettingsScreen()),
-                      ),
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                  ),
                 ),
               ],
             ),
@@ -144,9 +142,11 @@ class _UserProfileListState extends State<UserProfileList> with SingleTickerProv
                                   backgroundColor: Colors.pink.shade200,
                                   child: profileImg is AssetImage
                                       ? Text(
-                                    name[0].toUpperCase(),
-                                    style: const TextStyle(fontSize: 50, color: Colors.white),
-                                  )
+                                          name[0].toUpperCase(),
+                                          style: const TextStyle(
+                                              fontSize: 50,
+                                              color: Colors.white),
+                                        )
                                       : null,
                                 ),
                               ],
@@ -163,23 +163,25 @@ class _UserProfileListState extends State<UserProfileList> with SingleTickerProv
                           backgroundColor: Colors.pink.shade200,
                           child: profileImg is AssetImage
                               ? Text(
-                            name[0].toUpperCase(),
-                            style: const TextStyle(fontSize: 40, color: Colors.white),
-                          )
+                                  name[0].toUpperCase(),
+                                  style: const TextStyle(
+                                      fontSize: 40, color: Colors.white),
+                                )
                               : null,
                         ),
                       ),
                     ),
                     const SizedBox(height: 12),
-                    Text(name, style: const TextStyle(
-                        fontSize: 20, fontWeight: FontWeight.bold)),
+                    Text(name,
+                        style: const TextStyle(
+                            fontSize: 20, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 20),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
                         _buildStat(followersCount, 'Followers'),
-                        Container(height: 40, width: 1, color: Colors
-                            .grey[300]),
+                        Container(
+                            height: 40, width: 1, color: Colors.grey[300]),
                         _buildStat(followingCount, 'Following'),
                       ],
                     ),
@@ -203,8 +205,9 @@ class _UserProfileListState extends State<UserProfileList> with SingleTickerProv
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12)),
                           ),
-                          child: const Text('Edit Profile', style: TextStyle(
-                              color: Colors.white, fontSize: 16)),
+                          child: const Text('Edit Profile',
+                              style:
+                                  TextStyle(color: Colors.white, fontSize: 16)),
                         ),
                       ),
                     ),
@@ -244,10 +247,12 @@ class _UserProfileListState extends State<UserProfileList> with SingleTickerProv
       ),
     );
   }
+
   Widget _buildStat(int count, String label) {
     return InkWell(
       onTap: () async {
-        final provider = Provider.of<FetchEditUserProvider>(context, listen: false);
+        final provider =
+            Provider.of<FetchEditUserProvider>(context, listen: false);
         final data = provider.userData;
 
         final users = label == 'Followers'
@@ -265,142 +270,238 @@ class _UserProfileListState extends State<UserProfileList> with SingleTickerProv
       },
       child: Column(
         children: [
-          Text('$count', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          Text('$count',
+              style:
+                  const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           Text(label, style: const TextStyle(color: Colors.pink)),
         ],
       ),
     );
   }
-    Widget _buildTabs(BuildContext context) => Column(
-    children: [
-      TabBar(
-        controller: _tabController,
-        indicator: const UnderlineTabIndicator(
-          borderSide: BorderSide(width: 4.0, color: Colors.pinkAccent),
-          insets: EdgeInsets.symmetric(horizontal: 50),
-        ),
-        indicatorColor: Colors.pinkAccent,
-        labelColor: Colors.black,
-        unselectedLabelColor: Colors.grey,
-        tabs: const [
-          Tab(icon: Icon(Icons.grid_on)),
-          Tab(icon: Icon(Icons.calendar_today)),
-          Tab(icon: Icon(Icons.history)),
+
+  Widget _buildTabs(BuildContext context) => Column(
+        children: [
+          TabBar(
+            controller: _tabController,
+            indicator: const UnderlineTabIndicator(
+              borderSide: BorderSide(width: 4.0, color: Colors.pinkAccent),
+              insets: EdgeInsets.symmetric(horizontal: 50),
+            ),
+            indicatorColor: Colors.pinkAccent,
+            labelColor: Colors.black,
+            unselectedLabelColor: Colors.grey,
+            tabs: const [
+              Tab(icon: Icon(Icons.grid_on)),
+              Tab(icon: Icon(Icons.calendar_today)),
+              Tab(icon: Icon(Icons.history)),
+            ],
+          ),
+          const Divider(height: 1),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: MediaQuery.of(context).size.height * 0.5,
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _userPostPhotos.isEmpty
+                    ? Center(
+                        child: GestureDetector(
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const AddPostScreen()),
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: const [
+                              Icon(Icons.add_box_outlined,
+                                  size: 80, color: Colors.pink),
+                              SizedBox(height: 16),
+                              Text('Add your first post',
+                                  style: TextStyle(color: Colors.pink)),
+                            ],
+                          ),
+                        ),
+                      )
+                    : GridView.builder(
+                        physics: const NeverScrollableScrollPhysics(),
+                        shrinkWrap: true,
+                        itemCount: _userPostPhotos.length,
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          crossAxisSpacing: 2,
+                          mainAxisSpacing: 2,
+                        ),
+                        itemBuilder: (_, i) {
+                          final post = _userPostPhotos[i];
+                          final imageUrl = post.image.isNotEmpty
+                              ? post.image
+                              : (post.media.isNotEmpty ? post.media.first : '');
+                          return GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => PostDetailScreen(post: post),
+                                ),
+                              );
+                            },
+                            child: Image.network(
+                              imageUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) =>
+                                  const Icon(Icons.broken_image),
+                            ),
+                          );
+                        },
+                      ),
+                _userEvents.isEmpty
+                    ? const Center(child: Text('No events found'))
+                    : GridView.builder(
+                        physics: const NeverScrollableScrollPhysics(),
+                        shrinkWrap: true,
+                        itemCount: _userEvents.length,
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          crossAxisSpacing: 2,
+                          mainAxisSpacing: 2,
+                        ),
+                        itemBuilder: (_, i) {
+                          final event = _userEvents[i];
+                          final hasMedia = event.media.isNotEmpty;
+                          final firstImageUrl = hasMedia
+                              ? 'http://srv861272.hstgr.cloud:8000/${event.media.first}'
+                              : 'https://via.placeholder.com/300x200.png?text=No+Image';
+
+                          return GestureDetector(
+                            onTap: () {
+                              final convertedEvent = Event(
+                                id: event.id,
+                                title: event.title,
+                                content: event.content,
+                                location: event.eventDetails?.location ?? '',
+                                startTime: event.eventDetails?.startTime ??
+                                    DateTime.now(),
+                                endTime: event.eventDetails?.endTime ??
+                                    DateTime.now(),
+                                isFree: event.eventDetails?.isFree ?? true,
+                                price: event.eventDetails?.price ?? 0,
+                                organizerId: event.user.id,
+                                likes: event.likes
+                                    .map((e) => e.toString())
+                                    .toList(),
+                                comments: [], // You can map this if needed
+                                image: firstImageUrl,
+                                media: event.media
+                                    .map((url) =>
+                                        'http://srv861272.hstgr.cloud:8000/$url')
+                                    .toList(),
+                                organizer: event.user.name,
+                                organizerProfile: event.user.profile ?? '',
+                                createdAt: event.createdAt,
+                                type: event.type,
+                                latitude: event.eventDetails?.latitude ?? 0.0,
+                                longitude: event.eventDetails?.longitude ?? 0.0,
+                              );
+
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      EventDetailScreen(event: convertedEvent),
+                                ),
+                              );
+                            },
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(
+                                firstImageUrl,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) =>
+                                    const Icon(Icons.broken_image),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                _pastEvents.isEmpty
+                    ? const Center(child: Text("No past events"))
+                    : GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: _pastEvents.length,
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          mainAxisSpacing: 4,
+                          crossAxisSpacing: 4,
+                        ),
+                        itemBuilder: (_, i) {
+                          final event = _pastEvents[i];
+                          final imageUrl = event.media.isNotEmpty
+                              ? 'http://srv861272.hstgr.cloud:8000/${event.media.first}'
+                              : 'https://via.placeholder.com/300x200.png?text=No+Image';
+
+                          return GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => EventDetailScreen(
+                                    event: Event(
+                                      id: event.id,
+                                      title: event.title,
+                                      content: event.content,
+                                      location:
+                                          event.eventDetails?.location ?? '',
+                                      startTime:
+                                          event.eventDetails?.startTime ??
+                                              DateTime.now(),
+                                      endTime: event.eventDetails?.endTime ??
+                                          DateTime.now(),
+                                      isFree:
+                                          event.eventDetails?.isFree ?? true,
+                                      price: event.eventDetails?.price ?? 0,
+                                      organizerId: event.user.id,
+                                      likes: [],
+                                      comments: [],
+                                      image: imageUrl,
+                                      media: event.media
+                                          .map((m) =>
+                                              'http://srv861272.hstgr.cloud:8000/$m')
+                                          .toList(),
+                                      organizer: event.user.name,
+                                      organizerProfile:
+                                          event.user.profile ?? '',
+                                      createdAt: event.createdAt,
+                                      type: event.type,
+                                      latitude:
+                                          event.eventDetails?.latitude ?? 0.0,
+                                      longitude:
+                                          event.eventDetails?.longitude ?? 0.0,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(
+                                imageUrl,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => const Icon(
+                                    Icons.broken_image,
+                                    color: Colors.grey),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+              ],
+            ),
+          ),
         ],
-      ),
-      const Divider(height: 1),
-      const SizedBox(height: 10),
-      SizedBox(
-        height: MediaQuery.of(context).size.height * 0.5,
-        child: TabBarView(
-          controller: _tabController,
-          children: [
-            _userPostPhotos.isEmpty
-                ? Center(
-              child: GestureDetector(
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const AddPostScreen()),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [
-                    Icon(Icons.add_box_outlined, size: 80, color: Colors.pink),
-                    SizedBox(height: 16),
-                    Text('Add your first post', style: TextStyle(color: Colors.pink)),
-                  ],
-                ),
-              ),
-            )
-                : GridView.builder(
-              physics: const NeverScrollableScrollPhysics(),
-              shrinkWrap: true,
-              itemCount: _userPostPhotos.length,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                crossAxisSpacing: 2,
-                mainAxisSpacing: 2,
-              ),
-              itemBuilder: (_, i) {
-                final post = _userPostPhotos[i];
-                final imageUrl = post.image.isNotEmpty
-                    ? post.image
-                    : (post.media.isNotEmpty ? post.media.first : '');
-                return GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => PostDetailScreen(post: post),
-                      ),
-                    );
-                  },
-                  child: Image.network(
-                    imageUrl,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const Icon(Icons.broken_image),
-                  ),
-                );
-              },
-            ),
-            _userEvents.where((e) => e.media.isNotEmpty).isEmpty
-                ? const Center(child: Text('No event media found'))
-                : GridView.builder(
-              physics: const NeverScrollableScrollPhysics(),
-              shrinkWrap: true,
-              itemCount: _userEvents.length,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                crossAxisSpacing: 2,
-                mainAxisSpacing: 2,
-              ),
-              itemBuilder: (_, i) {
-                final event = _userEvents[i];
-                if (event.media.isEmpty) return const SizedBox.shrink();
-                return GestureDetector(
-                  onTap: () {
-                    final convertedEvent = Event(
-                      id: event.id,
-                      title: event.title,
-                      content: event.content,
-                      location: event.eventDetails?.location ?? '',
-                      startTime: event.eventDetails?.startTime ?? DateTime.now(),
-                      endTime: event.eventDetails?.endTime ?? DateTime.now(),
-                      isFree: event.eventDetails?.isFree ?? true,
-                      price: event.eventDetails?.price ?? 0,
-                      organizerId: event.user.id,
-                      likes: event.likes.map((e) => e.toString()).toList(),
-                      comments: [], // You can map this if needed
-                      image: 'http://srv861272.hstgr.cloud:8000/${event.media.first}',
-                      media: event.media.map((url) => 'http://srv861272.hstgr.cloud:8000/$url').toList(),
-                      organizer: event.user.name,
-                      organizerProfile: event.user.profile ?? '',
-                      createdAt: event.createdAt,
-                      type: event.type,
-                      latitude: event.eventDetails?.latitude ?? 0.0,
-                      longitude: event.eventDetails?.longitude ?? 0.0,
-
-                    );
-
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => EventDetailScreen(event: convertedEvent),
-                      ),
-                    );
-                  },
-                  child: Image.network(
-                    'http://srv861272.hstgr.cloud:8000/${event.media.first}',
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const Icon(Icons.broken_image),
-                  ),
-                );
-              },
-            ),
-            const Center(child: Text('Past Activities')),
-          ],
-        ),
-      ),
-    ],
-  );
+      );
 }

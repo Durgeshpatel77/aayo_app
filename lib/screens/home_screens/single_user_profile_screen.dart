@@ -22,9 +22,9 @@ class SingleUserProfileScreen extends StatefulWidget {
 class _SingleUserProfileScreenState extends State<SingleUserProfileScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   Map<String, dynamic> _userProfileData = {};
-    bool _isLoading = true;
-    bool isFollowing = false;
-    String? backendUserId;
+  bool _isLoading = true;
+  bool isFollowing = false;
+  String? backendUserId;
   List<EventModel> _userEventModels = []; // For Tab 1: Events (Calendar View)
   List<Event> _userPostHistory = [];      // For Tab 2: Posts (Normal posts)
 

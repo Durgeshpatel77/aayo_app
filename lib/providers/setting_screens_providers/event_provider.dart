@@ -24,6 +24,9 @@
     bool _isFetchingEvents = false;
     final List<EventModel> _createdEvents = [];
     final List<EventModel> _joinedEvents = [];
+    List<EventModel> _pastEvents = [];
+    List<EventModel> get pastEvents => _pastEvents;
+
 
     List<EventModel> get createdEvents => _createdEvents;
     List<EventModel> get joinedEvents => _joinedEvents;
@@ -767,6 +770,42 @@
 
       notifyListeners();
     }
+
+    Future<void> fetchPastEventsFromPrefs() async {
+      _clearError();
+      _setFetchingEvents(true);
+      _pastEvents.clear();
+
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final userId = prefs.getString("backendUserId");
+
+        if (userId == null || userId.isEmpty) return;
+
+        final url = 'http://srv861272.hstgr.cloud:8000/api/post?user=$userId&type=event';
+        final response = await http.get(Uri.parse(url), headers: {'Content-Type': 'application/json'});
+
+        if (response.statusCode == 200) {
+          final decoded = json.decode(response.body);
+          final posts = decoded['data']['posts'] as List;
+
+          final now = DateTime.now();
+          _pastEvents.addAll(
+            posts.map((json) => EventModel.fromJson(json))
+                .where((event) =>
+            event.type == 'event' &&
+                event.eventDetails != null &&
+                event.eventDetails!.endTime.isBefore(now))
+                .toList(),
+          );
+        }
+      } catch (e) {
+        debugPrint('❌ fetchPastEvents error: $e');
+      } finally {
+        _setFetchingEvents(false);
+      }
+    }
+
     Future<void> sendEventNotificationToFollowers({
       required BuildContext context,
       required String eventImageUrl,
