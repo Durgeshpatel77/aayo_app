@@ -13,6 +13,26 @@ class AddPostProvider with ChangeNotifier {
   final TextEditingController _titleController = TextEditingController();
   File? _selectedImage;
   bool _isLoading = false;
+  List<String> _selectedCategories = [];
+  List<String> get selectedCategories => _selectedCategories;
+  String? _selectedCategory;
+  String? get selectedCategory => _selectedCategory;
+
+
+  void selectCategory(String category) {
+    if (_selectedCategories.contains(category)) {
+      _selectedCategories.remove(category);
+    } else {
+      if (_selectedCategories.length < 3) {
+        _selectedCategories.add(category);
+      }
+    }
+    notifyListeners();
+  }
+  void setSelectedCategories(List<String> categories) {
+    _selectedCategories = categories;
+    notifyListeners();
+  }
 
   static const String _apiBaseUrl = 'http://srv861272.hstgr.cloud:8000';
 
@@ -80,6 +100,7 @@ class AddPostProvider with ChangeNotifier {
   void clearPost() {
     _postController.clear();
     _titleController.clear();
+    _selectedCategories.clear(); // <-- clear selected tags here
     _selectedImage = null;
     notifyListeners();
   }
@@ -111,6 +132,7 @@ class AddPostProvider with ChangeNotifier {
           ? _titleController.text.trim()
           : 'New Post';
       request.fields['content'] = _postController.text.trim();
+      request.fields['tags'] = _selectedCategories.join(','); // ✅ Add this line
 
       if (_selectedImage != null) {
         request.files.add(await http.MultipartFile.fromPath(

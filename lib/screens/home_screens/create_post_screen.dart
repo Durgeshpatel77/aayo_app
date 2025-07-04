@@ -17,7 +17,24 @@ class AddPostScreen extends StatefulWidget {
 
 class _AddPostScreenState extends State<AddPostScreen> {
   static const double _imageDisplayHeight = 200;
-
+  final List<Map<String, String>> categories = const [
+    {'icon': '💼', 'title': 'Business'},
+    {'icon': '🙌', 'title': 'Community'},
+    {'icon': '🎵', 'title': 'Music & Entertainment'},
+    {'icon': '🩹', 'title': 'Health'},
+    {'icon': '🍟', 'title': 'Food & drink'},
+    {'icon': '👨‍👩‍👧‍👦', 'title': 'Family & Education'},
+    {'icon': '⚽', 'title': 'Sport'},
+    {'icon': '👠', 'title': 'Fashion'},
+    {'icon': '🎬', 'title': 'Film & Media'},
+    {'icon': '🏠', 'title': 'Home & Lifestyle'},
+    {'icon': '🎨', 'title': 'Design'},
+    {'icon': '🎮', 'title': 'Gaming'},
+    {'icon': '🧪', 'title': 'Science & Tech'},
+    {'icon': '🏫', 'title': 'School & Education'},
+    {'icon': '🏖️', 'title': 'Holiday'},
+    {'icon': '✈️', 'title': 'Travel'},
+  ];
   @override
   void initState() {
     super.initState();
@@ -114,6 +131,67 @@ class _AddPostScreenState extends State<AddPostScreen> {
                     ),
                   ),
                 const SizedBox(height: 20),
+                const SizedBox(height: 20),
+                Text(
+                  "Select Tags",
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: screenWidth * 0.04,
+                    color: Colors.grey[800],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: categories.map((category) {
+                    final title = category['title']!;
+                    final isSelected = addPostProvider.selectedCategories.contains(title);
+
+                    return GestureDetector(
+                      onTap: () {
+                        final alreadySelected = addPostProvider.selectedCategories.contains(title);
+                        final canSelectMore = addPostProvider.selectedCategories.length < 3;
+
+                        if (alreadySelected || canSelectMore) {
+                          addPostProvider.selectCategory(title);
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('You can select up to 3 categories only.'),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: isSelected ? Colors.pink : Colors.grey[200],
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              category['icon'] ?? '',
+                              style: const TextStyle(fontSize: 18),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              title,
+                              style: TextStyle(
+                                color: isSelected ? Colors.white : Colors.black87,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+
                 Text(
                   "Add Media or Event",
                   style: TextStyle(
