@@ -1,4 +1,3 @@
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -31,7 +30,8 @@ class OrderSummaryScreen extends StatefulWidget {
     required this.eventImageUrl,
     required this.ticketPrice,
     required this.eventId,
-    required this.joinedBy, required this.venueName,
+    required this.joinedBy,
+    required this.venueName,
   }) : super(key: key);
 
   @override
@@ -49,14 +49,8 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
   @override
   void initState() {
     super.initState();
-
-    // Load stored user ID and joined events info
     _loadBackendUserId();
-
-    // Initialize Razorpay instance
     _razorpay = Razorpay();
-
-    // Set up Razorpay event listeners
     _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
     _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
     _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
@@ -67,10 +61,11 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
     _razorpay.clear();
     super.dispose();
   }
+
   String getFullImageUrl(String path) {
-    const baseUrl = 'http://srv861272.hstgr.cloud:8000'; // ✅ your domain
+    const baseUrl = 'http://srv861272.hstgr.cloud:8000';
     if (path.startsWith('http')) return path;
-    return '$baseUrl/${path.replaceFirst(RegExp(r'^/+'), '')}'; // ensure single slash
+    return '$baseUrl/${path.replaceFirst(RegExp(r'^/+'), '')}';
   }
 
   void _showTicketDetails() async {
@@ -82,7 +77,7 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
 
     final provider = EventRegistrationProvider();
     await provider.fetchRegistrations(widget.eventId);
-    Navigator.pop(context); // Remove loading
+    Navigator.pop(context);
 
     final registration = provider.registrations.firstWhere(
           (reg) => reg.id == _backendUserId,
@@ -104,69 +99,9 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
           eventDate: widget.eventDate,
           eventTime: widget.eventTime,
           eventLocation: widget.eventLocation,
-          ticketPrice: widget.ticketPrice, venueName: widget.venueName,
+          ticketPrice: widget.ticketPrice,
+          venueName: widget.venueName,
         ),
-      ),
-    );
-  }
-
-  Widget _styledRow(IconData icon, String title, String value) {
-    Color getStatusColor(String status) {
-      switch (status.toLowerCase()) {
-        case 'approved':
-          return Colors.green;
-        case 'pending':
-          return Colors.orange;
-        case 'rejected':
-          return Colors.red;
-        default:
-          return Colors.grey;
-      }
-    }
-
-    bool isStatus = title.toLowerCase() == 'status';
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: Colors.pink.shade400, size: 20),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title,
-                    style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey)),
-                const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 15,
-                    color: isStatus ? getStatusColor(value) : Colors.black87,
-                    fontWeight: isStatus ? FontWeight.bold : FontWeight.normal,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _ticketRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Row(
-        children: [
-          Expanded(child: Text('$label:', style: const TextStyle(fontWeight: FontWeight.bold))),
-          Expanded(child: Text(value, textAlign: TextAlign.right)),
-        ],
       ),
     );
   }
@@ -202,9 +137,14 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
   }
 
   void _startPayment() {
+    if (widget.ticketPrice == 0.0) {
+      joinEvent();
+      return;
+    }
+
     var options = {
       'key': 'rzp_test_fQHgGz0HjzaYHN',
-      'amount': ((widget.ticketPrice + 3.00) * 100).toInt(),
+      'amount': (widget.ticketPrice * 100).toInt(),
       'name': widget.eventName,
       'description': 'Ticket Booking',
       'prefill': {
@@ -233,8 +173,7 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
 
     setState(() => _isJoining = true);
 
-    final url =
-        'http://srv861272.hstgr.cloud:8000/api/event/join/${widget.eventId}';
+    final url = 'http://srv861272.hstgr.cloud:8000/api/event/join/${widget.eventId}';
     final headers = {'Content-Type': 'application/json'};
     final body = {'joinedBy': _backendUserId!};
 
@@ -246,8 +185,6 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
       );
 
       final resBody = json.decode(response.body);
-      debugPrint('📥 Response: ${response.statusCode} - ${response.body}');
-
       final prefs = await SharedPreferences.getInstance();
       final joinedEvents = prefs.getStringList('joinedEvents') ?? [];
 
@@ -256,7 +193,6 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
           joinedEvents.add(widget.eventId);
           await prefs.setStringList('joinedEvents', joinedEvents);
         }
-
         setState(() {
           _hasJoined = true;
           _isJoining = false;
@@ -269,12 +205,11 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
           joinedEvents.add(widget.eventId);
           await prefs.setStringList('joinedEvents', joinedEvents);
         }
-
         setState(() {
           _hasJoined = true;
           _isJoining = false;
         });
-        } else {
+      } else {
         setState(() => _isJoining = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('❌ Failed to book: ${resBody['message']}')),
@@ -290,7 +225,7 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final totalAmount = widget.ticketPrice + 3.00;
+    //final totalAmount = widget.ticketPrice + 3.00;
 
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
@@ -315,7 +250,6 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Event Info
                   Card(
                     color: Colors.white,
                     shape: RoundedRectangleBorder(
@@ -327,9 +261,9 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
                         children: [
                           ClipRRect(
                             borderRadius: BorderRadius.circular(8),
-                            child:
-                            Image.network(getFullImageUrl(widget.eventImageUrl),
-                      width: 100,
+                            child: Image.network(
+                              getFullImageUrl(widget.eventImageUrl),
+                              width: 100,
                               height: 100,
                               fit: BoxFit.cover,
                             ),
@@ -374,10 +308,8 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
                     ),
                   ),
                   const SizedBox(height: 24),
-
                   const Text("Order Summary",
-                      style: TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.bold)),
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 16),
                   Card(
                     color: Colors.grey.shade100,
@@ -392,28 +324,24 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               const Text('1 Ticket'),
-                              Text('\₹${widget.ticketPrice.toStringAsFixed(2)}'),
+                              Text(widget.ticketPrice == 0.0
+                                  ? 'Free'
+                                  : '\₹${widget.ticketPrice.toStringAsFixed(2)}'),
                             ],
                           ),
                           const SizedBox(height: 8),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: const [
-                              Text('Fees'),
-                              Text('\₹3.00'),
-                            ],
-                          ),
                           Divider(color: Colors.grey[400]),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               const Text("Total",
-                                  style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold)),
-                              Text('\₹${totalAmount.toStringAsFixed(2)}',
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.bold)),
+                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                              Text(
+                                widget.ticketPrice == 0.0
+                                    ? 'Free'
+                                    : '\₹${widget.ticketPrice.toStringAsFixed(2)}',
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
                             ],
                           ),
                         ],
@@ -424,7 +352,6 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
               ),
             ),
           ),
-          // Bottom Bar
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             decoration: BoxDecoration(
@@ -439,12 +366,12 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
                     _hasJoined
                         ? GestureDetector(
                       onTap: _showTicketDetails,
-                      child:const Text(
+                      child: const Text(
                         'View Detail',
                         style: TextStyle(
                           color: Colors.green,
                           decoration: TextDecoration.underline,
-                          decorationColor: Colors.green, // This line makes the underline green
+                          decorationColor: Colors.green,
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
@@ -454,12 +381,9 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('Price', style: TextStyle(color: Colors.grey[700])),
-                        Text(
-                          '\₹${totalAmount.toStringAsFixed(2)}',
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        Text(widget.ticketPrice == 0.0
+                            ? 'Free'
+                            : '\₹${widget.ticketPrice.toStringAsFixed(2)}',
                         ),
                       ],
                     )

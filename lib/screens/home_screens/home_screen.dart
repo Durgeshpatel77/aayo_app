@@ -6,6 +6,7 @@ import 'package:aayo/screens/home_screens/single_user_profile_screen.dart';
 import 'package:aayo/screens/home_screens/userprofile_list.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -43,8 +44,11 @@ class EventCard extends StatefulWidget {
   final String highlight;
   final bool isBooked;
 
-
-  const EventCard({required this.event,required this.highlight,  this.isBooked=false,super.key});
+  const EventCard(
+      {required this.event,
+      required this.highlight,
+      this.isBooked = false,
+      super.key});
 
   @override
   State<EventCard> createState() => _EventCardState();
@@ -96,7 +100,7 @@ class _EventCardState extends State<EventCard> {
 
   void _toggleLike() async {
     final userProfileProvider =
-    Provider.of<FetchEditUserProvider>(context, listen: false);
+        Provider.of<FetchEditUserProvider>(context, listen: false);
     final currentUserId = userProfileProvider.userId;
 
     if (currentUserId == null) {
@@ -144,13 +148,15 @@ class _EventCardState extends State<EventCard> {
                 "${userProfileProvider.name ?? "Someone"} liked your $likeTypeText";
 
             final fcmResponse = await http.post(
-              Uri.parse('http://srv861272.hstgr.cloud:8000/api/send-notification'),
+              Uri.parse(
+                  'http://srv861272.hstgr.cloud:8000/api/send-notification'),
               headers: {'Content-Type': 'application/json'},
               body: jsonEncode({
                 "fcmToken": recipientFcmToken,
                 "title": "❤️ New Like",
                 "body": bodyText,
-                "image": contentImage, // ✅ Shows post/event image in notification
+                "image":
+                    contentImage, // ✅ Shows post/event image in notification
                 "data": {
                   "userId": currentUserId,
                   "userName": userProfileProvider.name ?? "",
@@ -208,12 +214,12 @@ class _EventCardState extends State<EventCard> {
         postId: widget.event.id,
         postOwnerId: widget.event.organizerId,
         event: widget.event, // ✅ ADD THIS
-        recipientFcmToken: widget.event.organizerFcmToken ??'', // ✅ pass this dynamically
+        recipientFcmToken:
+            widget.event.organizerFcmToken ?? '', // ✅ pass this dynamically
 
         onCommentCountChange: (newCount) {
           setState(() => _commentCount = newCount);
         },
-
       ),
     );
 
@@ -386,8 +392,9 @@ class _EventCardState extends State<EventCard> {
                       imageUrl: imageUrl, // your event image
                       fit: BoxFit.cover,
                       placeholder: (_, __) =>
-                      const Center(child: CircularProgressIndicator()),
-                      errorWidget: (_, __, ___) => const Icon(Icons.broken_image),
+                          const Center(child: CircularProgressIndicator()),
+                      errorWidget: (_, __, ___) =>
+                          const Icon(Icons.broken_image),
                     ),
                   ),
 
@@ -525,6 +532,7 @@ class _HomeTabContentState extends State<HomeTabContent> {
   String? _currentCity;
   final TextEditingController _searchController = TextEditingController();
   bool _locationFetched = false;
+  String _selectedFilter = 'all'; // ✅ this fixes the undefined error
 
   @override
   void initState() {
@@ -538,7 +546,6 @@ class _HomeTabContentState extends State<HomeTabContent> {
     super.dispose();
   }
 
-
   Future<void> _fetchCurrentLocationOnce() async {
     if (_locationFetched) return; // ✅ Already fetched
 
@@ -549,7 +556,8 @@ class _HomeTabContentState extends State<HomeTabContent> {
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) return;
+        if (permission == LocationPermission.denied ||
+            permission == LocationPermission.deniedForever) return;
       }
 
       Position position = await Geolocator.getCurrentPosition(
@@ -618,13 +626,15 @@ class _HomeTabContentState extends State<HomeTabContent> {
                 prefixIcon: const Icon(Icons.search),
                 suffixIcon: _searchController.text.isNotEmpty
                     ? IconButton(
-                  icon: const Icon(Icons.close, color: Colors.black),
-                  onPressed: () {
-                    _searchController.clear();
-                    Provider.of<HomeProvider>(context, listen: false).fetchAll();
-                    FocusScope.of(context).unfocus(); // optionally hide keyboard
-                  },
-                )
+                        icon: const Icon(Icons.close, color: Colors.black),
+                        onPressed: () {
+                          _searchController.clear();
+                          Provider.of<HomeProvider>(context, listen: false)
+                              .fetchAll();
+                          FocusScope.of(context)
+                              .unfocus(); // optionally hide keyboard
+                        },
+                      )
                     : null,
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -640,14 +650,48 @@ class _HomeTabContentState extends State<HomeTabContent> {
             ),
             const SizedBox(height: 24),
 
-            const Padding(
-              padding: EdgeInsets.only(bottom: 10.0),
-              child: Text(
-                "All Posts and Events",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Container(
+              decoration:
+                  BoxDecoration(borderRadius: BorderRadius.circular(10),border: Border.all(color: Colors.pink,width: 1)),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton2<String>(
+                  value: _selectedFilter,
+                  items: [
+                    DropdownMenuItem(
+                        value: 'all', child: Text('Posts and Events')),
+                    DropdownMenuItem(value: 'event', child: Text('All Events')),
+                    DropdownMenuItem(value: 'post', child: Text('All Posts')),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() {
+                        _selectedFilter = value;
+                      });
+                    }
+                  },
+                  buttonStyleData: const ButtonStyleData(
+                    height: 40,
+                    padding: EdgeInsets.symmetric(horizontal: 12),
+                  ),
+                  dropdownStyleData: DropdownStyleData(
+                    offset: const Offset(
+                        0, 0), // keep as is or adjust vertically if needed
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      color: Colors.white,
+                      boxShadow: [
+                        BoxShadow(color: Colors.black12, blurRadius: 6),
+                      ],
+                    ),
+                  ),
+                  iconStyleData: const IconStyleData(
+                    icon: Icon(Icons.keyboard_arrow_down_outlined,
+                        color: Colors.pink),
+                  ),
+                ),
               ),
             ),
-
+            const SizedBox(height: 16),
             Column(
               children: [
                 if (widget.isLoading)
@@ -663,13 +707,16 @@ class _HomeTabContentState extends State<HomeTabContent> {
                     ),
                   )
                 else
-                  ...widget.allEvents.map((event) {
+                  ...widget.allEvents.where((event) {
+                    if (_selectedFilter == 'event') return event.isEvent;
+                    if (_selectedFilter == 'post') return event.isPost;
+                    return true; // 'all'
+                  }).map((event) {
                     return GestureDetector(
                       onTap: () => widget.onItemTapped(event),
                       child: EventCard(
                         event: event,
-                        highlight: _searchController.text
-                            .trim(), // 👈 add this if using highlight
+                        highlight: _searchController.text.trim(),
                       ),
                     );
                   }).toList(),
@@ -718,7 +765,8 @@ class _HomeScreenState extends State<HomeScreen> {
       final fcmToken = await FirebaseMessaging.instance.getToken();
       if (fcmToken != null) {
         debugPrint('📡 FCM Token: $fcmToken');
-        await _userProfileProvider.updateFcmToken(fcmToken); // ✅ Dynamic and cached
+        await _userProfileProvider
+            .updateFcmToken(fcmToken); // ✅ Dynamic and cached
       }
 
       await Provider.of<HomeProvider>(context, listen: false).fetchAll();
@@ -790,7 +838,8 @@ class _HomeScreenState extends State<HomeScreen> {
           onWillPop: () async {
             // ✅ Close keyboard first if open
             final currentFocus = FocusScope.of(context);
-            if (!currentFocus.hasPrimaryFocus && currentFocus.focusedChild != null) {
+            if (!currentFocus.hasPrimaryFocus &&
+                currentFocus.focusedChild != null) {
               FocusManager.instance.primaryFocus?.unfocus();
               return false; // handled back press to close keyboard
             }
@@ -804,7 +853,8 @@ class _HomeScreenState extends State<HomeScreen> {
             // ✅ Show exit confirmation
             DateTime now = DateTime.now();
             if (_lastBackPressTime == null ||
-                now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
+                now.difference(_lastBackPressTime!) >
+                    const Duration(seconds: 2)) {
               _lastBackPressTime = now;
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Tap again to exit')),
