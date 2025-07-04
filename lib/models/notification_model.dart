@@ -1,3 +1,8 @@
+import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+
+// Notification Model
 class NotificationModel {
   final String id;
   final String user;
@@ -15,11 +20,12 @@ class NotificationModel {
 
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
     return NotificationModel(
-      id: json['_id'],
-      user: json['user'],
-      message: json['message'],
-      isRead: json['isRead'],
-      createdAt: DateTime.parse(json['createdAt']),
+      id: json['_id'] ?? '',
+      user: json['user'] is Map<String, dynamic> ? (json['user']['name'] ?? 'Unknown') : (json['user'] ?? 'Unknown'),
+      message: json['message'] ?? json['text'] ?? 'No message',
+      isRead: json['isRead'] ?? json['read'] ?? false,
+      createdAt: DateTime.tryParse(json['createdAt'] ?? json['timestamp'] ?? '') ?? DateTime.now(),
     );
   }
 }
+

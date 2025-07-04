@@ -3,71 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import '../../models/notification_model.dart';
+import 'notification_item.dart';
 
-// Notification model
 
-// UI widget for individual item
-class NotificationItem extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final Color iconColor;
-  final Color iconBackgroundColor;
-
-  const NotificationItem({
-    super.key,
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    this.iconColor = Colors.white,
-    this.iconBackgroundColor = Colors.pinkAccent,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-      padding: const EdgeInsets.all(16.0),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12.0),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 2,
-            blurRadius: 5,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 28,
-            backgroundColor: iconBackgroundColor,
-            child: Icon(icon, color: iconColor, size: 28),
-          ),
-          const SizedBox(width: 16.0),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title,
-                    style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 4.0),
-                Text(subtitle,
-                    style: TextStyle(fontSize: 13, color: Colors.grey[600])),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// Main screen
 class Notificationscreen extends StatefulWidget {
   const Notificationscreen({super.key});
 
@@ -86,32 +24,53 @@ class _NotificationscreenState extends State<Notificationscreen> {
   }
 
   Future<void> fetchNotifications() async {
-    final response = await http
-        .get(Uri.parse('http://srv861272.hstgr.cloud:8000/api/notification'));
+    try {
+      final response = await http.get(
+        Uri.parse('http://srv861272.hstgr.cloud:8000/api/notification'),
+      );
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      final List<dynamic> notificationsJson = data['data'];
+      print("🔎 Status Code: ${response.statusCode}");
 
-      final List<NotificationModel> allNotifications = notificationsJson
-          .map((e) => NotificationModel.fromJson(e))
-          .toList();
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        print("📥 Raw Data: $decoded");
 
-      final Map<String, List<NotificationModel>> grouped = {};
+        if (decoded['data'] == null || decoded['data'] is! List) {
+          print("⚠️ 'data' key missing or not a list");
+          setState(() => isLoading = false);
+          return;
+        }
 
-      for (var notif in allNotifications) {
-        final dateKey =
-            "${notif.createdAt.year}-${notif.createdAt.month.toString().padLeft(2, '0')}-${notif.createdAt.day.toString().padLeft(2, '0')}";
-        grouped.putIfAbsent(dateKey, () => []).add(notif);
+        final List<dynamic> notificationsJson = decoded['data'];
+        print("📦 Notifications Count: ${notificationsJson.length}");
+
+        final List<NotificationModel> allNotifications =
+        notificationsJson.map((e) {
+          print("🛠 Processing item: $e");
+          return NotificationModel.fromJson(e);
+        }).toList();
+
+        final Map<String, List<NotificationModel>> grouped = {};
+
+        for (var notif in allNotifications) {
+          final dateKey =
+              "${notif.createdAt.year}-${notif.createdAt.month.toString().padLeft(2, '0')}-${notif.createdAt.day.toString().padLeft(2, '0')}";
+          grouped.putIfAbsent(dateKey, () => []).add(notif);
+          print("📅 Grouped under $dateKey: ${notif.message}");
+        }
+
+        setState(() {
+          groupedNotifications = grouped;
+          isLoading = false;
+        });
+      } else {
+        print("❌ Failed with status: ${response.statusCode}");
+        print("❌ Body: ${response.body}");
+        setState(() => isLoading = false);
       }
-
-      setState(() {
-        groupedNotifications = grouped;
-        isLoading = false;
-      });
-    } else {
+    } catch (e) {
+      print("❌ Exception caught: $e");
       setState(() => isLoading = false);
-      throw Exception('Failed to load notifications');
     }
   }
 
@@ -149,6 +108,8 @@ class _NotificationscreenState extends State<Notificationscreen> {
       backgroundColor: Colors.white,
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
+          : groupedNotifications.isEmpty
+          ? const Center(child: Text("No notifications found."))
           : SingleChildScrollView(
         child: Column(
           children: sortedKeys.map((dateKey) {
@@ -170,13 +131,15 @@ class _NotificationscreenState extends State<Notificationscreen> {
                     ),
                   ),
                 ),
-                ...items.map((notif) => NotificationItem(
-                  icon: Icons.notifications,
-                  title: notif.message,
-                  subtitle:
-                  "${notif.createdAt.hour.toString().padLeft(2, '0')}:${notif.createdAt.minute.toString().padLeft(2, '0')}",
-                  iconBackgroundColor: Colors.pinkAccent,
-                )),
+                ...items.map((notif) {
+                  print("🔔 Notification: message=${notif.message}, user=${notif.user}");
+                  return NotificationItem(
+                    icon: Icons.notifications,
+                    title: notif.message,
+                    subtitle:
+                    "${notif.createdAt.hour.toString().padLeft(2, '0')}:${notif.createdAt.minute.toString().padLeft(2, '0')}",
+                  );
+                }),
               ],
             );
           }).toList(),
