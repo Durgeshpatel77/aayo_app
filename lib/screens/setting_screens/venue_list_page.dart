@@ -95,38 +95,47 @@ class _VenueListPageState extends State<VenueListPage> {
           itemBuilder: (_, idx) {
             final v = provider.venues[idx];
             final detail = v; // ✅ FIXED: no venueDetails field
-            final images = (v['media'] is List) ? List.from(v['media']) : <String>[];
+            final images =
+            (v['media'] is List) ? List.from(v['media']) : <String>[];
             final imgUrl = images.isNotEmpty ? _fullImageUrl(images[0]) : '';
 
             return GestureDetector(
-              onTap: () {
-                Navigator.pop(context, {
-                  'name': v['title'] ?? 'Selected Venue',
-                  'address': detail['location'] ?? '',
-                  'city': detail['city'] ?? '',
-
-                });
+              onTap: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => VenueDetailPage(
+                      venue: v,
+                      onBookNow: (venueName) {
+                        Navigator.pop(context, {'venueName': venueName});
+                      },
+                    ),
+                  ),
+                );
+                if (result != null && result is Map<String, dynamic> && result.containsKey('venueName')) {
+                  Navigator.pop(context, result); // Return selected venue name to previous screen
+                }
               },
               child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.black38, width: 0.5),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Column(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.black38, width: 0.5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // ---------- IMAGE ----------
                     ClipRRect(
-                      borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(16)),
+                      borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(16)),
                       child: imgUrl.isNotEmpty
                           ? Image.network(
                         imgUrl,
@@ -179,18 +188,28 @@ class _VenueListPageState extends State<VenueListPage> {
                             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             minimumSize: Size.zero,
                           ),
-                          onPressed: () {
-                            Navigator.push(
+                          onPressed: () async { // Make onPressed async
+                            final result = await Navigator.push( // Await the result from VenueDetailPage
                               context,
                               MaterialPageRoute(
-                                builder: (_) => VenueDetailPage(venue: v),
+                                builder: (_) => VenueDetailPage(
+                                  venue: v,
+                                  onBookNow: (venueName) {
+                                    Navigator.pop(context, {'venueName': venueName}); // Pop with venueName directly
+                                  },
+                                ),
                               ),
                             );
+                            if (result != null && result is Map<String, dynamic> && result.containsKey('venueName')) {
+                              Navigator.pop(context, result); // Pass the result up to CreateEventScreen
+                            }
                           },
                           child: Text(
                             'More Details',
                             style: TextStyle(
-                                color: Colors.blue, fontSize: 12 * textScale),
+                              color: Colors.blue,
+                              fontSize: 12 * textScale,
+                            ),
                           ),
                         ),
                       ),
@@ -214,8 +233,7 @@ class _VenueListPageState extends State<VenueListPage> {
     child: Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: const [
-        Icon(Icons.image_not_supported,
-            color: Colors.black45, size: 40),
+        Icon(Icons.image_not_supported, color: Colors.black45, size: 40),
         SizedBox(height: 8),
         Text('No image available',
             style: TextStyle(color: Colors.black54, fontSize: 13)),

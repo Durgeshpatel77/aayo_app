@@ -6,8 +6,9 @@ class VenueDetailPage extends StatelessWidget {
   final Map venue;
   late TransformationController _transformationController;
   late Offset _doubleTapPosition;
+  final Function(String venueName)? onBookNow;
 
-   VenueDetailPage({super.key, required this.venue});
+   VenueDetailPage({super.key, required this.venue, this.onBookNow});
 
   @override
   Widget build(BuildContext context) {
@@ -228,7 +229,12 @@ class VenueDetailPage extends StatelessWidget {
                               ),
                             ),
                             onPressed: () {
-                              Navigator.pop(context);
+                              final venueName = venue['title'] ?? '';
+                              if (onBookNow != null && venueName.isNotEmpty) {
+                                onBookNow!(venueName); // 🔥 Send back the name
+                              } else {
+                                Navigator.pop(context); // fallback
+                              }
                             },
                             child: const Text("BOOK NOW", style: TextStyle(letterSpacing: 1,color: Colors.white)),
                           ),

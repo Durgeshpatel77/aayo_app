@@ -24,6 +24,25 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   final TextEditingController _eventDescriptionController = TextEditingController();
   final TextEditingController _manualVenueNameController = TextEditingController();
   final TextEditingController _eventLandmarkController = TextEditingController();
+  final List<Map<String, String>> allTags = [
+    {'icon': '💼', 'title': 'Business'},
+    {'icon': '🙌', 'title': 'Community'},
+    {'icon': '🎵', 'title': 'Music & Entertainment'},
+    {'icon': '🩹', 'title': 'Health'},
+    {'icon': '🍟', 'title': 'Food & drink'},
+    {'icon': '👨‍👩‍👧‍👦', 'title': 'Family & Education'},
+    {'icon': '⚽', 'title': 'Sport'},
+    {'icon': '👠', 'title': 'Fashion'},
+    {'icon': '🎬', 'title': 'Film & Media'},
+    {'icon': '🏠', 'title': 'Home & Lifestyle'},
+    {'icon': '🎨', 'title': 'Design'},
+    {'icon': '🎮', 'title': 'Gaming'},
+    {'icon': '🧪', 'title': 'Science & Tech'},
+    {'icon': '🏫', 'title': 'School & Education'},
+    {'icon': '🏖️', 'title': 'Holiday'},
+    {'icon': '✈️', 'title': 'Travel'},
+  ];
+  List<Map<String, String>> selectedTags = [];
 
   @override
   void dispose() {
@@ -122,13 +141,118 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     );
 
     if (result != null && result is Map<String, dynamic>) {
-      eventProvider.setSelectedVenueName(result['name'] as String?);
-      // Also clear manual venue entry if list is used.
-      _manualVenueNameController.clear();
-      _showMessage('Selected Venue: ${eventProvider.selectedVenueName}');
+      if (result.containsKey('venueName')) {
+        eventProvider.setSelectedVenueName(result['venueName'] as String?);
+        _manualVenueNameController.clear(); // Clear manual entry if venue is selected from list
+        _showMessage('Selected Venue: ${eventProvider.selectedVenueName}');
+      } else if (result.containsKey('name')) { // This is for selecting from the list directly
+        eventProvider.setSelectedVenueName(result['name'] as String?);
+        _manualVenueNameController.clear();
+        _showMessage('Selected Venue: ${eventProvider.selectedVenueName}');
+      }
     }
   }
 
+  void _showTagSelector() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.6,
+          minChildSize: 0.4,
+          maxChildSize: 1,
+          builder: (context, scrollController) {
+            return StatefulBuilder(
+              builder: (context, setModalState) {
+                return Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    children: [
+                      const Text(
+                        'Select Tags',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 20),
+
+                      /// Scrollable content
+                      Expanded(
+                        child: SingleChildScrollView(
+                          controller: scrollController,
+                          child: Wrap(
+                            spacing: 10,
+                            runSpacing: 10,
+                            children: allTags.map((tag) {
+                              final isSelected = selectedTags.any((t) => t['title'] == tag['title']);
+                              return ChoiceChip(
+                                label: Text(
+                                  '${tag['icon']} ${tag['title']}',
+                                  style: TextStyle(
+                                    color: isSelected ? Colors.white : Colors.black,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                selected: isSelected,
+                                selectedColor: Colors.pink,
+                                backgroundColor: Colors.grey.shade200,
+                                onSelected: (selected) {
+                                  setState(() {
+                                    if (selected) {
+                                      if (!isSelected && selectedTags.length < 3) {
+                                        selectedTags.add(tag);
+                                      } else if (!isSelected && selectedTags.length >= 3) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(
+                                            content: Text("You can select up to 3 tags only."),
+                                            backgroundColor: Colors.redAccent,
+                                            duration: Duration(seconds: 2),
+                                          ),
+                                        );
+                                      }
+                                    } else {
+                                      selectedTags.removeWhere((t) => t['title'] == tag['title']);
+                                    }
+                                  });
+                                  setModalState(() {}); // update modal state
+                                },
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      /// Fixed bottom "Done" button
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.pink,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          child: const Text('Done', style: TextStyle(fontSize: 16)),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -426,6 +550,38 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                         fontWeight: FontWeight.w500,
                       ),
                     )),
+                const SizedBox(height: 20),
+                Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                    child:
+                    GestureDetector(
+                      onTap: _showTagSelector,
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.pink.shade400),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                selectedTags.isEmpty
+                                    ? "Select tags from list"
+                                    : selectedTags.map((tag) => tag['title']).join(', '),
+                                style: const TextStyle(fontSize: 16),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 2,
+                              ),
+                            ),
+                            Icon(Icons.arrow_forward_ios, color: Colors.grey.shade500,size: 14,),
+                          ],
+                        ),
+                      ),
+                    )
+                ),
+
                 const SizedBox(height: 20),
 
                 // --- Event Options List (Tickets Section) ---
