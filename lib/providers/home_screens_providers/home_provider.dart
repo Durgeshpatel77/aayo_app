@@ -12,10 +12,18 @@ class HomeProvider extends ChangeNotifier {
   int _selectedIndex = 0;
 
   bool get isLoading => _loading;
+  int _currentPage = 1;
+  bool _hasNextPage = true;
+  bool _isLoadingMore = false;
+
+  bool get isLoadingMore => _isLoadingMore;
+  bool get hasNextPage => _hasNextPage;
 
   List<Event> get allEvents => _allEvents;
 
   int get selectedIndex => _selectedIndex;
+
+
   String? getFcmTokenByUserId(String userId) {
     try {
       final matchingEvent = _allEvents.firstWhere(
@@ -95,7 +103,7 @@ class HomeProvider extends ChangeNotifier {
   }
 
   Future<List<Event>> _fetchByType(String type) async {
-    final url = Uri.parse("$_base?type=$type&limit=1000000000000000");
+    final url = Uri.parse("$_base?type=$type");
 
     final response = await http.get(url);
     //debugPrint("API RESPONSE HOME PAGE($type): ${response.statusCode}");
@@ -117,6 +125,84 @@ class HomeProvider extends ChangeNotifier {
           "HTTP error ${response.statusCode} while fetching '$type'");
     }
   }
+  Future<void> loadMoreEvents() async {
+    if (_isLoadingMore || !_hasNextPage) return; // Prevent multiple loads or if no more pages
+
+    _isLoadingMore = true;
+    notifyListeners();
+
+    try {
+      _currentPage++; // Increment page for the next fetch
+      final url = Uri.parse('$_base?page=$_currentPage');
+      final response = await http.get(url);
+      debugPrint("📡 loadMoreEvents response: ${response.statusCode}");
+
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+        debugPrint("📦 loadMoreEvents JSON: $json");
+
+        if (json['success'] == true && json['data'] != null) {
+          final data = json['data'];
+          final newPosts = (data['posts'] as List)
+              .map((e) => Event.fromJson(e as Map<String, dynamic>))
+              .toList();
+          _allEvents.addAll(newPosts); // Add new posts to the existing list
+          _currentPage = data['currentPage'];
+          _hasNextPage = data['hasNextPage'];
+        } else {
+          throw Exception(json['message'] ?? 'Failed to load more posts');
+        }
+      } else {
+        throw Exception('Failed to load more posts: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint("❌ Error loading more events: $e");
+      // Handle error (e.g., show a snackbar)
+    } finally {
+      _isLoadingMore = false;
+      notifyListeners();
+    }
+  }
+  Future<void> fetchInitialEvents() async {
+    if (_loading) return; // Prevent multiple initial fetches
+
+    _loading = true;
+    _currentPage = 1; // Reset to first page for initial fetch
+    _hasNextPage = true; // Assume there are more pages initially
+    notifyListeners();
+
+    try {
+      final url = Uri.parse('$_base?page=$_currentPage');
+      final response = await http.get(url);
+      debugPrint("📡 fetchInitialEvents response: ${response.statusCode}");
+
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+        debugPrint("📦 fetchInitialEvents JSON: $json");
+
+        if (json['success'] == true && json['data'] != null) {
+          final data = json['data'];
+          _allEvents = (data['posts'] as List)
+              .map((e) => Event.fromJson(e as Map<String, dynamic>))
+              .toList();
+          _currentPage = data['currentPage'];
+          _hasNextPage = data['hasNextPage'];
+        } else {
+          throw Exception(json['message'] ?? 'Failed to fetch initial posts');
+        }
+      } else {
+        throw Exception('Failed to load initial posts: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint("❌ Error fetching initial events: $e");
+      // Handle error (e.g., show a snackbar)
+    } finally {
+      _loading = false;
+      notifyListeners();
+    }
+  }
+
+
 
   /// ✅ Update the likes for a specific post/event
   void updateEventLikes(String eventId, List<String> newLikes) {
@@ -232,5 +318,4 @@ class HomeProvider extends ChangeNotifier {
 
     return null;
   }
-
 }

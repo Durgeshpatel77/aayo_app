@@ -531,6 +531,7 @@ class HomeTabContent extends StatefulWidget {
 class _HomeTabContentState extends State<HomeTabContent> {
   String? _currentCity;
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   bool _locationFetched = false;
   String _selectedFilter = 'all'; // ✅ this fixes the undefined error
 
@@ -538,10 +539,24 @@ class _HomeTabContentState extends State<HomeTabContent> {
   void initState() {
     super.initState();
     _fetchCurrentLocationOnce(); // 👈 fetch location only once
+    // Fetch initial events when the widget is initialized
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<HomeProvider>(context, listen: false).fetchInitialEvents();
+    });
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels == _scrollController.position.maxScrollExtent) {
+        final homeProvider = Provider.of<HomeProvider>(context, listen: false);
+        if (!homeProvider.isLoadingMore && homeProvider.hasNextPage) {
+          homeProvider.loadMoreEvents();
+        }
+      }
+    });
+
   }
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -589,6 +604,7 @@ class _HomeTabContentState extends State<HomeTabContent> {
         await Provider.of<HomeProvider>(context, listen: false).fetchAll();
       },
       child: SingleChildScrollView(
+        controller: _scrollController,
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -656,7 +672,7 @@ class _HomeTabContentState extends State<HomeTabContent> {
               child: DropdownButtonHideUnderline(
                 child: DropdownButton2<String>(
                   value: _selectedFilter,
-                  items: [
+                  items: const [
                     DropdownMenuItem(
                         value: 'all', child: Text('Posts and Events')),
                     DropdownMenuItem(value: 'event', child: Text('All Events')),
@@ -722,7 +738,17 @@ class _HomeTabContentState extends State<HomeTabContent> {
                   }).toList(),
               ],
             ),
-            const SizedBox(height: 12),
+            Consumer<HomeProvider>(
+              builder: (context, provider, _) {
+                if (provider.isLoadingMore) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: Center(child: CircularProgressIndicator(color: Colors.pink)),
+                  );
+                }
+                return const SizedBox(height: 12);
+              },
+            ),
           ],
         ),
       ),
@@ -733,18 +759,21 @@ class _HomeTabContentState extends State<HomeTabContent> {
 // ---- HomeScreen ----
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+   HomeScreen({super.key});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
+
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final GlobalKey<_HomeTabContentState> homeTabKey = GlobalKey<_HomeTabContentState>();
   DateTime? _lastBackPressTime;
   bool _initialized = false;
   late FetchEditUserProvider _userProfileProvider;
   bool isLiked = false;
   int likeCount = 0;
+
 
   @override
   void initState() {
@@ -825,6 +854,7 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context, homeProvider, child) {
         final allScreens = [
           HomeTabContent(
+            key: homeTabKey, // ✅ Correct usage
             allEvents: homeProvider.allEvents,
             isLoading: homeProvider.isLoading,
             onItemTapped: (item) => _onItemTapped(context, item),
@@ -883,7 +913,24 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             bottomNavigationBar: BottomNavigationBar(
               currentIndex: homeProvider.selectedIndex,
-              onTap: homeProvider.setSelectedIndex,
+              onTap: (index) async {
+                final provider = Provider.of<HomeProvider>(context, listen: false);
+                if (index == provider.selectedIndex && index == 0) {
+                  // ✅ Scroll to top if already on Home
+                  final state = homeTabKey.currentState;
+                  if (state != null && state._scrollController.hasClients) {
+                    state._scrollController.animateTo(
+                      0,
+                      duration: const Duration(milliseconds: 400),
+                      curve: Curves.easeInOut,
+                    );
+                  }
+
+                  await provider.fetchAll(); // ✅ Refresh data
+                } else {
+                  provider.setSelectedIndex(index); // normal switch
+                }
+              },
               selectedItemColor: Colors.pink,
               unselectedItemColor: Colors.grey,
               type: BottomNavigationBarType.fixed,
