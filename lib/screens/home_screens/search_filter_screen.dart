@@ -1,7 +1,11 @@
+import 'package:aayo/screens/home_screens/post_detail_screens.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:intl/intl.dart';
+
+import '../../models/event_model.dart';
+import '../event_detail_screens/events_details.dart';
 
 class SearchFilterScreen extends StatefulWidget {
   const SearchFilterScreen({super.key});
@@ -16,6 +20,14 @@ class _SearchFilterScreenState extends State<SearchFilterScreen> {
   String? selectedTagSlug;
   String? selectedCategory;
   String? selectedPrice;
+  String? selectedType; // can be 'event', 'post', or null
+  String _getTypeLabel() {
+    if (selectedType == null) return 'Type';
+    if (selectedType == 'event') return 'Event';
+    if (selectedType == 'post') return 'Post';
+    return 'Type';
+  }
+
 
   final List<Map<String, String>> categories = [
     {'icon': '💼', 'title': 'Business', 'slug': 'business'},
@@ -171,9 +183,10 @@ class _SearchFilterScreenState extends State<SearchFilterScreen> {
                               selectedTagSlug = null;
                               selectedDate = null;
                               selectedPrice = null;
+                              _searchController.clear(); // Clear search
                             });
                             Navigator.pop(context);
-                            fetchAllEvents();
+                            fetchEvents(); // <- use this instead to respect cleared search
                           },
                           child: const Text('Clear all'),
                         ),
@@ -228,26 +241,64 @@ class _SearchFilterScreenState extends State<SearchFilterScreen> {
 
   Future<void> fetchEvents() async {
     final url = _buildUrl();
-    if (url == 'http://82.29.167.118:8000/api/post') {
-      return fetchAllEvents();
-    }
+    print("🔍 print search url $url");
 
     try {
       final response = await http.get(Uri.parse(url));
-      print("print search body${response.body}");
-      print("print search url${url}");
-      print("print search statuscode${response.statusCode}");
+      print("📥 print search statuscode ${response.statusCode}");
+      print("📥 print search body ${response.body}");
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
-        // if (decoded is Map && decoded['data'] is List) {
+        final posts = decoded['data']?['posts'];
+
+        if (posts is List) {
+          List filteredPosts = posts.where((post) {
+            final details = post['eventDetails'] ?? {};
+            final isFreeBackend = details['isFree'] == true;
+            final postType = post['type'];
+
+            // 1. Date filter
+            bool dateMatch = true;
+            if (selectedDate != null && details['startTime'] != null) {
+              try {
+                final eventDate = DateTime.parse(details['startTime']).toLocal();
+                final selected = DateFormat('yyyy-MM-dd').format(selectedDate!);
+                final postDate = DateFormat('yyyy-MM-dd').format(eventDate);
+                dateMatch = selected == postDate;
+              } catch (_) {
+                dateMatch = false;
+              }
+            }
+
+            // 2. Price filter
+            bool priceMatch = true;
+            if (selectedPrice != null) {
+              priceMatch = (selectedPrice == 'Free' && isFreeBackend == true) ||
+                  (selectedPrice == 'Paid' && isFreeBackend == false);
+            }
+
+            // 3. Type filter
+            bool typeMatch = true;
+            if (selectedType != null) {
+              typeMatch = postType == selectedType;
+            }
+
+            return dateMatch && priceMatch && typeMatch;
+          }).toList();
+
+          print("✅ Filtered events count: ${filteredPosts.length}");
+
           setState(() {
-            events = decoded['data'];
+            events = filteredPosts;
           });
-    //    }
+        } else {
+          debugPrint('❌ Unexpected structure: posts is not a List');
+        }
+      } else {
+        debugPrint('❌ HTTP ${response.statusCode} while fetching events');
       }
-    }
-    catch (e) {
+    } catch (e) {
       debugPrint('❌ Error fetching events: $e');
     }
   }
@@ -260,12 +311,20 @@ class _SearchFilterScreenState extends State<SearchFilterScreen> {
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
-        setState(() {
-          events = decoded['data'] ?? [];
-        });
+
+        final posts = decoded['data']?['posts'];
+        if (posts is List) {
+          setState(() {
+            events = posts;
+          });
+        } else {
+          debugPrint('❌ Unexpected data format: posts is not a List');
+        }
+      } else {
+        debugPrint('❌ Server error: ${response.statusCode}');
       }
     } catch (e) {
-      debugPrint('❌ Error fetching all dgfg: $e');
+      debugPrint('❌ Error fetching all events: $e');
     }
   }
 
@@ -352,47 +411,209 @@ class _SearchFilterScreenState extends State<SearchFilterScreen> {
                       onTap: _pickDate),
                   _buildFilterChip(Icons.access_time, selectedPrice ?? 'Time',
                       onTap: _showPricePicker),
+
+                  _buildFilterChip(Icons.swap_horiz, _getTypeLabel(),
+                      onTap: _showTypePicker),
+
                 ],
               ),
             ),
 
             const SizedBox(height: 8),
+            if (selectedDate != null || selectedCategory != null || selectedPrice != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    if (selectedCategory != null)
+                      Chip(
+                        label: Text("Category: $selectedCategory"),
+                        onDeleted: () {
+                          setState(() {
+                            selectedCategory = null;
+                            selectedTagSlug = null;
+                          });
+                          fetchEvents();
+                        },
+                      ),
+                    if (selectedDate != null)
+                      Chip(
+                        label: Text("Date: ${DateFormat('dd MMM').format(selectedDate!)}"),
+                        onDeleted: () {
+                          setState(() => selectedDate = null);
+                          fetchEvents();
+                        },
+                      ),
+                    if (selectedPrice != null)
+                      Chip(
+                        label: Text("Price: $selectedPrice"),
+                        onDeleted: () {
+                          setState(() => selectedPrice = null);
+                          fetchEvents();
+                        },
+                      ),
+                  ],
+                ),
+              ),
 
             // 🔹 4. EVENT LIST CONTINUES...
             Expanded(
               child: events.isEmpty
                   ? const Center(child: Text("No events found"))
                   : ListView.builder(
-                      itemCount: events.length,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      itemBuilder: (context, index) {
-                        final e = events[index];
-                        final isFree = e['eventDetails']?['isFree'] == true;
+                itemCount: events.length,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                itemBuilder: (context, index) {
+                  final item = events[index];
+                  final type = item['type'] ?? 'unknown';
+                  final user = item['user'] ?? {};
+                  final media = item['media'] ?? [];
+                  final eventDetails = item['eventDetails'] ?? {};
+                  final tags = item['tags'] ?? [];
 
-                        return Card(
-                          margin: const EdgeInsets.symmetric(vertical: 8),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          elevation: 3,
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.all(16),
-                            title: Text(
-                              e['title'] ?? 'Untitled',
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            subtitle: Text(
-                              isFree ? 'Free Event' : 'Paid Event',
-                              style: TextStyle(
-                                  color: isFree ? Colors.green : Colors.pink),
-                            ),
-                            trailing:
-                                const Icon(Icons.arrow_forward_ios, size: 18),
+                  final isFree = eventDetails['isFree'] == true;
+
+                  return InkWell(
+                    onTap: () {
+                      if (type == 'event') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => EventDetailScreen(event: Event.fromJson(item)),
                           ),
                         );
-                      },
+                      } else if (type == 'post') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => PostDetailScreen(post: Event.fromJson(item)),
+                          ),
+                        );
+                      }
+                    },
+                    child: Card(
+                      margin: const EdgeInsets.symmetric(vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      elevation: 3,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Type badge
+                            Align(
+                              alignment: Alignment.topRight,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: type == 'event' ? Colors.pink.shade100 : Colors.blue.shade100,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  type.toUpperCase(),
+                                  style: TextStyle(
+                                    color: type == 'event' ? Colors.pink : Colors.blue,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(height: 8),
+
+                            // Title
+                            Text(
+                              item['title'] ?? 'No Title',
+                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            ),
+
+                            const SizedBox(height: 6),
+
+                            // User
+                            Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 16,
+                                  backgroundImage: NetworkImage(
+                                    'http://82.29.167.118:8000/${user['profile'] ?? ''}',
+                                  ),
+                                  onBackgroundImageError: (_, __) {},
+                                ),
+                                const SizedBox(width: 8),
+                                Text(user['name'] ?? 'Unknown', style: const TextStyle(fontSize: 14)),
+                              ],
+                            ),
+
+                            const SizedBox(height: 8),
+
+                            // Tags
+                            if (tags.isNotEmpty)
+                              Wrap(
+                                spacing: 6,
+                                children: tags.map<Widget>((tag) {
+                                  return Chip(
+                                    label: Text(tag),
+                                    backgroundColor: Colors.grey.shade200,
+                                    visualDensity: VisualDensity.compact,
+                                  );
+                                }).toList(),
+                              ),
+
+                            const SizedBox(height: 8),
+
+                            // Content
+                            Text(
+                              item['content'] ?? '',
+                              style: const TextStyle(color: Colors.black87),
+                            ),
+
+                            const SizedBox(height: 8),
+
+                            // Event-specific info
+                            if (type == 'event') ...[
+                              const Divider(),
+                              Text("📍 ${eventDetails['location'] ?? 'No location'}", style: const TextStyle(fontSize: 13)),
+                              const SizedBox(height: 4),
+                              Text(
+                                "🗓️ ${eventDetails['startTime']?.toString().substring(0, 10) ?? ''} - ${eventDetails['endTime']?.toString().substring(0, 10) ?? ''}",
+                                style: const TextStyle(fontSize: 13),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                isFree ? "💸 Free" : "💸 ₹${eventDetails['price'] ?? 'N/A'}",
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: isFree ? Colors.green : Colors.pink,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+
+                            // Media
+                            if (media.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 12),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: Image.network(
+                                    'http://82.29.167.118:8000/${media.first}',
+                                    height: 180,
+                                    width: double.infinity,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => const Icon(Icons.broken_image),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
                     ),
+                  );
+                },
+              ),
             ),
           ],
         ),
@@ -419,6 +640,26 @@ class _SearchFilterScreenState extends State<SearchFilterScreen> {
             const SizedBox(width: 4),
           ],
         ),
+      ),
+    );
+  }
+  void _showTypePicker() {
+    showModalBottomSheet(
+      context: context,
+      builder: (_) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: ['All', 'Event', 'Post'].map((option) {
+          return ListTile(
+            title: Text(option),
+            onTap: () {
+              setState(() {
+                selectedType = option == 'All' ? null : option.toLowerCase();
+              });
+              Navigator.pop(context);
+              fetchEvents();
+            },
+          );
+        }).toList(),
       ),
     );
   }

@@ -536,7 +536,7 @@ class _HomeTabContentState extends State<HomeTabContent> {
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   bool _locationFetched = false;
-  String _selectedFilter = 'all'; // ✅ this fixes the undefined error
+  Set<String> _selectedFilters = {'event', 'post'}; // Default: show both
 
   @override
   void initState() {
@@ -597,6 +597,39 @@ class _HomeTabContentState extends State<HomeTabContent> {
     } catch (e) {
       debugPrint('❌ Failed to fetch location: $e');
     }
+  }
+  Widget _buildFilterBox(String key, String label) {
+    final isSelected = _selectedFilters.contains(key);
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          if (isSelected && _selectedFilters.length > 1) {
+            _selectedFilters.remove(key);
+          } else if (!isSelected) {
+            _selectedFilters.add(key);
+          }
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.pink.shade100 : Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected ? Colors.pink : Colors.grey.shade300,
+           // width: 1.2,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            color: isSelected ? Colors.pink : Colors.black,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -668,46 +701,13 @@ class _HomeTabContentState extends State<HomeTabContent> {
             ),
             const SizedBox(height: 24),
 
-            Container(
-              decoration:
-                  BoxDecoration(borderRadius: BorderRadius.circular(10),border: Border.all(color: Colors.pink,width: 1)),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton2<String>(
-                  value: _selectedFilter,
-                  items: const [
-                    DropdownMenuItem(
-                        value: 'all', child: Text('Posts and Events')),
-                    DropdownMenuItem(value: 'event', child: Text('All Events')),
-                    DropdownMenuItem(value: 'post', child: Text('All Posts')),
-                  ],
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() {
-                        _selectedFilter = value;
-                      });
-                    }
-                  },
-                  buttonStyleData: const ButtonStyleData(
-                    height: 40,
-                    padding: EdgeInsets.symmetric(horizontal: 12),
-                  ),
-                  dropdownStyleData: DropdownStyleData(
-                    offset: const Offset(
-                        0, 0), // keep as is or adjust vertically if needed
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      color: Colors.white,
-                      boxShadow: [
-                        BoxShadow(color: Colors.black12, blurRadius: 6),
-                      ],
-                    ),
-                  ),
-                  iconStyleData: const IconStyleData(
-                    icon: Icon(Icons.keyboard_arrow_down_outlined,
-                        color: Colors.pink),
-                  ),
-                ),
-              ),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _buildFilterBox('event','Events'),
+                _buildFilterBox('post', 'Posts'),
+              ],
             ),
             const SizedBox(height: 16),
             Column(
@@ -726,10 +726,11 @@ class _HomeTabContentState extends State<HomeTabContent> {
                   )
                 else
                   ...widget.allEvents.where((event) {
-                    if (_selectedFilter == 'event') return event.isEvent;
-                    if (_selectedFilter == 'post') return event.isPost;
-                    return true; // 'all'
-                  }).map((event) {
+                    if (_selectedFilters.contains('event') && event.isEvent) return true;
+                    if (_selectedFilters.contains('post') && event.isPost) return true;
+                    return false; // no matching selection
+                  })
+                      .map((event) {
                     return GestureDetector(
                       onTap: () => widget.onItemTapped(event),
                       child: EventCard(

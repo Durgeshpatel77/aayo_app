@@ -258,7 +258,10 @@
       required String eventName,
       required String description,
       required String venueName,
-      required String venueAddress, required BuildContext context,
+      required String venueAddress,
+      required BuildContext context,
+      required List<String> tags, // ✅ added tags parameter
+
     }) async {
       _clearError();
       _setLoading(true);
@@ -347,6 +350,11 @@
 
         request.fields['venueName'] = venueName;
         request.fields['venueAddress'] = venueAddress;
+        for (var tag in tags) {
+          request.fields['tags'] = tags.join(','); // ✅ send as comma-separated string
+        }
+        debugPrint("🟢 Tags sent to server: ${request.fields['tags']}"); // ✅ DEBUG PRINT
+
 
         if (_pickedEventImage != null) {
           final image = await http.MultipartFile.fromPath(
