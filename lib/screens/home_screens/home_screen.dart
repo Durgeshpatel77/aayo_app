@@ -1,7 +1,10 @@
 // lib/screens/home_screens/home_tab_content.dart (home_screen.dart)
 
 // ... (existing imports - ensure correct path for UserProfileProvider)
+import 'dart:math';
+
 import 'package:aayo/screens/home_screens/post_detail_screens.dart';
+import 'package:aayo/screens/home_screens/search_filter_screen.dart';
 import 'package:aayo/screens/home_screens/single_user_profile_screen.dart';
 import 'package:aayo/screens/home_screens/userprofile_list.dart';
 import 'package:audioplayers/audioplayers.dart';
@@ -392,7 +395,7 @@ class _EventCardState extends State<EventCard> {
                       imageUrl: imageUrl, // your event image
                       fit: BoxFit.cover,
                       placeholder: (_, __) =>
-                          const Center(child: CircularProgressIndicator()),
+                          const Center(child: CircularProgressIndicator(color: Colors.pink,)),
                       errorWidget: (_, __, ___) =>
                           const Icon(Icons.broken_image),
                     ),
@@ -626,42 +629,41 @@ class _HomeTabContentState extends State<HomeTabContent> {
             const SizedBox(height: 20),
 
             // Search
-            TextField(
-              controller: _searchController,
-              onChanged: (value) {
-                final query = value.trim();
-                if (query.isNotEmpty) {
-                  Provider.of<HomeProvider>(context, listen: false)
-                      .searchPostsAndEvents(query);
-                } else {
-                  Provider.of<HomeProvider>(context, listen: false).fetchAll();
-                }
+            GestureDetector(
+              onTap: () {
+                FocusScope.of(context).unfocus(); // Hide keyboard
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SearchFilterScreen()),
+                );
               },
-              decoration: InputDecoration(
-                hintText: "Search Events and Posts",
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchController.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.close, color: Colors.black),
-                        onPressed: () {
-                          _searchController.clear();
-                          Provider.of<HomeProvider>(context, listen: false)
-                              .fetchAll();
-                          FocusScope.of(context)
-                              .unfocus(); // optionally hide keyboard
-                        },
-                      )
-                    : null,
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Colors.pink),
+              child: AbsorbPointer( // Prevent default focus
+                child: TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: "Search Events and Posts",
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _searchController.text.isNotEmpty
+                        ? IconButton(
+                      icon: const Icon(Icons.close, color: Colors.black),
+                      onPressed: () {
+                        _searchController.clear();
+                        Provider.of<HomeProvider>(context, listen: false).fetchAll();
+                      },
+                    )
+                        : null,
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Colors.pink),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Colors.pink, width: 2),
+                    ),
+                    filled: true,
+                    fillColor: Colors.grey[100],
+                  ),
                 ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Colors.pink, width: 2),
-                ),
-                filled: true,
-                fillColor: Colors.grey[100],
               ),
             ),
             const SizedBox(height: 24),
