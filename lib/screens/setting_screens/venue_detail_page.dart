@@ -252,7 +252,7 @@ class VenueDetailPage extends StatelessWidget {
   }
 
   String _fullImageUrl(String path) {
-    const base = 'http://srv861272.hstgr.cloud:8000';
+    const base = 'http://82.29.167.118:8000';
     if (path.startsWith('http')) return path;
     if (!path.startsWith('/')) path = '/$path';
     return '$base$path';

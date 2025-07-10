@@ -91,7 +91,7 @@ class _CommentSheetState extends State<CommentSheet> {
       final imagePath = widget.event.image;
       final postImageUrl = imagePath.startsWith('http')
           ? imagePath
-          : 'http://srv861272.hstgr.cloud:8000/$imagePath';
+          : 'http://82.29.167.118:8000/$imagePath';
 
       // 🔔 Send notification if token exists
       final recipientFcmToken = widget.recipientFcmToken;
@@ -125,7 +125,7 @@ class _CommentSheetState extends State<CommentSheet> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://srv861272.hstgr.cloud:8000/api/send-notification'),
+        Uri.parse('http://82.29.167.118:8000/api/send-notification'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           "fcmToken": recipientFcmToken,
@@ -146,7 +146,7 @@ class _CommentSheetState extends State<CommentSheet> {
       debugPrint("📨 Body: ${response.body}");
 
       await http.post(
-        Uri.parse('http://srv861272.hstgr.cloud:8000/api/notification'),
+        Uri.parse('http://82.29.167.118:8000/api/notification'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           "user": organizerId,

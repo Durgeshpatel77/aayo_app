@@ -215,7 +215,7 @@ class _GuestPageState extends State<GuestPage> {
               ? CircleAvatar(
             radius: 28,
             backgroundImage: NetworkImage(
-                'http://srv861272.hstgr.cloud:8000/${host['profile']}'),
+                'http://82.29.167.118:8000/${host['profile']}'),
           )
               : CircleAvatar(
             radius: 28,

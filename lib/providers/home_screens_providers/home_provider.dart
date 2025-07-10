@@ -6,7 +6,7 @@ import '../../models/comment_model.dart';
 import '../../models/event_model.dart';
 
 class HomeProvider extends ChangeNotifier {
-  static const _base = 'http://srv861272.hstgr.cloud:8000/api/post';
+  static const _base = 'http://82.29.167.118:8000/api/post';
   bool _loading = false;
   List<Event> _allEvents = [];
   int _selectedIndex = 0;

@@ -216,7 +216,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             avatarImage = NetworkImage(currentProfileImagePath); // Full URL
           } else {
             // Assume it's a relative path on your server
-            final fullServerImageUrl = 'http://srv861272.hstgr.cloud:8000/$currentProfileImagePath';
+            final fullServerImageUrl = 'http://82.29.167.118:8000/$currentProfileImagePath';
             avatarImage = NetworkImage(fullServerImageUrl);
           }
         }

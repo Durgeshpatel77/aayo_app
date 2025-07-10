@@ -372,7 +372,7 @@ class _UserProfileListState extends State<UserProfileList>
                           final event = _userEvents[i];
                           final hasMedia = event.media.isNotEmpty;
                           final firstImageUrl = hasMedia
-                              ? 'http://srv861272.hstgr.cloud:8000/${event.media.first}'
+                              ? 'http://82.29.167.118:8000/${event.media.first}'
                               : 'https://via.placeholder.com/300x200.png?text=No+Image';
 
                           return GestureDetector(
@@ -396,7 +396,7 @@ class _UserProfileListState extends State<UserProfileList>
                                 image: firstImageUrl,
                                 media: event.media
                                     .map((url) =>
-                                        'http://srv861272.hstgr.cloud:8000/$url')
+                                        'http://82.29.167.118:8000/$url')
                                     .toList(),
                                 organizer: event.user.name,
                                 organizerProfile: event.user.profile ?? '',
@@ -441,7 +441,7 @@ class _UserProfileListState extends State<UserProfileList>
                         itemBuilder: (_, i) {
                           final event = _pastEvents[i];
                           final imageUrl = event.media.isNotEmpty
-                              ? 'http://srv861272.hstgr.cloud:8000/${event.media.first}'
+                              ? 'http://82.29.167.118:8000/${event.media.first}'
                               : 'https://via.placeholder.com/300x200.png?text=No+Image';
 
                           return GestureDetector(
@@ -470,7 +470,7 @@ class _UserProfileListState extends State<UserProfileList>
                                       image: imageUrl,
                                       media: event.media
                                           .map((m) =>
-                                              'http://srv861272.hstgr.cloud:8000/$m')
+                                              'http://82.29.167.118:8000/$m')
                                           .toList(),
                                       organizer: event.user.name,
                                       organizerProfile:

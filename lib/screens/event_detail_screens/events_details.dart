@@ -33,7 +33,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   }
 
   String getFullImageUrl(String relativePath) {
-    const baseUrl = 'http://srv861272.hstgr.cloud:8000';
+    const baseUrl = 'http://82.29.167.118:8000';
     if (relativePath.startsWith('http')) return relativePath;
     if (!relativePath.startsWith('/')) relativePath = '/$relativePath';
     return '$baseUrl$relativePath';

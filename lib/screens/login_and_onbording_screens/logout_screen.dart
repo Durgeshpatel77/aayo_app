@@ -23,7 +23,7 @@ class LogoutScreen extends StatelessWidget {
 
       // ✅ Send request to backend to remove token from DB
       await http.put(
-        Uri.parse('http://srv861272.hstgr.cloud:8000/api/user/remove-token'),
+        Uri.parse('http://82.29.167.118:8000/api/user/remove-token'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'fcmToken': fcmToken}),
       );

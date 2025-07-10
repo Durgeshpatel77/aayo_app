@@ -34,7 +34,7 @@ class AddPostProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  static const String _apiBaseUrl = 'http://srv861272.hstgr.cloud:8000';
+  static const String _apiBaseUrl = 'http://82.29.167.118:8000';
 
   TextEditingController get postController => _postController;
   TextEditingController get titleController => _titleController;
@@ -282,7 +282,7 @@ class AddPostProvider with ChangeNotifier {
 
       final String userAvatar = rawUserAvatar.startsWith('http')
           ? rawUserAvatar
-          : 'http://srv861272.hstgr.cloud:8000/$rawUserAvatar';
+          : 'http://82.29.167.118:8000$rawUserAvatar';
 
       if (backendUserId == null || backendUserId.isEmpty) {
         debugPrint('❌ backendUserId missing — cannot send notification');
@@ -290,7 +290,7 @@ class AddPostProvider with ChangeNotifier {
       }
 
       // 🔁 Fetch followers
-      final followersUrl = Uri.parse('http://srv861272.hstgr.cloud:8000/api/user/$backendUserId');
+      final followersUrl = Uri.parse('http://82.29.167.118:8000/api/user/$backendUserId');
       final followersResponse = await http.get(followersUrl);
 
       if (followersResponse.statusCode != 200) {
@@ -305,7 +305,7 @@ class AddPostProvider with ChangeNotifier {
         final followerId = follower['_id'];
 
         // 🔍 Fetch follower FCM token
-        final followerDetailUrl = Uri.parse('http://srv861272.hstgr.cloud:8000/api/user/$followerId');
+        final followerDetailUrl = Uri.parse('http://82.29.167.118:8000/api/user/$followerId');
         final detailResponse = await http.get(followerDetailUrl);
 
         if (detailResponse.statusCode != 200) {
@@ -322,7 +322,7 @@ class AddPostProvider with ChangeNotifier {
         }
 
         // 📤 Send notification
-        final notificationUrl = Uri.parse('http://srv861272.hstgr.cloud:8000/api/send-notification');
+        final notificationUrl = Uri.parse('http://82.29.167.118:8000/api/send-notification');
 
         final body = jsonEncode({
           "fcmToken": fcmToken,

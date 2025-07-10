@@ -30,7 +30,7 @@ class _EventsscreenState extends State<Eventsscreen> {
   }
 
   String _buildFullImageUrl(String relativePath) {
-    return 'http://srv861272.hstgr.cloud:8000/$relativePath';
+    return 'http://82.29.167.118:8000/$relativePath';
   }
 
   @override

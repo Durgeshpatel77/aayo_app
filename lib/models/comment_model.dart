@@ -23,7 +23,7 @@ class CommentModel {
       createdAt: DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
       userName: user['name'] ?? 'Unknown',
       userProfile: user['profile'] != null
-          ? 'http://srv861272.hstgr.cloud:8000/${user['profile']}'
+          ? 'http://82.29.167.118:8000/${user['profile']}'
           : '',
       userId: user['_id'] ?? '',
     );

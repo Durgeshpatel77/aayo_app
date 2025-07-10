@@ -186,7 +186,7 @@ class _FollowListScreenState extends State<FollowListScreen> {
           final name = user['name'] ?? 'Unknown';
           final profile = user['profile'] ?? '';
           final imageUrl = profile.isNotEmpty
-              ? 'http://srv861272.hstgr.cloud:8000/$profile'
+              ? 'http://82.29.167.118:8000/$profile'
               : null;
 
           final isSelf = backendUserId == userId;

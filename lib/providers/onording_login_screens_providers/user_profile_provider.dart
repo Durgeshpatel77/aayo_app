@@ -7,7 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class FetchEditUserProvider with ChangeNotifier {
   String? _userId;
   Map<String, dynamic> _userData = {};
-  final String _baseUrl = 'http://srv861272.hstgr.cloud:8000';
+  final String _baseUrl = 'http://82.29.167.118:8000';
   List<dynamic> _currentUserFollowing = [];
   List<dynamic> get currentUserFollowing => _currentUserFollowing;
 
@@ -331,7 +331,7 @@ class FetchEditUserProvider with ChangeNotifier {
 
     debugPrint('📛 Valid token used: $toUserFcmToken');
 
-    const url = 'http://srv861272.hstgr.cloud:8000/api/send-notification';
+    const url = 'http://82.29.167.118:8000/api/send-notification';
     final body = {
       'title': 'New Follower',
       'body': '$fromUserName started following you!',

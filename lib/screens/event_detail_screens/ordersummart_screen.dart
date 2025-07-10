@@ -63,7 +63,7 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
   }
 
   String getFullImageUrl(String path) {
-    const baseUrl = 'http://srv861272.hstgr.cloud:8000';
+    const baseUrl = 'http://82.29.167.118:8000';
     if (path.startsWith('http')) return path;
     return '$baseUrl/${path.replaceFirst(RegExp(r'^/+'), '')}';
   }
@@ -173,7 +173,7 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
 
     setState(() => _isJoining = true);
 
-    final url = 'http://srv861272.hstgr.cloud:8000/api/event/join/${widget.eventId}';
+    final url = 'http://82.29.167.118:8000/api/event/join/${widget.eventId}';
     final headers = {'Content-Type': 'application/json'};
     final body = {'joinedBy': _backendUserId!};
 

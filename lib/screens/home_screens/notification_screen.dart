@@ -26,7 +26,7 @@ class _NotificationscreenState extends State<Notificationscreen> {
   Future<void> fetchNotifications() async {
     try {
       final response = await http.get(
-        Uri.parse('http://srv861272.hstgr.cloud:8000/api/notification'),
+        Uri.parse('http://82.29.167.118:8000/api/notification'),
       );
 
       print("🔎 Status Code: ${response.statusCode}");

@@ -316,7 +316,7 @@
         );
 
 
-        final uri = Uri.parse('http://srv861272.hstgr.cloud:8000/api/post/event');
+        final uri = Uri.parse('http://82.29.167.118:8000/api/post/event');
         final request = http.MultipartRequest('POST', uri);
 
         request.fields['type'] = "event";
@@ -376,7 +376,7 @@
 
             final mediaList = decoded['data']['media'] as List?;
             final String eventImageUrl = (mediaList != null && mediaList.isNotEmpty)
-                ? 'http://srv861272.hstgr.cloud:8000/${mediaList[0]}'
+                ? 'http://82.29.167.118:8000/${mediaList[0]}'
                 : '';
 
             final senderName = prefs.getString('backendUserName') ?? 'Someone';
@@ -436,7 +436,7 @@
           return;
         }
 
-        String url = 'http://srv861272.hstgr.cloud:8000/api/post?user=$userId';
+        String url = 'http://82.29.167.118:8000/api/post?user=$userId';
         if (type != null && type.isNotEmpty) {
           url += '&type=$type';
         }
@@ -753,7 +753,7 @@
         final joinedEventIds = prefs.getStringList('joinedEvents') ?? [];
 
         for (final id in joinedEventIds) {
-          final response = await http.get(Uri.parse('http://srv861272.hstgr.cloud:8000/api/post/$id'));
+          final response = await http.get(Uri.parse('http://82.29.167.118:8000/api/post/$id'));
 
           if (response.statusCode == 200) {
             final data = json.decode(response.body)['data'];
@@ -782,7 +782,7 @@
 
         if (userId == null || userId.isEmpty) return;
 
-        final url = 'http://srv861272.hstgr.cloud:8000/api/post?user=$userId&type=event';
+        final url = 'http://82.29.167.118:8000/api/post?user=$userId&type=event';
         final response = await http.get(Uri.parse(url), headers: {'Content-Type': 'application/json'});
 
         if (response.statusCode == 200) {
@@ -825,7 +825,7 @@
 
         // 🔁 Step 1: Get all followers
         final followersUrl =
-        Uri.parse('http://srv861272.hstgr.cloud:8000/api/user/$backendUserId');
+        Uri.parse('http://82.29.167.118:8000/api/user/$backendUserId');
         final followersResponse = await http.get(followersUrl);
 
         if (followersResponse.statusCode != 200) {
@@ -844,7 +844,7 @@
 
           // 🔎 Step 2: Get follower details to get FCM token
           final detailRes = await http.get(
-            Uri.parse('http://srv861272.hstgr.cloud:8000/api/user/$followerId'),
+            Uri.parse('http://82.29.167.118:8000/api/user/$followerId'),
           );
 
           if (detailRes.statusCode == 200) {
@@ -854,7 +854,7 @@
             if (fcmToken != null && fcmToken.toString().isNotEmpty) {
               // 📤 Step 3: Send notification
               final notificationUrl = Uri.parse(
-                  'http://srv861272.hstgr.cloud:8000/api/send-notification');
+                  'http://82.29.167.118:8000/api/send-notification');
 
               final notificationBody = {
                 'fcmToken': fcmToken,

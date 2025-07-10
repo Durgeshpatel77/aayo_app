@@ -60,7 +60,7 @@ class Event {
     final user = json['user'] ?? {};
     final String parsedType = json['type'] ?? 'post';
 
-    const String baseUrl = 'http://srv861272.hstgr.cloud:8000';
+    const String baseUrl = 'http://82.29.167.118:8000';
 
     String formatUrl(String? path) {
       if (path == null || path.isEmpty) return '';

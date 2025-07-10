@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 import '../../models/event_registration_model.dart';
 
 class EventRegistrationProvider extends ChangeNotifier {
-  final String _baseUrl = 'http://srv861272.hstgr.cloud:8000/api/event';
+  final String _baseUrl = 'http://82.29.167.118:8000/api/event';
   List<EventRegistration> _registrations = [];
   bool _isLoading = false;
 

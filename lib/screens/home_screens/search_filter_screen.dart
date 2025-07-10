@@ -200,7 +200,7 @@ class _SearchFilterScreenState extends State<SearchFilterScreen> {
   }
 
   String _buildUrl() {
-    const baseUrl = 'http://srv861272.hstgr.cloud:8000/api/post';
+    const baseUrl = 'http://82.29.167.118:8000/api/post';
     List<String> params = [];
 
     if (selectedTagSlug != null) {
@@ -228,7 +228,7 @@ class _SearchFilterScreenState extends State<SearchFilterScreen> {
 
   Future<void> fetchEvents() async {
     final url = _buildUrl();
-    if (url == 'http://srv861272.hstgr.cloud:8000/api/post') {
+    if (url == 'http://82.29.167.118:8000/api/post') {
       return fetchAllEvents();
     }
 
@@ -253,7 +253,7 @@ class _SearchFilterScreenState extends State<SearchFilterScreen> {
   }
 
   Future<void> fetchAllEvents() async {
-    const url = 'http://srv861272.hstgr.cloud:8000/api/post';
+    const url = 'http://82.29.167.118:8000/api/post';
 
     try {
       final response = await http.get(Uri.parse(url));

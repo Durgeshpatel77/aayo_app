@@ -325,7 +325,7 @@ class _AddPostScreenState extends State<AddPostScreen> {
 class UserInfoHeader extends StatelessWidget {
   const UserInfoHeader({super.key});
 
-  static const String _apiBaseUrl = 'http://srv861272.hstgr.cloud:8000';
+  static const String _apiBaseUrl = 'http://82.29.167.118:8000';
 
   @override
   Widget build(BuildContext context) {

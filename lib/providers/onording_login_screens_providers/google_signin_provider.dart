@@ -8,7 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class GoogleSignInProvider extends ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
-  final String _apiBaseUrl = 'http://srv861272.hstgr.cloud:8000';
+  final String _apiBaseUrl = 'http://82.29.167.118:8000';
 
   bool _isSigningIn = false;
   bool get isSigningIn => _isSigningIn;

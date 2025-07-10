@@ -152,7 +152,7 @@ class _EventCardState extends State<EventCard> {
 
             final fcmResponse = await http.post(
               Uri.parse(
-                  'http://srv861272.hstgr.cloud:8000/api/send-notification'),
+                  'http://82.29.167.118:8000/api/send-notification'),
               headers: {'Content-Type': 'application/json'},
               body: jsonEncode({
                 "fcmToken": recipientFcmToken,
@@ -175,7 +175,7 @@ class _EventCardState extends State<EventCard> {
 
             // ✅ Log notification
             await http.post(
-              Uri.parse('http://srv861272.hstgr.cloud:8000/api/notification'),
+              Uri.parse('http://82.29.167.118:8000/api/notification'),
               headers: {'Content-Type': 'application/json'},
               body: jsonEncode({
                 "user": widget.event.organizerId,
@@ -265,7 +265,7 @@ class _EventCardState extends State<EventCard> {
   }
 
   String getFullImageUrl(String relativePath) {
-    const baseUrl = 'http://srv861272.hstgr.cloud:8000';
+    const baseUrl = 'http://82.29.167.118:8000';
     if (relativePath.startsWith('http')) return relativePath;
     if (!relativePath.startsWith('/')) relativePath = '/$relativePath';
     return '$baseUrl$relativePath';

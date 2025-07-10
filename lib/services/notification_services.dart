@@ -115,7 +115,7 @@ class NotificationService {
 
     print('🔔 Preparing notification: $title — $body');
 
-    const baseUrl = 'http://srv861272.hstgr.cloud:8000/';
+    const baseUrl = 'http://82.29.167.118:8000/';
     String? rawPostImage = message.data['postImage'];
     String? rawUserAvatar = message.data['userAvatar'];
 

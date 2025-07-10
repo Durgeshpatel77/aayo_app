@@ -108,14 +108,14 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
           // ✅ Get full post image URL
           final postImageUrl = widget.post.image.startsWith('http')
               ? widget.post.image
-              : 'http://srv861272.hstgr.cloud:8000/${widget.post.image}';
+              : 'http://82.29.167.118:8000/${widget.post.image}';
 
           debugPrint("📦 Post Like FCM Target: ${widget.post.organizerId}");
           debugPrint("📦 Post Like FCM Token: $fcmToken");
           debugPrint("🖼️ Post Image sent: $postImageUrl");
 
           final res = await http.post(
-            Uri.parse('http://srv861272.hstgr.cloud:8000/api/send-notification'),
+            Uri.parse('http://82.29.167.118:8000/api/send-notification'),
             headers: {'Content-Type': 'application/json'},
             body: jsonEncode({
               "fcmToken": fcmToken,
@@ -136,7 +136,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
           debugPrint('📨 Body: ${res.body}');
 
           await http.post(
-            Uri.parse('http://srv861272.hstgr.cloud:8000/api/notification'),
+            Uri.parse('http://82.29.167.118:8000/api/notification'),
             headers: {'Content-Type': 'application/json'},
             body: jsonEncode({
               "user": widget.post.organizerId,
@@ -209,7 +209,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     }
   }
   String getFullImageUrl(String relativePath) {
-    const baseUrl = 'http://srv861272.hstgr.cloud:8000';
+    const baseUrl = 'http://82.29.167.118:8000';
     if (relativePath.startsWith('http')) return relativePath;
     if (!relativePath.startsWith('/')) relativePath = '/$relativePath';
     return '$baseUrl$relativePath';

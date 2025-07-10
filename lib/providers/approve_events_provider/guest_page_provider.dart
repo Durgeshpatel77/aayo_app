@@ -7,7 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/event_registration_model.dart';
 
 class GuestProvider with ChangeNotifier {
-  final String baseUrl = 'http://srv861272.hstgr.cloud:8000';
+  final String baseUrl = 'http://82.29.167.118:8000';
 
   List<Map<String, String>> _hosts = [];
   List<Map<String, String>> get hosts => _hosts;
@@ -140,7 +140,7 @@ class GuestProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final url = 'http://srv861272.hstgr.cloud:8000/api/event/dashboard/$eventId';
+      final url = 'http://82.29.167.118:8000/api/event/dashboard/$eventId';
       final response = await http.get(Uri.parse(url));
 
       if (response.statusCode == 200) {

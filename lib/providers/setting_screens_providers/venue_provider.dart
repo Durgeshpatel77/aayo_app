@@ -266,7 +266,7 @@ class VenueProvider extends ChangeNotifier {
     _venueFetchError = null;
     notifyListeners();
 
-    final url = Uri.parse('http://srv861272.hstgr.cloud:8000/api/post/venue');
+    final url = Uri.parse('http://82.29.167.118:8000/api/post/venue');
 
     try {
       final res = await http.get(url);
@@ -327,7 +327,7 @@ class VenueProvider extends ChangeNotifier {
 
       final req = http.MultipartRequest(
         'POST',
-        Uri.parse('http://srv861272.hstgr.cloud:8000/api/post/venue'),
+        Uri.parse('http://82.29.167.118:8000/api/post/venue'),
       )
         ..fields.addAll({
           'user': userId,

@@ -60,7 +60,7 @@ class FavoriteCategoryProvider with ChangeNotifier {
         }
       }
 
-      final url = Uri.parse('http://srv861272.hstgr.cloud:8000/api/user/$userId');
+      final url = Uri.parse('http://82.29.167.118:8000/api/user/$userId');
 
       final response = await http.put(
         url,
