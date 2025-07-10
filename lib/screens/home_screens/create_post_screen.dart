@@ -46,6 +46,91 @@ class _AddPostScreenState extends State<AddPostScreen> {
       }
     });
   }
+  void _showTagBottomSheet(BuildContext context) {
+    final addPostProvider = Provider.of<AddPostProvider>(context, listen: false);
+    List<String> selected = [...addPostProvider.selectedCategories];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Select up to 3 Tags',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: categories.map((category) {
+                      final title = category['title']!;
+                      final icon = category['icon']!;
+                      final isSelected = selected.contains(title);
+
+                      return ChoiceChip(
+                        label: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(icon),
+                            const SizedBox(width: 4),
+                            Flexible(child: Text(title)),
+                          ],
+                        ),
+                        selected: isSelected,
+                        onSelected: (_) {
+                          setState(() {
+                            if (isSelected) {
+                              selected.remove(title);
+                            } else if (selected.length < 3) {
+                              selected.add(title);
+                            }
+                          });
+                        },
+                        selectedColor: Colors.pink,
+                        backgroundColor: Colors.grey.shade200,
+                        labelStyle: TextStyle(
+                          color: isSelected ? Colors.white : Colors.black87,
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.pink,
+                      padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: () {
+                      addPostProvider.setSelectedCategories(selected);
+                      Navigator.pop(context);
+                    },
+                    child: const Text(
+                      "Done",
+                      style: TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -130,68 +215,30 @@ class _AddPostScreenState extends State<AddPostScreen> {
                       ],
                     ),
                   ),
-                const SizedBox(height: 20),
-                const SizedBox(height: 20),
-                Text(
-                  "Select Tags",
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: screenWidth * 0.04,
-                    color: Colors.grey[800],
+                const SizedBox(height: 10),
+                GestureDetector(
+                  onTap: () => _showTagBottomSheet(context),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey, width: 0.6),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          addPostProvider.selectedCategories.isEmpty
+                              ?  'Select Tags...'
+                              : addPostProvider.selectedCategories.join(', '),
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                        const Icon(Icons.keyboard_arrow_down_outlined),
+                      ],
+                    ),
                   ),
                 ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: categories.map((category) {
-                    final title = category['title']!;
-                    final isSelected = addPostProvider.selectedCategories.contains(title);
-
-                    return GestureDetector(
-                      onTap: () {
-                        final alreadySelected = addPostProvider.selectedCategories.contains(title);
-                        final canSelectMore = addPostProvider.selectedCategories.length < 3;
-
-                        if (alreadySelected || canSelectMore) {
-                          addPostProvider.selectCategory(title);
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('You can select up to 3 categories only.'),
-                              duration: Duration(seconds: 2),
-                            ),
-                          );
-                        }
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: isSelected ? Colors.pink : Colors.grey[200],
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              category['icon'] ?? '',
-                              style: const TextStyle(fontSize: 18),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              title,
-                              style: TextStyle(
-                                color: isSelected ? Colors.white : Colors.black87,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-
+SizedBox(height: 20,),
                 Text(
                   "Add Media or Event",
                   style: TextStyle(
