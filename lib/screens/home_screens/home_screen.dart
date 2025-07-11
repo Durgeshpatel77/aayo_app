@@ -49,9 +49,9 @@ class EventCard extends StatefulWidget {
 
   const EventCard(
       {required this.event,
-      required this.highlight,
-      this.isBooked = false,
-      super.key});
+        required this.highlight,
+        this.isBooked = false,
+        super.key});
 
   @override
   State<EventCard> createState() => _EventCardState();
@@ -103,7 +103,7 @@ class _EventCardState extends State<EventCard> {
 
   void _toggleLike() async {
     final userProfileProvider =
-        Provider.of<FetchEditUserProvider>(context, listen: false);
+    Provider.of<FetchEditUserProvider>(context, listen: false);
     final currentUserId = userProfileProvider.userId;
 
     if (currentUserId == null) {
@@ -159,7 +159,7 @@ class _EventCardState extends State<EventCard> {
                 "title": "❤️ New Like",
                 "body": bodyText,
                 "image":
-                    contentImage, // ✅ Shows post/event image in notification
+                contentImage, // ✅ Shows post/event image in notification
                 "data": {
                   "userId": currentUserId,
                   "userName": userProfileProvider.name ?? "",
@@ -218,7 +218,7 @@ class _EventCardState extends State<EventCard> {
         postOwnerId: widget.event.organizerId,
         event: widget.event, // ✅ ADD THIS
         recipientFcmToken:
-            widget.event.organizerFcmToken ?? '', // ✅ pass this dynamically
+        widget.event.organizerFcmToken ?? '', // ✅ pass this dynamically
 
         onCommentCountChange: (newCount) {
           setState(() => _commentCount = newCount);
@@ -279,8 +279,8 @@ class _EventCardState extends State<EventCard> {
     final String imageUrl = widget.event.media.isNotEmpty
         ? getFullImageUrl(widget.event.media.first)
         : (widget.event.image.isNotEmpty
-            ? getFullImageUrl(widget.event.image)
-            : '');
+        ? getFullImageUrl(widget.event.image)
+        : '');
 
     final String profileUrl = widget.event.organizerProfile.isNotEmpty
         ? getFullImageUrl(widget.event.organizerProfile)
@@ -320,7 +320,7 @@ class _EventCardState extends State<EventCard> {
                 backgroundImage: profileUrl.isNotEmpty
                     ? NetworkImage(profileUrl)
                     : const AssetImage('images/onbording/unkown.jpg')
-                        as ImageProvider,
+                as ImageProvider,
                 onBackgroundImageError: (exception, stackTrace) {
                   debugPrint(
                       'Error loading profile image for ${widget.event.organizer}: $exception');
@@ -331,22 +331,22 @@ class _EventCardState extends State<EventCard> {
               ),
               trailing: widget.event.type == 'event'
                   ? Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.pink.shade100,
-                        borderRadius: BorderRadius.circular(15),
-                        border: Border.all(color: Colors.pink, width: 1),
-                      ),
-                      child: Text(
-                        'EVENT',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: Colors.pink.shade800,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    )
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.pink.shade100,
+                  borderRadius: BorderRadius.circular(15),
+                  border: Border.all(color: Colors.pink, width: 1),
+                ),
+                child: Text(
+                  'EVENT',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.pink.shade800,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              )
                   : null,
               title: Text(
                 widget.event.organizer,
@@ -395,9 +395,9 @@ class _EventCardState extends State<EventCard> {
                       imageUrl: imageUrl, // your event image
                       fit: BoxFit.cover,
                       placeholder: (_, __) =>
-                          const Center(child: CircularProgressIndicator(color: Colors.pink,)),
+                      const Center(child: CircularProgressIndicator(color: Colors.pink,)),
                       errorWidget: (_, __, ___) =>
-                          const Icon(Icons.broken_image),
+                      const Icon(Icons.broken_image),
                     ),
                   ),
 
@@ -617,7 +617,7 @@ class _HomeTabContentState extends State<HomeTabContent> {
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: isSelected ? Colors.pink : Colors.grey.shade300,
-           // width: 1.2,
+            // width: 1.2,
           ),
         ),
         child: Text(
@@ -762,7 +762,7 @@ class _HomeTabContentState extends State<HomeTabContent> {
 // ---- HomeScreen ----
 
 class HomeScreen extends StatefulWidget {
-   HomeScreen({super.key});
+  HomeScreen({super.key});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();

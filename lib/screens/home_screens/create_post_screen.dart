@@ -219,19 +219,28 @@ class _AddPostScreenState extends State<AddPostScreen> {
                 GestureDetector(
                   onTap: () => _showTagBottomSheet(context),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                    padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: Colors.grey, width: 0.6),
                     ),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          addPostProvider.selectedCategories.isEmpty
-                              ?  'Select Tags...'
-                              : addPostProvider.selectedCategories.join(', '),
-                          style: const TextStyle(fontSize: 14),
+                        Expanded(
+                          child: addPostProvider.selectedCategories.isEmpty
+                              ? const Text('Select Tags...', style: TextStyle(fontSize: 14))
+                              : Wrap(
+                            spacing: 6,
+                            runSpacing: 4,
+                            children: addPostProvider.selectedCategories.map((tag) {
+                              return Chip(
+                                label: Text(tag, style: const TextStyle(fontSize: 12)),
+                                backgroundColor: Colors.grey[200],
+                                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                padding: const EdgeInsets.symmetric(horizontal: 8),
+                              );
+                            }).toList(),
+                          ),
                         ),
                         const Icon(Icons.keyboard_arrow_down_outlined),
                       ],

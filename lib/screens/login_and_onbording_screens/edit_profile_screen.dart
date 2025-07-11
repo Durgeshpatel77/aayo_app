@@ -6,7 +6,9 @@ import 'package:provider/provider.dart'; // For accessing UserProvider
 import 'package:shared_preferences/shared_preferences.dart'; // For initial userId
 import '../../providers/onording_login_screens_providers/user_profile_provider.dart'; // Your UserProvider
 import '../../widgets/textfield _editprofiile.dart'; // Your custom TextField widget
-
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:path/path.dart' as path;
+import 'package:path_provider/path_provider.dart';
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
 
@@ -87,27 +89,25 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
-  // _pickImage: Handles the image selection from the gallery.
+  // _pickImage: Handles the image selection from th
+
   Future<void> _pickImage() async {
     final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
     if (pickedFile == null) return;
 
-    // Crop the image
     final croppedFile = await ImageCropper().cropImage(
       sourcePath: pickedFile.path,
       compressFormat: ImageCompressFormat.jpg,
-      compressQuality: 50,
+      compressQuality: 70,
       uiSettings: [
         AndroidUiSettings(
           toolbarTitle: 'Crop Image',
           lockAspectRatio: true,
           initAspectRatio: CropAspectRatioPreset.square,
-          aspectRatioPresets: [
-            CropAspectRatioPreset.square,
-          ],
+          aspectRatioPresets: [CropAspectRatioPreset.square],
           hideBottomControls: true,
-          showCropGrid: true, // ✅ Show grid
-          cropGridStrokeWidth: 2, // ✅ Make lines thicker
+          showCropGrid: true,
+          cropGridStrokeWidth: 2,
           cropFrameStrokeWidth: 2,
         ),
         IOSUiSettings(
@@ -120,9 +120,32 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     if (croppedFile == null) return;
 
+    // ✅ Compress the cropped image
+    final tempDir = await getTemporaryDirectory();
+    final targetPath = path.join(
+      tempDir.path,
+      'profile_${DateTime.now().millisecondsSinceEpoch}.jpg',
+    );
+
+    final compressedFile = await FlutterImageCompress.compressAndGetFile(
+      croppedFile.path,
+      targetPath,
+      quality: 50,
+      format: CompressFormat.jpeg,
+      keepExif: false,
+    );
+
+    if (compressedFile == null) return;
+
     setState(() {
-      _pickedProfileImage = File(croppedFile.path);
+      _pickedProfileImage = File(compressedFile.path);
     });
+
+    // 📏 Optional: Log size
+    final originalSize = File(croppedFile.path).lengthSync();
+    final finalSize = File(compressedFile.path).lengthSync();
+    debugPrint('📸 Original size: ${(originalSize / 1024).toStringAsFixed(2)} KB');
+    debugPrint('🗜️ Compressed size: ${(finalSize / 1024).toStringAsFixed(2)} KB');
   }
 
   // _saveProfileChanges: Orchestrates the saving process, including image upload

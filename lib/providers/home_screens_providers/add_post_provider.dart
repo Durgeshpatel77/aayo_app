@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:http/http.dart' as http;
@@ -48,6 +49,7 @@ class AddPostProvider with ChangeNotifier {
           !_isLoading;
 
   /// ✅ 1. PICK & CROP IMAGE
+
   Future<void> pickImage(ImageSource source) async {
     try {
       final picker = ImagePicker();
@@ -58,18 +60,16 @@ class AddPostProvider with ChangeNotifier {
       final croppedFile = await ImageCropper().cropImage(
         sourcePath: pickedFile.path,
         compressFormat: ImageCompressFormat.jpg,
-        compressQuality: 50,
+        compressQuality: 70,
         uiSettings: [
           AndroidUiSettings(
             toolbarTitle: 'Crop Image',
             lockAspectRatio: true,
             initAspectRatio: CropAspectRatioPreset.square,
-            aspectRatioPresets: [
-              CropAspectRatioPreset.square,
-            ],
+            aspectRatioPresets: [CropAspectRatioPreset.square],
             hideBottomControls: true,
-            showCropGrid: true, // ✅ Show grid
-            cropGridStrokeWidth: 2, // ✅ Make lines thicker
+            showCropGrid: true,
+            cropGridStrokeWidth: 2,
             cropFrameStrokeWidth: 2,
           ),
           IOSUiSettings(
@@ -82,11 +82,27 @@ class AddPostProvider with ChangeNotifier {
 
       if (croppedFile == null) return;
 
-      _selectedImage = File(croppedFile.path);
+      // ✅ Log original size
+      final originalSize = File(croppedFile.path).lengthSync();
+      debugPrint('📸 Original size: ${(originalSize / 1024).toStringAsFixed(2)} KB');
+
+      // ✅ Compress the image using flutter_image_compress
+      final compressedImage = await FlutterImageCompress.compressAndGetFile(
+        croppedFile.path,
+        '${croppedFile.path}_compressed.jpg',
+        quality: 50, // Adjust for size vs. quality
+      );
+
+      if (compressedImage == null) return;
+
+      // ✅ Log compressed size
+      final compressedSize = File(compressedImage.path).lengthSync();
+      debugPrint('🗜️ Compressed size: ${(compressedSize / 1024).toStringAsFixed(2)} KB');
+
+      _selectedImage = File(compressedImage.path);
       notifyListeners();
     } catch (e) {
       debugPrint('🛑 Error in pickImage: $e');
-      // Optional: UI feedback
     }
   }
 
