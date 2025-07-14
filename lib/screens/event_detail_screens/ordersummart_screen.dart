@@ -43,8 +43,6 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
   bool _hasJoined = false;
   bool _isJoining = false;
   late Razorpay _razorpay;
-  final int _ticketQuantity = 1;
-  late EventRegistrationProvider provider;
 
   @override
   void initState() {
@@ -61,49 +59,85 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
     _razorpay.clear();
     super.dispose();
   }
+  Future<bool> _showCancelBookingDialog() async {
+    return await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          elevation: 10,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 30),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 48),
+                const SizedBox(height: 16),
+                const Text(
+                  'Cancel Booking?',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'Are you sure you want to cancel your ticket for this free event?',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.black87, fontSize: 15),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.grey[700],
+                          side: BorderSide(color: Colors.grey.shade400),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 10),
+                          child: Text('No'),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.redAccent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 10),
+                          child: Text('Yes',style: TextStyle(color: Colors.white),),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    ) ?? false;
+  }
 
   String getFullImageUrl(String path) {
     const baseUrl = 'http://82.29.167.118:8000';
     if (path.startsWith('http')) return path;
     return '$baseUrl/${path.replaceFirst(RegExp(r'^/+'), '')}';
-  }
-
-  void _showTicketDetails() async {
-    showDialog(
-      context: context,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
-      barrierDismissible: false,
-    );
-
-    final provider = EventRegistrationProvider();
-    await provider.fetchRegistrations(widget.eventId);
-    Navigator.pop(context);
-
-    final registration = provider.registrations.firstWhere(
-          (reg) => reg.id == _backendUserId,
-      orElse: () => EventRegistration(
-        id: '',
-        name: 'Unknown',
-        registrationId: '',
-        eventId: '',
-        status: 'Not Found',
-      ),
-    );
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => TicketDetailScreen(
-          registration: registration,
-          eventName: widget.eventName,
-          eventDate: widget.eventDate,
-          eventTime: widget.eventTime,
-          eventLocation: widget.eventLocation,
-          ticketPrice: widget.ticketPrice,
-          venueName: widget.venueName,
-        ),
-      ),
-    );
   }
 
   Future<void> _loadBackendUserId() async {
@@ -201,10 +235,6 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
           const SnackBar(content: Text('🎉 Successfully booked')),
         );
       } else if (resBody['message']?.contains('already joined') == true) {
-        if (!joinedEvents.contains(widget.eventId)) {
-          joinedEvents.add(widget.eventId);
-          await prefs.setStringList('joinedEvents', joinedEvents);
-        }
         setState(() {
           _hasJoined = true;
           _isJoining = false;
@@ -223,10 +253,95 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
     }
   }
 
+  Future<void> _cancelBooking() async {
+    final confirm = await _showCancelBookingDialog();
+
+    if (confirm != true) return;
+
+    if (_backendUserId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('User ID not found.')),
+      );
+      return;
+    }
+
+    final url = 'http://82.29.167.118:8000/api/event/cancel/${widget.eventId}';
+    final headers = {'Content-Type': 'application/json'};
+    final body = {'joinedBy': _backendUserId!};
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: headers,
+        body: json.encode(body),
+      );
+
+      if (response.statusCode == 200) {
+        final prefs = await SharedPreferences.getInstance();
+        final joinedEvents = prefs.getStringList('joinedEvents') ?? [];
+        joinedEvents.remove(widget.eventId);
+        await prefs.setStringList('joinedEvents', joinedEvents);
+
+        setState(() {
+          _hasJoined = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('❌ Booking Cancelled')),
+        );
+      } else {
+        final resBody = json.decode(response.body);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to cancel: ${resBody['message']}')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
+  }
+
+  void _showTicketDetails() async {
+    showDialog(
+      context: context,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+      barrierDismissible: false,
+    );
+
+    final provider = EventRegistrationProvider();
+    await provider.fetchRegistrations(widget.eventId);
+    Navigator.pop(context);
+
+    final registration = provider.registrations.firstWhere(
+          (reg) => reg.id == _backendUserId,
+      orElse: () => EventRegistration(
+        id: '',
+        name: 'Unknown',
+        registrationId: '',
+        eventId: '',
+        status: 'Not Found',
+      ),
+    );
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TicketDetailScreen(
+          registration: registration,
+          eventName: widget.eventName,
+          eventDate: widget.eventDate,
+          eventTime: widget.eventTime,
+          eventLocation: widget.eventLocation,
+          ticketPrice: widget.ticketPrice,
+          venueName: widget.venueName,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    //final totalAmount = widget.ticketPrice + 3.00;
-
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
       appBar: AppBar(
@@ -360,46 +475,46 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
+                _hasJoined
+                    ? GestureDetector(
+                  onTap: _showTicketDetails,
+                  child: const Text(
+                    'View Detail',
+                    style: TextStyle(
+                      color: Colors.green,
+                      decoration: TextDecoration.underline,
+                      decorationColor: Colors.green,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                )
+                    : Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _hasJoined
-                        ? GestureDetector(
-                      onTap: _showTicketDetails,
-                      child: const Text(
-                        'View Detail',
-                        style: TextStyle(
-                          color: Colors.green,
-                          decoration: TextDecoration.underline,
-                          decorationColor: Colors.green,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    )
-                        : Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Price', style: TextStyle(color: Colors.grey[700])),
-                        Text(widget.ticketPrice == 0.0
-                            ? 'Free'
-                            : '\₹${widget.ticketPrice.toStringAsFixed(2)}',
-                        ),
-                      ],
-                    )
+                    Text('Price', style: TextStyle(color: Colors.grey[700])),
+                    Text(widget.ticketPrice == 0.0
+                        ? 'Free'
+                        : '\₹${widget.ticketPrice.toStringAsFixed(2)}'),
                   ],
                 ),
                 const SizedBox(width: 80),
                 Expanded(
                   child: GestureDetector(
-                    onTap: (_hasJoined || _isJoining) ? null : _startPayment,
+                    onTap: _isJoining
+                        ? null
+                        : (_hasJoined && widget.ticketPrice == 0.0)
+                        ? _cancelBooking
+                        : (!_hasJoined ? _startPayment : null),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 300),
                       width: double.infinity,
                       height: 50,
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        color: _hasJoined
+                        color: _hasJoined && widget.ticketPrice == 0.0
+                            ? Colors.redAccent
+                            : _hasJoined
                             ? Colors.grey.shade600
                             : _isJoining
                             ? Colors.pink.shade300
@@ -417,7 +532,9 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
                       child: Text(
                         _isJoining
                             ? 'Booking...'
-                            : (_hasJoined ? 'Booked' : 'Book'),
+                            : (_hasJoined
+                            ? (widget.ticketPrice == 0.0 ? 'Cancel Booking' : 'Booked')
+                            : 'Book'),
                         style: const TextStyle(
                           fontSize: 18,
                           color: Colors.white,

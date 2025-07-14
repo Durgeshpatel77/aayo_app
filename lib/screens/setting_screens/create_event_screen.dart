@@ -378,52 +378,14 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     );
   }
 
-  // Widget to build content for each step of the Stepper
+  // Widget to build content for each step of the Stepper (for in-person events)
   Widget _buildStepContent(int stepIndex, EventCreationProvider eventProvider) {
     switch (stepIndex) {
       case 0: // Event Details Step
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Online/In-person selection
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                ChoiceChip(
-                  label: const Text('Online Event'),
-                  selected: _isOnlineEvent,
-                  onSelected: (selected) {
-                    setState(() {
-                      _isOnlineEvent = selected;
-                      // Clear location-related fields if switching to online
-                      if (_isOnlineEvent) {
-                        eventProvider.setSelectedVenueName(null);
-                        _manualVenueNameController.clear();
-                        _eventLandmarkController.clear();
-                      }
-                    });
-                  },
-                  selectedColor: Colors.pink.shade100,
-                ),
-                ChoiceChip(
-                  label: const Text('In-person Event'),
-                  selected: !_isOnlineEvent,
-                  onSelected: (selected) {
-                    setState(() {
-                      _isOnlineEvent = !selected; // If "In-person" is selected, _isOnlineEvent is false
-                      // Clear online link field if switching to in-person
-                      if (!_isOnlineEvent) {
-                        _onlineEventLinkController.clear();
-                      }
-                    });
-                  },
-                  selectedColor: Colors.pink.shade100,
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            // Event Image Picker (remains for both types, maybe optional for online)
+            // Event Image Picker
             GestureDetector(
               onTap: eventProvider.isPickingImage ? null : () async {
                 final message = await eventProvider.pickImage();
@@ -504,248 +466,187 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 20),
-            // Event Description Field (always shown in step 0 for online, moved from step 2)
-            // This is shown here if _isOnlineEvent is true, otherwise it's still in step 2
-            if (_isOnlineEvent)
-              TextField(
-                controller: _eventDescriptionController,
-                maxLines: 5,
-                decoration: InputDecoration(
-                  hintText: 'Add Description',
-                  hintStyle: const TextStyle(
-                    color: Colors.black,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 14),
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide:
-                    BorderSide(width: 1, color: Colors.pink.shade400),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide:
-                    BorderSide(width: 1, color: Colors.pink.shade400),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide:
-                    BorderSide(width: 1, color: Colors.pink.shade700),
-                  ),
-                ),
-                style: const TextStyle(
-                  color: Colors.black,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
           ],
         );
-      case 1: // Location Step (Conditionally rendered)
-        if (_isOnlineEvent) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Online Event Link',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 20),
-              // Field for online link
-              TextfieldEditprofiile(
-                controller: _onlineEventLinkController,
-                hintText: 'Enter Online Event Link (e.g., Zoom, Google Meet)',
-                prefixIcon: Icons.link,
-              ),
-            ],
-          );
-        } else {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Location selection (current or manual)
-              GestureDetector(
-                onTap: eventProvider.isFetchingCurrentLocation ? null : _handleLocationTap,
-                child: Container(
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(width: 1, color: Colors.pink.shade400),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.location_on_outlined,
-                          color: Colors.pinkAccent, size: 24),
-                      const SizedBox(width: 15),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              (eventProvider.selectedLocation?.isNotEmpty ?? false)
-                                  ? eventProvider.selectedLocation!
-                                  : 'Tap to select manual or current location',
-                              style: const TextStyle(
-                                color: Colors.black,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const Text(
-                              'Offline location or virtual link',
-                              style:
-                              TextStyle(color: Colors.grey, fontSize: 12),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (eventProvider.isFetchingCurrentLocation)
-                        const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(Colors.pink)),
-                        )
-                      else
-                        Icon(Icons.chevron_right, color: Colors.grey[400]),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-              // Landmark input field
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 10),
-                  TextfieldEditprofiile(
-                    controller: _eventLandmarkController,
-                    hintText: 'Enter landmark',
-                    maxLength: 30,
-                    prefixIcon: Icons.apartment,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-
-              // Toggle for manual venue entry or selection from list
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Do you have venue ?',
-                    style: TextStyle(fontSize: 16, color: Colors.black),
-                  ),
-                  Switch(
-                    value: eventProvider.useManualVenueEntry,
-                    onChanged: (bool value) {
-                      eventProvider.setUseManualVenueEntry(value);
-                      if (value) {
-                        eventProvider.setSelectedVenueName(null); // Clear selected venue if switching to manual
-                        _manualVenueNameController.clear();
-                      }
-                    },
-                    activeColor: Colors.pink,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-
-              // Conditional rendering for manual venue input or venue list selection
-              eventProvider.useManualVenueEntry
-                  ?
-              TextfieldEditprofiile(
-                controller: _manualVenueNameController,
-                hintText: 'Enter venue name (type...)',
-                maxLength: 30,
-                prefixIcon: Icons.meeting_room_outlined,
-              )
-                  : GestureDetector(
-                onTap: _navigateToVenueList, // Navigate to venue list page
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 14),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                        width: 1, color: Colors.pink.shade400),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.meeting_room_outlined,
-                          color: Colors.pinkAccent, size: 24),
-                      const SizedBox(width: 15),
-                      Expanded(
-                        child: Text(
-                          (eventProvider.selectedVenueName?.isNotEmpty ?? false)
-                              ? eventProvider.selectedVenueName!
-                              : 'Select Venue from List',
-                          style: const TextStyle(
-                            color: Colors.black,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                      Icon(Icons.chevron_right,
-                          color: Colors.grey[400]),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          );
-        }
-      case 2: // Description, Tags, and Tickets Step
-      // Only show description here if it's an in-person event
+      case 1: // Location Step
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Event Description input field (Only for in-person events in this step)
-            if (!_isOnlineEvent) // Conditionally show description here
-              TextField(
-                controller: _eventDescriptionController,
-                maxLines: 5,
-                decoration: InputDecoration(
-                  hintText: 'Add Description',
-                  hintStyle: const TextStyle(
-                    color: Colors.black,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 14),
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide:
-                    BorderSide(width: 1, color: Colors.pink.shade400),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide:
-                    BorderSide(width: 1, color: Colors.pink.shade400),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide:
-                    BorderSide(width: 1, color: Colors.pink.shade700),
-                  ),
+            // Location selection (current or manual)
+            GestureDetector(
+              onTap: eventProvider.isFetchingCurrentLocation ? null : _handleLocationTap,
+              child: Container(
+                padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(width: 1, color: Colors.pink.shade400),
                 ),
-                style: const TextStyle(
+                child: Row(
+                  children: [
+                    const Icon(Icons.location_on_outlined,
+                        color: Colors.pinkAccent, size: 24),
+                    const SizedBox(width: 15),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            (eventProvider.selectedLocation?.isNotEmpty ?? false)
+                                ? eventProvider.selectedLocation!
+                                : 'Tap to select manual or current location',
+                            style: const TextStyle(
+                              color: Colors.black,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const Text(
+                            'Offline location or virtual link',
+                            style:
+                            TextStyle(color: Colors.grey, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (eventProvider.isFetchingCurrentLocation)
+                      const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(Colors.pink)),
+                      )
+                    else
+                      Icon(Icons.chevron_right, color: Colors.grey[400]),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            // Landmark input field
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 10),
+                TextfieldEditprofiile(
+                  controller: _eventLandmarkController,
+                  hintText: 'Enter landmark',
+                  maxLength: 30,
+                  prefixIcon: Icons.apartment,
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+
+            // Toggle for manual venue entry or selection from list
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Do you have venue ?',
+                  style: TextStyle(fontSize: 16, color: Colors.black),
+                ),
+                Switch(
+                  value: eventProvider.useManualVenueEntry,
+                  onChanged: (bool value) {
+                    eventProvider.setUseManualVenueEntry(value);
+                    if (value) {
+                      eventProvider.setSelectedVenueName(null); // Clear selected venue if switching to manual
+                      _manualVenueNameController.clear();
+                    }
+                  },
+                  activeColor: Colors.pink,
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+
+            // Conditional rendering for manual venue input or venue list selection
+            eventProvider.useManualVenueEntry
+                ?
+            TextfieldEditprofiile(
+              controller: _manualVenueNameController,
+              hintText: 'Enter venue name (type...)',
+              maxLength: 30,
+              prefixIcon: Icons.meeting_room_outlined,
+            )
+                : GestureDetector(
+              onTap: _navigateToVenueList, // Navigate to venue list page
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                      width: 1, color: Colors.pink.shade400),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.meeting_room_outlined,
+                        color: Colors.pinkAccent, size: 24),
+                    const SizedBox(width: 15),
+                    Expanded(
+                      child: Text(
+                        (eventProvider.selectedVenueName?.isNotEmpty ?? false)
+                            ? eventProvider.selectedVenueName!
+                            : 'Select Venue from List',
+                        style: const TextStyle(
+                          color: Colors.black,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    Icon(Icons.chevron_right,
+                        color: Colors.grey[400]),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      case 2: // Description, Tags, and Tickets Step
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Event Description input field
+            TextField(
+              controller: _eventDescriptionController,
+              maxLines: 5,
+              decoration: InputDecoration(
+                hintText: 'Add Description',
+                hintStyle: const TextStyle(
                   color: Colors.black,
                   fontSize: 16,
                   fontWeight: FontWeight.w500,
                 ),
+                contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 14),
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide:
+                  BorderSide(width: 1, color: Colors.pink.shade400),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide:
+                  BorderSide(width: 1, color: Colors.pink.shade400),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide:
+                  BorderSide(width: 1, color: Colors.pink.shade700),
+                ),
               ),
+              style: const TextStyle(
+                color: Colors.black,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
             const SizedBox(height: 20),
             Text(
               "Add Custom Questions",
@@ -765,7 +666,6 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
             ),
             const SizedBox(height: 12),
             ...addedQuestions.map((q) => ListTile(
-              leading: Icon(Icons.question_answer),
               title: Text(q),
             )).toList(),
 
@@ -893,6 +793,228 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     }
   }
 
+  // New method for building the online event form
+  Widget _buildOnlineEventForm(EventCreationProvider eventProvider) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Event Image Picker
+          GestureDetector(
+            onTap: eventProvider.isPickingImage ? null : () async {
+              final message = await eventProvider.pickImage();
+              if (message != null) {
+                _showMessage(message);
+              }
+            },
+            child: Container(
+              height: 200,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.pink.shade400, width: 1),
+              ),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  if (eventProvider.pickedEventImage != null)
+                    Positioned.fill(
+                      child: Image.file(eventProvider.pickedEventImage!, fit: BoxFit.cover),
+                    )
+                  else
+                    Center(
+                      child: Icon(
+                        Icons.camera_alt_outlined,
+                        size: 50,
+                        color: Colors.pink.shade400,
+                      ),
+                    ),
+                  if (eventProvider.isPickingImage)
+                    const CircularProgressIndicator(color: Colors.pink),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Event Name Field
+          TextfieldEditprofiile(
+            controller: _eventNameController,
+            hintText: 'Enter event name',
+            maxLength: 30,
+            prefixIcon: Icons.celebration,
+          ),
+          const SizedBox(height: 20),
+
+          // Start & End Date/Time Section
+          _buildDateTimeRow(
+            context: context,
+            date: eventProvider.startDate,
+            time: eventProvider.startTime,
+            onSelectDateTime: () => eventProvider.selectStartDateTime(context),
+            text: 'Select Start Date & Time',
+            eventProvider: eventProvider,
+          ),
+          const SizedBox(height: 20),
+
+          _buildDateTimeRow(
+            context: context,
+            date: eventProvider.endDate,
+            time: eventProvider.endTime,
+            onSelectDateTime: () async {
+              await eventProvider.selectEndDateTime(context);
+              if (eventProvider.errorMessage != null) {
+                _showMessage(eventProvider.errorMessage!);
+              }
+            },
+            text: 'Select End Date & Time',
+            eventProvider: eventProvider,
+          ),
+          const SizedBox(height: 20),
+
+          // Online Event Link
+          TextfieldEditprofiile(
+            controller: _onlineEventLinkController,
+            hintText: 'Enter Online Event Link (e.g., Zoom, Google Meet)',
+            prefixIcon: Icons.link,
+          ),
+          const SizedBox(height: 20),
+
+          // Event Description
+          TextField(
+            controller: _eventDescriptionController,
+            maxLines: 5,
+            decoration: InputDecoration(
+              hintText: 'Add Description',
+              hintStyle: const TextStyle(
+                color: Colors.black,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16, vertical: 14),
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide:
+                BorderSide(width: 1, color: Colors.pink.shade400),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide:
+                BorderSide(width: 1, color: Colors.pink.shade400),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide:
+                BorderSide(width: 1, color: Colors.pink.shade700),
+              ),
+            ),
+            style: const TextStyle(
+              color: Colors.black,
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Removed "Add Custom Questions" section
+
+          // Tag selection field
+          GestureDetector(
+            onTap: _showTagSelector, // Open tag selection modal
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.pink.shade400),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      selectedTags.isEmpty
+                          ? "Select tags from list"
+                          : selectedTags.map((tag) => tag['title']).join(', '),
+                      style: const TextStyle(fontSize: 16),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 2,
+                    ),
+                  ),
+                  Icon(Icons.arrow_forward_ios, color: Colors.grey.shade500,size: 14,),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Removed "Tickets" section
+
+          const SizedBox(height: 30),
+
+          // Submit Button for online event
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: eventProvider.isLoading ? null : () async {
+                // Validation for online event form
+                if (_eventNameController.text.isEmpty ||
+                    eventProvider.pickedEventImage == null ||
+                    eventProvider.startDate == null ||
+                    eventProvider.startTime == null ||
+                    eventProvider.endDate == null ||
+                    eventProvider.endTime == null ||
+                    _onlineEventLinkController.text.isEmpty ||
+                    _eventDescriptionController.text.isEmpty) {
+                  _showMessage("Please fill all required fields.");
+                  return;
+                }
+
+                final List<String> selectedTagTitles =
+                selectedTags.map((tag) => tag['title']!.replaceAll('"', '')).toList();
+
+                debugPrint("🟢 Cleaned Tags to Send: $selectedTagTitles");
+
+                bool success = await eventProvider.createEvent(
+                  context: context,
+                  eventName: _eventNameController.text,
+                  description: _eventDescriptionController.text,
+                  venueAddress: _onlineEventLinkController.text,
+                  venueName: 'Online Event',
+                  tags: selectedTagTitles,
+                );
+
+                if (success && mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("🎉 Event created successfully!")),
+                  );
+                  Navigator.pop(context);
+                } else {
+                  _showMessage(eventProvider.errorMessage ?? "Something went wrong.");
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.pink,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 15),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: eventProvider.isLoading
+                  ? const CircularProgressIndicator(color: Colors.white)
+                  : const Text('Create Event'),
+            ),
+          ),
+          const SizedBox(height: 20), // Add some bottom padding
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // Use Consumer to listen to changes in EventCreationProvider
@@ -912,182 +1034,219 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                 child: const Icon(Icons.arrow_back_ios_new_sharp)),
           ),
           backgroundColor: Colors.white,
-          body: Theme(
-            data: Theme.of(context).copyWith(
-              colorScheme: ColorScheme.light(
-                primary: Colors.pink, // 🔴 This changes the stepper line & icon color
+          body: Column(
+            children: [
+              // Online/In-person selection at the top, outside the conditional
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    ChoiceChip(
+                      label: const Text('Online Event'),
+                      selected: _isOnlineEvent,
+                      onSelected: (selected) {
+                        setState(() {
+                          _isOnlineEvent = selected;
+                          // Clear location-related fields if switching to online
+                          if (_isOnlineEvent) {
+                            eventProvider.setSelectedVenueName(null);
+                            _manualVenueNameController.clear();
+                            _eventLandmarkController.clear();
+                          } else {
+                            // Clear online link field if switching to in-person
+                            _onlineEventLinkController.clear();
+                          }
+                          // Reset stepper if switching from online to in-person
+                          _currentStep = 0;
+                        });
+                      },
+                      selectedColor: Colors.pink.shade100,
+                    ),
+                    ChoiceChip(
+                      label: const Text('In-person Event'),
+                      selected: !_isOnlineEvent,
+                      onSelected: (selected) {
+                        setState(() {
+                          _isOnlineEvent = !selected; // If "In-person" is selected, _isOnlineEvent is false
+                          // Clear online link field if switching to in-person
+                          if (!_isOnlineEvent) {
+                            _onlineEventLinkController.clear();
+                          } else {
+                            // Clear location-related fields if switching to online
+                            eventProvider.setSelectedVenueName(null);
+                            _manualVenueNameController.clear();
+                            _eventLandmarkController.clear();
+                          }
+                          // Reset stepper if switching from in-person to online (though stepper won't be visible)
+                          _currentStep = 0;
+                        });
+                      },
+                      selectedColor: Colors.pink.shade100,
+                    ),
+                  ],
+                ),
               ),
-            ),
-            child: Stepper(
-              type: StepperType.vertical, // Vertical stepper layout
-              currentStep: _currentStep, // Controls the active step
-              onStepContinue: () async {
-                // Validation logic for each step before proceeding
-                bool canContinue = false;
-                if (_currentStep == 0) { // Validation for Event Details step
-                  // Base validation for event details
-                  if (_eventNameController.text.isNotEmpty &&
-                      eventProvider.pickedEventImage != null &&
-                      eventProvider.startDate != null &&
-                      eventProvider.startTime != null &&
-                      eventProvider.endDate != null &&
-                      eventProvider.endTime != null) {
-
-                    // Additional validation based on event type for description
-                    if (_isOnlineEvent) {
-                      if (_eventDescriptionController.text.isNotEmpty) {
-                        canContinue = true;
-                      } else {
-                        _showMessage("Please enter the event description.");
+              Expanded(
+                child: _isOnlineEvent
+                    ? _buildOnlineEventForm(eventProvider) // Direct form for online events
+                    : Theme(
+                  data: Theme.of(context).copyWith(
+                    colorScheme: ColorScheme.light(
+                      primary: Colors.pink, // 🔴 This changes the stepper line & icon color
+                    ),
+                  ),
+                  child: Stepper(
+                    type: StepperType.vertical, // Vertical stepper layout
+                    currentStep: _currentStep, // Controls the active step
+                    onStepContinue: () async {
+                      // Validation logic for each step before proceeding
+                      bool canContinue = false;
+                      if (_currentStep == 0) { // Validation for Event Details step
+                        // Base validation for event details
+                        if (_eventNameController.text.isNotEmpty &&
+                            eventProvider.pickedEventImage != null &&
+                            eventProvider.startDate != null &&
+                            eventProvider.startTime != null &&
+                            eventProvider.endDate != null &&
+                            eventProvider.endTime != null) {
+                          canContinue = true;
+                        } else {
+                          _showMessage("Please fill all event details, select an image, and set start/end times.");
+                        }
+                      } else if (_currentStep == 1) { // Validation for Location step
+                        if ((eventProvider.selectedLocation?.isNotEmpty ?? false) &&
+                            (_eventLandmarkController.text.isNotEmpty) &&
+                            (eventProvider.useManualVenueEntry ? _manualVenueNameController.text.isNotEmpty : eventProvider.selectedVenueName?.isNotEmpty ?? false)
+                        ) {
+                          canContinue = true;
+                        } else {
+                          _showMessage("Please select a location, enter a landmark, and specify a venue.");
+                        }
+                      } else if (_currentStep == 2) { // Validation for Description, Tags, Tickets
+                        if (_eventDescriptionController.text.isEmpty) {
+                          _showMessage("Please enter the event description.");
+                        } else {
+                          canContinue = true;
+                        }
                       }
-                    } else { // In-person, description is validated in step 2
-                      canContinue = true;
-                    }
-                  } else {
-                    _showMessage("Please fill all event details, select an image, and set start/end times.");
-                  }
-                } else if (_currentStep == 1) { // Validation for Location step
-                  if (_isOnlineEvent) {
-                    if (_onlineEventLinkController.text.isNotEmpty) {
-                      canContinue = true;
-                    } else {
-                      _showMessage("Please enter the online event link.");
-                    }
-                  } else { // In-person event validation
-                    if ((eventProvider.selectedLocation?.isNotEmpty ?? false) &&
-                        (_eventLandmarkController.text.isNotEmpty) &&
-                        (eventProvider.useManualVenueEntry ? _manualVenueNameController.text.isNotEmpty : eventProvider.selectedVenueName?.isNotEmpty ?? false)
-                    ) {
-                      canContinue = true;
-                    } else {
-                      _showMessage("Please select a location, enter a landmark, and specify a venue.");
-                    }
-                  }
-                } else if (_currentStep == 2) { // Validation for Description, Tags, Tickets
-                  if (!_isOnlineEvent && _eventDescriptionController.text.isEmpty) {
-                    _showMessage("Please enter the event description.");
-                  } else {
-                    canContinue = true;
-                  }
-                }
 
-                if (canContinue) {
-                  if (_currentStep < 2) {
-                    setState(() {
-                      _currentStep += 1;
-                    });
-                  } else {
-                    // Final step: Submit event
-                    final List<String> selectedTagTitles =
-                    selectedTags.map((tag) => tag['title']!.replaceAll('"', '')).toList();
+                      if (canContinue) {
+                        if (_currentStep < 2) {
+                          setState(() {
+                            _currentStep += 1;
+                          });
+                        } else {
+                          // Final step: Submit event
+                          final List<String> selectedTagTitles =
+                          selectedTags.map((tag) => tag['title']!.replaceAll('"', '')).toList();
 
-                    debugPrint("🟢 Cleaned Tags to Send: $selectedTagTitles");
+                          debugPrint("🟢 Cleaned Tags to Send: $selectedTagTitles");
 
-                    debugPrint("🟣 Selected Tags: $selectedTagTitles");
+                          debugPrint("🟣 Selected Tags: $selectedTagTitles");
 
-                    bool success = await eventProvider.createEvent(
-                      context: context,
-                      eventName: _eventNameController.text,
-                      description: _eventDescriptionController.text,
-                      venueAddress: _isOnlineEvent
-                          ? _onlineEventLinkController.text
-                          : _eventLandmarkController.text,
-                      venueName: _isOnlineEvent
-                          ? 'Online Event'
-                          : (eventProvider.useManualVenueEntry
-                          ? _manualVenueNameController.text
-                          : eventProvider.selectedVenueName ?? ''),
-                      tags: selectedTagTitles,
-                    );
+                          bool success = await eventProvider.createEvent(
+                            context: context,
+                            eventName: _eventNameController.text,
+                            description: _eventDescriptionController.text,
+                            venueAddress: _eventLandmarkController.text, // For in-person
+                            venueName: eventProvider.useManualVenueEntry
+                                ? _manualVenueNameController.text
+                                : eventProvider.selectedVenueName ?? '',
+                            tags: selectedTagTitles,
+                          );
 
-                    if (success && mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("🎉 Event created successfully!")),
-                      );
-                      Navigator.pop(context);
-                    } else {
-                      _showMessage(eventProvider.errorMessage ?? "Something went wrong.");
-                    }
-                  }
-                }
-              },
-              onStepCancel: () {
-                // Handle going back a step or popping the screen
-                if (_currentStep > 0) {
-                  setState(() {
-                    _currentStep -= 1;
-                  });
-                } else {
-                  Navigator.pop(context); // Go back if on the first step
-                }
-              },
-              steps: [
-                // Step 0: Event Details
-                Step(
-                  title: const Text('Event Details'),
-                  content: _buildStepContent(0, eventProvider),
-                  isActive: _currentStep >= 0, // Active if current step is 0 or greater
-                  state: _currentStep > 0 ? StepState.complete : StepState.indexed, // Mark as complete if moved past
-                ),
-                // Step 1: Location / Online Details
-                Step(
-                  title: _isOnlineEvent ? const Text('Online Details') : const Text('Location'),
-                  content: _buildStepContent(1, eventProvider),
-                  isActive: _currentStep >= 1, // Active if current step is 1 or greater
-                  state: _currentStep > 1 ? StepState.complete : StepState.indexed, // Mark as complete if moved past
-                ),
-                // Step 2: Description & Tickets
-                Step(
-                  title: const Text('Description & Tickets'),
-                  content: _buildStepContent(2, eventProvider),
-                  isActive: _currentStep >= 2, // Active if current step is 2 or greater
-                  state: _currentStep == 2 ? StepState.editing : StepState.indexed, // Mark as editing if current step
-                ),
-              ],
-              // Custom controls for the stepper (Continue/Back buttons)
-              controlsBuilder: (BuildContext context, ControlsDetails details) {
-                return Padding(
-                  padding: const EdgeInsets.only(top: 16.0),
-                  child: Row(
-                    children: <Widget>[
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: details.onStepContinue, // Calls onStepContinue callback
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.pink,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 15),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: eventProvider.isLoading && _currentStep == 2 // Show loading only on final step
-                              ? const CircularProgressIndicator(color: Colors.white)
-                              : Text(_currentStep == 2 ? 'Create Event' : 'Continue'), // Button text changes on last step
-                        ),
+                          if (success && mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text("🎉 Event created successfully!")),
+                            );
+                            Navigator.pop(context);
+                          } else {
+                            _showMessage(eventProvider.errorMessage ?? "Something went wrong.");
+                          }
+                        }
+                      }
+                    },
+                    onStepCancel: () {
+                      // Handle going back a step or popping the screen
+                      if (_currentStep > 0) {
+                        setState(() {
+                          _currentStep -= 1;
+                        });
+                      } else {
+                        Navigator.pop(context); // Go back if on the first step
+                      }
+                    },
+                    steps: [
+                      // Step 0: Event Details
+                      Step(
+                        title: const Text('Event Details'),
+                        content: _buildStepContent(0, eventProvider),
+                        isActive: _currentStep >= 0, // Active if current step is 0 or greater
+                        state: _currentStep > 0 ? StepState.complete : StepState.indexed, // Mark as complete if moved past
                       ),
-                      const SizedBox(width: 10),
-                      // Show "Back" button only if not on the first step
-                      if (_currentStep > 0)
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: details.onStepCancel, // Calls onStepCancel callback
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.pink,
-                              side: const BorderSide(color: Colors.pink),
-                              padding: const EdgeInsets.symmetric(vertical: 15),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                      // Step 1: Location
+                      Step(
+                        title: const Text('Location'),
+                        content: _buildStepContent(1, eventProvider),
+                        isActive: _currentStep >= 1, // Active if current step is 1 or greater
+                        state: _currentStep > 1 ? StepState.complete : StepState.indexed, // Mark as complete if moved past
+                      ),
+                      // Step 2: Description & Tickets
+                      Step(
+                        title: const Text('Description & Tickets'),
+                        content: _buildStepContent(2, eventProvider),
+                        isActive: _currentStep >= 2, // Active if current step is 2 or greater
+                        state: _currentStep == 2 ? StepState.editing : StepState.indexed, // Mark as editing if current step
+                      ),
+                    ],
+                    // Custom controls for the stepper (Continue/Back buttons)
+                    controlsBuilder: (BuildContext context, ControlsDetails details) {
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 16.0),
+                        child: Row(
+                          children: <Widget>[
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: details.onStepContinue, // Calls onStepContinue callback
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.pink,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 15),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                child: eventProvider.isLoading && _currentStep == 2 // Show loading only on final step
+                                    ? const CircularProgressIndicator(color: Colors.white)
+                                    : Text(_currentStep == 2 ? 'Create Event' : 'Continue'), // Button text changes on last step
                               ),
                             ),
-                            child: const Text('Back'),
-                          ),
+                            const SizedBox(width: 10),
+                            // Show "Back" button only if not on the first step
+                            if (_currentStep > 0)
+                              Expanded(
+                                child: OutlinedButton(
+                                  onPressed: details.onStepCancel, // Calls onStepCancel callback
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.pink,
+                                    side: const BorderSide(color: Colors.pink),
+                                    padding: const EdgeInsets.symmetric(vertical: 15),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  child: const Text('Back'),
+                                ),
+                              ),
+                          ],
                         ),
-                    ],
+                      );
+                    },
                   ),
-                );
-              },
-            ),
+                ),
+              ),
+            ],
           ),
         );
       },
