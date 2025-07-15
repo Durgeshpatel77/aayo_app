@@ -135,7 +135,14 @@ class _ApproveScreenState extends State<ApproveScreen> with SingleTickerProvider
           children: [
             OverviewTab(event: selectedEvent!),
             GuestPage(eventId: selectedEvent!.id),
-            RegistrationPage(eventId:selectedEvent!.id),
+              RegistrationPage(
+                eventId: selectedEvent!.id,
+                eventTitle: selectedEvent!.title,
+                eventImageUrl: (selectedEvent!.media.isNotEmpty)
+                    ? 'http://82.29.167.118:8000/${selectedEvent!.media.first}'
+                    : null,
+              ),
+
           ],
         ),
       ),

@@ -4,6 +4,7 @@ import 'package:aayo/providers/approve_events_provider/event_registration_provid
 import 'package:aayo/providers/approve_events_provider/guest_page_provider.dart';
 import 'package:aayo/providers/home_screens_providers/add_post_provider.dart';
 import 'package:aayo/providers/home_screens_providers/chat_provider.dart';
+import 'package:aayo/providers/notifications/notification_provider.dart';
 import 'package:aayo/providers/onording_login_screens_providers/favorite_category_provider.dart';
 import 'package:aayo/providers/onording_login_screens_providers/google_signin_provider.dart';
 import 'package:aayo/providers/onording_login_screens_providers/onboarding_provider.dart';
@@ -58,6 +59,9 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AddPostProvider()),
         ChangeNotifierProvider(create: (_) => GuestProvider()),
         ChangeNotifierProvider(create: (_) => EventRegistrationProvider()),
+        ChangeNotifierProvider(create: (_) => NotificationProvider(),
+        ),
+
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,

@@ -1,10 +1,9 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/notification_model.dart';
 import 'notification_item.dart';
-
 
 class Notificationscreen extends StatefulWidget {
   const Notificationscreen({super.key});
@@ -25,38 +24,41 @@ class _NotificationscreenState extends State<Notificationscreen> {
 
   Future<void> fetchNotifications() async {
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final currentUserId = prefs.getString('backendUserId');
+
+      if (currentUserId == null || currentUserId.isEmpty) {
+        debugPrint("❌ No logged-in user ID found.");
+        setState(() => isLoading = false);
+        return;
+      }
+
       final response = await http.get(
         Uri.parse('http://82.29.167.118:8000/api/notification'),
       );
 
-      print("🔎 Status Code: ${response.statusCode}");
+      debugPrint("🔎 Status Code: ${response.statusCode}");
 
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
-        print("📥 Raw Data: $decoded");
+        final List<dynamic> notificationsJson = decoded['data'] ?? [];
 
-        if (decoded['data'] == null || decoded['data'] is! List) {
-          print("⚠️ 'data' key missing or not a list");
-          setState(() => isLoading = false);
-          return;
-        }
+        final List<NotificationModel> allNotifications = notificationsJson
+            .map((json) => NotificationModel.fromJson(json))
+            .toList();
 
-        final List<dynamic> notificationsJson = decoded['data'];
-        print("📦 Notifications Count: ${notificationsJson.length}");
+        // ✅ Filter only notifications for this user
+        final userNotifications = allNotifications
+            .where((notif) => notif.receiverId == currentUserId)
+            .toList();
 
-        final List<NotificationModel> allNotifications =
-        notificationsJson.map((e) {
-          print("🛠 Processing item: $e");
-          return NotificationModel.fromJson(e);
-        }).toList();
+        debugPrint("✅ Filtered for user $currentUserId: ${userNotifications.length} notifications");
 
+        // Group by date
         final Map<String, List<NotificationModel>> grouped = {};
-
-        for (var notif in allNotifications) {
-          final dateKey =
-              "${notif.createdAt.year}-${notif.createdAt.month.toString().padLeft(2, '0')}-${notif.createdAt.day.toString().padLeft(2, '0')}";
+        for (var notif in userNotifications) {
+          final dateKey = "${notif.createdAt.year}-${notif.createdAt.month.toString().padLeft(2, '0')}-${notif.createdAt.day.toString().padLeft(2, '0')}";
           grouped.putIfAbsent(dateKey, () => []).add(notif);
-          print("📅 Grouped under $dateKey: ${notif.message}");
         }
 
         setState(() {
@@ -64,12 +66,12 @@ class _NotificationscreenState extends State<Notificationscreen> {
           isLoading = false;
         });
       } else {
-        print("❌ Failed with status: ${response.statusCode}");
-        print("❌ Body: ${response.body}");
+        debugPrint("❌ Failed: ${response.statusCode}");
+        debugPrint("❌ Body: ${response.body}");
         setState(() => isLoading = false);
       }
     } catch (e) {
-      print("❌ Exception caught: $e");
+      debugPrint("❌ Exception: $e");
       setState(() => isLoading = false);
     }
   }
@@ -81,7 +83,6 @@ class _NotificationscreenState extends State<Notificationscreen> {
       int.parse(parts[1]),
       int.parse(parts[2]),
     );
-
     return "${_monthName(date.month)} ${date.day}, ${date.year}";
   }
 
@@ -96,7 +97,7 @@ class _NotificationscreenState extends State<Notificationscreen> {
   @override
   Widget build(BuildContext context) {
     final sortedKeys = groupedNotifications.keys.toList()
-      ..sort((a, b) => b.compareTo(a)); // Descending order
+      ..sort((a, b) => b.compareTo(a)); // Newest first
 
     return Scaffold(
       appBar: AppBar(
@@ -132,14 +133,13 @@ class _NotificationscreenState extends State<Notificationscreen> {
                   ),
                 ),
                 ...items.map((notif) {
-                  print("🔔 Notification: message=${notif.message}, user=${notif.user}");
                   return NotificationItem(
-                    icon: Icons.notifications,
+                    profileImageUrl: notif.profileImage, // Pass only the image path
                     title: notif.message,
                     subtitle:
                     "${notif.createdAt.hour.toString().padLeft(2, '0')}:${notif.createdAt.minute.toString().padLeft(2, '0')}",
                   );
-                }),
+                })
               ],
             );
           }).toList(),

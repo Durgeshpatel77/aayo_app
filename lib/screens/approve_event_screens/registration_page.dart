@@ -1,13 +1,22 @@
 import 'package:aayo/screens/approve_event_screens/status_user_list_page.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/event_registration_model.dart';
 import '../../providers/approve_events_provider/event_registration_provider.dart';
+import '../../providers/notifications/notification_provider.dart';
 
 class RegistrationPage extends StatefulWidget {
   final String eventId;
+  final String eventTitle;
+  final String? eventImageUrl;
 
-  const RegistrationPage({super.key, required this.eventId});
+  const RegistrationPage({
+    super.key,
+    required this.eventId,
+    required this.eventTitle,
+    this.eventImageUrl,
+  });
 
   @override
   State<RegistrationPage> createState() => _RegistrationPageState();
@@ -23,38 +32,44 @@ class _RegistrationPageState extends State<RegistrationPage> {
     });
   }
 
-  void _showStatusDialog(String title, List<EventRegistration> users) {
+  void _showNotificationDialog(List<EventRegistration> users) {
+    final TextEditingController _messageController = TextEditingController();
+
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text('$title Users'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: users.isEmpty
-              ? const Text('No users in this status.')
-              : ListView.separated(
-            shrinkWrap: true,
-            itemCount: users.length,
-            separatorBuilder: (_, __) => const Divider(),
-            itemBuilder: (_, index) {
-              final reg = users[index];
-              return ListTile(
-                title: Text(reg.name),
-                subtitle: Text("Status: ${reg.status}"),
-                trailing: const Icon(Icons.edit, size: 20),
-                onTap: () {
-                  Navigator.pop(context); // Close dialog
-                  _showDetailsSheet(reg); // Open sheet like before
-                },
-              );
-            },
+        title: const Text("Send Notification"),
+        content: TextField(
+          controller: _messageController,
+          maxLines: 3,
+          decoration: const InputDecoration(
+            labelText: "Enter your message",
+            border: OutlineInputBorder(),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("Close"),
-          )
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final message = _messageController.text.trim();
+              if (message.isNotEmpty) {
+                Navigator.pop(context);
+
+                await Provider.of<NotificationProvider>(context, listen: false)
+                    .sendEventNotification(
+                  context: context,
+                  message: message,
+                  users: users,
+                  eventTitle: widget.eventTitle,
+                  eventImageUrl: widget.eventImageUrl,
+                );
+              }
+            },
+            child: const Text("Send"),
+          ),
         ],
       ),
     );
@@ -123,44 +138,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
     );
   }
 
-  Widget _actionButton(
-      String label, Color color, String status, EventRegistration reg) {
-    return ElevatedButton(
-      onPressed: () async {
-        final success = await Provider.of<EventRegistrationProvider>(
-          context,
-          listen: false,
-        ).updateStatus(
-          eventId: reg.eventId,
-          joinedBy: reg.id,
-          registrationId: reg.registrationId,
-          newStatus: status,
-        );
-        if (success) {
-          Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("✅ Status changed to $label")),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("❌ Failed to change status")),
-          );
-        }
-      },
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-      child: Text(label),
-    );
-  }
-
-  Widget _buildStatusCard(
-      String title,
-      IconData icon,
-      Color color,
-      List<EventRegistration> list,
-      ) {
+  Widget _buildStatusCard(String title, IconData icon, Color color, List<EventRegistration> list) {
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -188,8 +166,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
                   title,
                   style: TextStyle(fontWeight: FontWeight.bold, color: color),
                 ),
-                Text('${list.length}',
-                    style: const TextStyle(fontSize: 13)),
+                Text('${list.length}', style: const TextStyle(fontSize: 13)),
               ],
             ),
           ],
@@ -215,7 +192,6 @@ class _RegistrationPageState extends State<RegistrationPage> {
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                // Registration status
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(12),
@@ -229,45 +205,48 @@ class _RegistrationPageState extends State<RegistrationPage> {
                       SizedBox(width: 10),
                       Text("Registration is OPEN",
                           style: TextStyle(
-                              color: Colors.green,
-                              fontWeight: FontWeight.w600)),
+                            color: Colors.green,
+                            fontWeight: FontWeight.w600,
+                          )),
                     ],
                   ),
                 ),
                 const SizedBox(height: 20),
 
-                // Status Cards
-                Column(
+                Row(
                   children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildStatusCard(
-                              "Approved", Icons.check, Colors.green, approved),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildStatusCard("Pending",
-                              Icons.hourglass_bottom, Colors.orange, pending),
-                        ),
-                      ],
+                    Expanded(
+                      child: _buildStatusCard("Approved", Icons.check, Colors.green, approved),
                     ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildStatusCard(
-                              "Declined", Icons.cancel, Colors.red, declined),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildStatusCard("Waiting",
-                              Icons.access_time, Colors.deepPurple, waiting),
-                        ),
-                      ],
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildStatusCard("Pending", Icons.hourglass_bottom, Colors.orange, pending),
                     ),
                   ],
-                )
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildStatusCard("Declined", Icons.cancel, Colors.red, declined),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildStatusCard("Waiting", Icons.access_time, Colors.deepPurple, waiting),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.send),
+                  label: const Text("Send Notification"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.pink,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  onPressed: () => _showNotificationDialog(approved),
+                ),
               ],
             ),
           ),

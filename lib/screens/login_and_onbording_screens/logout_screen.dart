@@ -16,24 +16,27 @@ class LogoutScreen extends StatelessWidget {
     final googleProvider = Provider.of<GoogleSignInProvider>(context, listen: false);
     final logoutProvider = LogoutProvider(googleProvider);
 
-    try {
-      // ✅ Delete FCM token from device
-      final messaging = FirebaseMessaging.instance;
-      final fcmToken = await messaging.getToken();
+    // ❌ Do not remove FCM token now — commenting out for future use
+    /*
+  try {
+    // ✅ Delete FCM token from device
+    final messaging = FirebaseMessaging.instance;
+    final fcmToken = await messaging.getToken();
 
-      // ✅ Send request to backend to remove token from DB
-      await http.put(
-        Uri.parse('http://82.29.167.118:8000/api/user/remove-token'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'fcmToken': fcmToken}),
-      );
+    // ✅ Send request to backend to remove token from DB
+    await http.put(
+      Uri.parse('http://82.29.167.118:8000/api/user/remove-token'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'fcmToken': fcmToken}),
+    );
 
-      // ✅ Delete it locally
-      await messaging.deleteToken();
-      debugPrint('🧹 Deleted FCM token: $fcmToken');
-    } catch (e) {
-      debugPrint('⚠️ Error deleting FCM token: $e');
-    }
+    // ✅ Delete it locally
+    await messaging.deleteToken();
+    debugPrint('🧹 Deleted FCM token: $fcmToken');
+  } catch (e) {
+    debugPrint('⚠️ Error deleting FCM token: $e');
+  }
+  */
 
     final success = await logoutProvider.performLogout();
 

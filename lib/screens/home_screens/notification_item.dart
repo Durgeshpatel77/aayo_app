@@ -1,20 +1,15 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 class NotificationItem extends StatelessWidget {
-  final IconData icon;
   final String title;
   final String subtitle;
-  final Color iconColor;
-  final Color iconBackgroundColor;
+  final String? profileImageUrl;
 
   const NotificationItem({
     super.key,
-    required this.icon,
     required this.title,
     required this.subtitle,
-    this.iconColor = Colors.white,
-    this.iconBackgroundColor = Colors.pinkAccent,
+    this.profileImageUrl,
   });
 
   @override
@@ -38,8 +33,10 @@ class NotificationItem extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 28,
-            backgroundColor: iconBackgroundColor,
-            child: Icon(icon, color: iconColor, size: 28),
+            backgroundColor: Colors.grey[200],
+            backgroundImage: profileImageUrl != null && profileImageUrl!.isNotEmpty
+                ? NetworkImage('http://82.29.167.118:8000/${profileImageUrl!.replaceAll('\\', '/')}') // replace \ with /
+                : const AssetImage('assets/default_user.png') as ImageProvider,
           ),
           const SizedBox(width: 16.0),
           Expanded(
