@@ -32,8 +32,20 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     "Instagram",
     "Other"
   ];
+  final List<String> predefinedQuestions = [
+    "What is your Instagram ID?",
+    "What is your Facebook ID?",
+    "What is your LinkedIn profile?",
+    "What is your GitHub username?",
+    "What is your Email address?",
+    "What is your Phone number?",
+    "What is your Twitter handle?",
+    "What is your current city?",
+    "What is your occupation?"
+  ];
 
   final List<String> addedQuestions = [];
+  final List<String> selectedCustomQuestions = [];
 
   // All available tags for selection
   final List<Map<String, String>> allTags = [
@@ -79,27 +91,27 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Enter $label'),
+        title: Text('Enter question'),
         content: TextField(
           controller: _controller,
-          decoration: InputDecoration(hintText: 'Enter your $label'),
+          decoration: const InputDecoration(hintText: 'Enter your question'),
         ),
         actions: [
           TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-            },
-            child: Text('Cancel'),
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.pink),
             onPressed: () {
-              setState(() {
-                addedQuestions.add('$label: ${_controller.text}');
-              });
+              if (_controller.text.trim().isNotEmpty) {
+                setState(() {
+                  selectedCustomQuestions.add(_controller.text.trim());
+                });
+              }
               Navigator.pop(context);
             },
-            child: Text('Add'),
+            child: const Text('Add'),
           ),
         ],
       ),
@@ -665,7 +677,8 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
               }).toList(),
             ),
             const SizedBox(height: 12),
-            ...addedQuestions.map((q) => ListTile(
+            ...selectedCustomQuestions.map((q) => ListTile(
+              leading: const Icon(Icons.question_answer, color: Colors.pink),
               title: Text(q),
             )).toList(),
 
@@ -958,7 +971,8 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
           // Submit Button for online event
           SizedBox(
             width: double.infinity,
-            child: ElevatedButton(
+            child:
+            ElevatedButton(
               onPressed: eventProvider.isLoading ? null : () async {
                 // Validation for online event form
                 if (_eventNameController.text.isEmpty ||
@@ -984,7 +998,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                   description: _eventDescriptionController.text,
                   venueAddress: _onlineEventLinkController.text,
                   venueName: 'Online Event',
-                  tags: selectedTagTitles,
+                  tags: selectedTagTitles, customQuestions: [],
                 );
 
                 if (success && mounted) {
@@ -1048,11 +1062,16 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                       onSelected: (selected) {
                         setState(() {
                           _isOnlineEvent = selected;
-                          // Clear location-related fields if switching to online
+                          // Clear all relevant state when switching to online
                           if (_isOnlineEvent) {
-                            eventProvider.setSelectedVenueName(null);
+                            eventProvider.clearAllEventData(); // New method in provider
+                            _eventNameController.clear();
+                            _eventDescriptionController.clear();
                             _manualVenueNameController.clear();
                             _eventLandmarkController.clear();
+                            selectedTags.clear();
+                            addedQuestions.clear();
+                            // _onlineEventLinkController will be used here
                           } else {
                             // Clear online link field if switching to in-person
                             _onlineEventLinkController.clear();
@@ -1069,9 +1088,15 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                       onSelected: (selected) {
                         setState(() {
                           _isOnlineEvent = !selected; // If "In-person" is selected, _isOnlineEvent is false
-                          // Clear online link field if switching to in-person
+                          // Clear all relevant state when switching to in-person
                           if (!_isOnlineEvent) {
+                            eventProvider.clearAllEventData(); // New method in provider
+                            _eventNameController.clear();
+                            _eventDescriptionController.clear();
                             _onlineEventLinkController.clear();
+                            selectedTags.clear();
+                            addedQuestions.clear();
+                            // _manualVenueNameController and _eventLandmarkController will be used here
                           } else {
                             // Clear location-related fields if switching to online
                             eventProvider.setSelectedVenueName(null);
@@ -1154,9 +1179,11 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                                 ? _manualVenueNameController.text
                                 : eventProvider.selectedVenueName ?? '',
                             tags: selectedTagTitles,
+                            customQuestions: selectedCustomQuestions, // ✅ optional
+
                           );
 
-                          if (success && mounted) {
+                            if (success && mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text("🎉 Event created successfully!")),
                             );

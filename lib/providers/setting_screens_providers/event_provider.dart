@@ -287,27 +287,27 @@ class EventCreationProvider with ChangeNotifier {
     required String venueName,
     required String venueAddress,
     required BuildContext context,
-    required List<String> tags, // ✅ added tags parameter
+    required List<String> tags,
+    required List<String> customQuestions,
   }) async {
     _clearError();
     _setLoading(true);
 
-// ✅ Add validation block right here
+    // ✅ Validate required fields
     if (eventName.isEmpty ||
-            _startDate == null ||
-            _startTime == null ||
-            _endDate == null ||
-            _endTime == null ||
-            _selectedLocation == null ||
-            _selectedLatitude == null ||
-            _selectedLongitude == null ||
-            _selectedCity == null ||
-            description.isEmpty ||
-            venueName.trim().isEmpty || // ✅ check for empty venueName
-            venueAddress.trim().isEmpty // ✅ check for empty venueAddress
-        ) {
+        _startDate == null ||
+        _startTime == null ||
+        _endDate == null ||
+        _endTime == null ||
+        _selectedLocation == null ||
+        _selectedLatitude == null ||
+        _selectedLongitude == null ||
+        _selectedCity == null ||
+        description.isEmpty ||
+        venueName.trim().isEmpty ||
+        venueAddress.trim().isEmpty) {
       _errorMessage =
-          "Please fill all required fields including venue name and landmark.";
+      "Please fill all required fields including venue name and landmark.";
       _setLoading(false);
       return false;
     }
@@ -337,6 +337,7 @@ class EventCreationProvider with ChangeNotifier {
         _startTime!.hour,
         _startTime!.minute,
       );
+
       final DateTime endDateTime = DateTime(
         _endDate!.year,
         _endDate!.month,
@@ -348,10 +349,11 @@ class EventCreationProvider with ChangeNotifier {
       final uri = Uri.parse('http://82.29.167.118:8000/api/post/event');
       final request = http.MultipartRequest('POST', uri);
 
+      // 🔗 Add required fields
       request.fields['type'] = "event";
       request.fields['user'] = backendUserId;
       request.fields['title'] = eventName;
-      request.fields['content'] = description; // Using description as content
+      request.fields['content'] = description;
       request.fields['startTime'] = startDateTime.toIso8601String();
       request.fields['endTime'] = endDateTime.toIso8601String();
       request.fields['location'] = _selectedLocation!;
@@ -361,28 +363,20 @@ class EventCreationProvider with ChangeNotifier {
       request.fields['description'] = description;
       request.fields['isFree'] = isFreeEvent.toString();
       request.fields['price'] = priceToSend.toString();
-
-      // Add venue name if selected
-      String? finalVenueName;
-      if (_useManualVenueEntry) {
-        // Assuming _manualVenueNameController value will be passed from UI
-        // For now, let's assume it's passed as an argument or directly from a provider field.
-        // For this example, let's add a placeholder, you'd pass it from the UI.
-        // If the manual venue name is also stored in the provider, retrieve it here.
-        // For now, let's consider it as part of the overall location.
-      } else {
-        finalVenueName = _selectedVenueName;
-      }
-
       request.fields['venueName'] = venueName;
       request.fields['venueAddress'] = venueAddress;
-      for (var tag in tags) {
-        request.fields['tags'] =
-            tags.join(','); // ✅ send as comma-separated string
-      }
-      debugPrint(
-          "🟢 Tags sent to server: ${request.fields['tags']}"); // ✅ DEBUG PRINT
 
+      // ✅ Add tags
+      request.fields['tags'] = tags.join(',');
+      debugPrint("🟢 Tags sent to server: ${request.fields['tags']}");
+
+      // ✅ Add customQuestions as JSON string
+      if (customQuestions.isNotEmpty) {
+        request.fields['customQuestions'] = customQuestions.join(',');
+        debugPrint("✅ customQuestions added: ${request.fields['customQuestions']}");
+      }
+
+      // 📸 Attach media if available
       if (_pickedEventImage != null) {
         final image = await http.MultipartFile.fromPath(
           'media',
@@ -410,10 +404,9 @@ class EventCreationProvider with ChangeNotifier {
           await fetchUserPostsFromPrefs();
 
           final mediaList = decoded['data']['media'] as List?;
-          final String eventImageUrl =
-              (mediaList != null && mediaList.isNotEmpty)
-                  ? 'http://82.29.167.118:8000/${mediaList[0]}'
-                  : '';
+          final String eventImageUrl = (mediaList != null && mediaList.isNotEmpty)
+              ? 'http://82.29.167.118:8000/${mediaList[0]}'
+              : '';
 
           final senderName = prefs.getString('backendUserName') ?? 'Someone';
 
@@ -421,10 +414,10 @@ class EventCreationProvider with ChangeNotifier {
             eventImageUrl: eventImageUrl,
             eventTitle: eventName,
             context: context,
-            senderName: prefs.getString('backendUserName') ?? 'Someone',
+            senderName: senderName,
           );
 
-          // Clear form data after successful creation
+          // ✅ Reset state
           _pickedEventImage = null;
           _selectedLocation = null;
           _selectedLatitude = null;
@@ -441,13 +434,11 @@ class EventCreationProvider with ChangeNotifier {
           notifyListeners();
           return true;
         } else {
-          _errorMessage =
-              'Server error: ${decoded['message'] ?? 'Unknown error'} - Status Code: ${streamedResponse.statusCode}';
+          _errorMessage = 'Server error: ${decoded['message'] ?? 'Unknown error'} - Status Code: ${streamedResponse.statusCode}';
           return false;
         }
       } else {
-        _errorMessage =
-            'Empty response from server. Status Code: ${streamedResponse.statusCode}';
+        _errorMessage = 'Empty response from server. Status Code: ${streamedResponse.statusCode}';
         return false;
       }
     } catch (e) {
@@ -458,8 +449,7 @@ class EventCreationProvider with ChangeNotifier {
       _setLoading(false);
     }
   }
-
-  Future<void> fetchUserPostsFromPrefs({String? type}) async {
+  Future<void> fetchUserPostsFromPrefs( {String? type}) async {
     _clearError();
     _setFetchingEvents(true);
     _createdEvents.clear();
@@ -952,4 +942,24 @@ class EventCreationProvider with ChangeNotifier {
       }
     }
   }
+  void clearAllEventData() {
+    _pickedEventImage = null;
+    _startDate = null;
+    _startTime = null;
+    _endDate = null;
+    _endTime = null;
+    _ticketType = 'Free';
+    _ticketPrice = '';
+    _selectedVenueName = null;
+    _useManualVenueEntry = false;
+
+    // Removed old location logic
+    _selectedLocation = null;
+    _selectedLatitude = null;
+    _selectedLongitude = null;
+    _selectedCity = null;
+
+    notifyListeners();
+  }
+
 }
