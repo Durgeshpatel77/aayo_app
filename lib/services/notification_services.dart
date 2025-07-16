@@ -8,6 +8,9 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
+import '../main.dart';
+import '../screens/home_screens/notification_screen.dart';
+
 class NotificationService {
   static final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
   FlutterLocalNotificationsPlugin();
@@ -96,7 +99,13 @@ class NotificationService {
       initializationSettings,
       onDidReceiveNotificationResponse: (NotificationResponse response) {
         final payload = response.payload;
-        debugPrint("Notification tapped with payload: $payload");
+        debugPrint("🔔 Notification tapped with payload: $payload");
+
+        navigatorKey.currentState?.push(
+          MaterialPageRoute(
+            builder: (_) => const Notificationscreen(),
+          ),
+        );
       },
     );
   }

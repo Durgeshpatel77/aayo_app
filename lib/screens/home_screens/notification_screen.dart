@@ -47,14 +47,10 @@ class _NotificationscreenState extends State<Notificationscreen> {
             .map((json) => NotificationModel.fromJson(json))
             .toList();
 
-        // ✅ Filter only notifications for this user
         final userNotifications = allNotifications
             .where((notif) => notif.receiverId == currentUserId)
             .toList();
 
-        debugPrint("✅ Filtered for user $currentUserId: ${userNotifications.length} notifications");
-
-        // Group by date
         final Map<String, List<NotificationModel>> grouped = {};
         for (var notif in userNotifications) {
           final dateKey = "${notif.createdAt.year}-${notif.createdAt.month.toString().padLeft(2, '0')}-${notif.createdAt.day.toString().padLeft(2, '0')}";
@@ -94,10 +90,25 @@ class _NotificationscreenState extends State<Notificationscreen> {
     return months[month - 1];
   }
 
+  String _formatTitle(NotificationModel notif) {
+    switch (notif.type) {
+      case 'comment':
+        return "💬 ${notif.userName ?? notif.user} commented on your post";
+      case 'like':
+        return "❤️ ${notif.userName ?? notif.user} liked your post";
+      case 'follow':
+        return "👤 ${notif.userName ?? notif.user} started following you";
+      case 'broadcast':
+        return "📢 ${notif.message}";
+      default:
+        return notif.message;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final sortedKeys = groupedNotifications.keys.toList()
-      ..sort((a, b) => b.compareTo(a)); // Newest first
+      ..sort((a, b) => b.compareTo(a));
 
     return Scaffold(
       appBar: AppBar(
@@ -134,10 +145,10 @@ class _NotificationscreenState extends State<Notificationscreen> {
                 ),
                 ...items.map((notif) {
                   return NotificationItem(
-                    profileImageUrl: notif.profileImage, // Pass only the image path
-                    title: notif.message,
-                    subtitle:
-                    "${notif.createdAt.hour.toString().padLeft(2, '0')}:${notif.createdAt.minute.toString().padLeft(2, '0')}",
+                      profileImageUrl: notif.profileImage,
+                      title: _formatTitle(notif),
+                      subtitle:
+                      "${notif.createdAt.hour.toString().padLeft(2, '0')}:${notif.createdAt.minute.toString().padLeft(2, '0')}"
                   );
                 })
               ],
