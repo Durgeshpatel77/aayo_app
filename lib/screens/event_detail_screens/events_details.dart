@@ -2,6 +2,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/services.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -25,6 +27,7 @@ class EventDetailScreen extends StatefulWidget {
 
 class _EventDetailScreenState extends State<EventDetailScreen> {
   bool isSaved = false;
+  bool _isLoading = false;
 
   String generateChatId(String user1, String user2) {
     return user1.hashCode <= user2.hashCode
@@ -87,17 +90,49 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     }
   }
 
-  String _getBookingCountdownText() {
-    final now = DateTime.now();
-    final eventStart = widget.event.startTime;
+  Future<void> _openMapAndShowDistance() async {
+    try {
+      final position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high);
 
-    // Show "Booking closed" after event starts
-    if (now.isAfter(eventStart)) {
-      return 'Booking closed..';
+      final double currentLat = position.latitude;
+      final double currentLng = position.longitude;
+
+      final double targetLat = widget.event.latitude;
+      final double targetLng = widget.event.longitude;
+
+      final double distanceInMeters = Geolocator.distanceBetween(
+        currentLat,
+        currentLng,
+        targetLat,
+        targetLng,
+      );
+
+      final double distanceInKm = distanceInMeters / 1000;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Distance to venue: ${distanceInKm.toStringAsFixed(2)} km',
+          ),
+        ),
+      );
+
+      final googleMapsUrl =
+          'https://www.google.com/maps/dir/?api=1&origin=$currentLat,$currentLng&destination=$targetLat,$targetLng';
+
+      if (await canLaunchUrl(Uri.parse(googleMapsUrl))) {
+        await launchUrl(Uri.parse(googleMapsUrl));
+      } else {
+        throw 'Could not launch Google Maps';
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to get location or launch map: $e'),
+        ),
+      );
     }
-
-    // Show "Booking open" before event starts
-    return 'Booking open..';
   }
 
 
@@ -559,39 +594,53 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                       ],
                     ),
                   ),
+
                   const SizedBox(height: 24),
-                  StreamBuilder(
-                    stream: Stream.periodic(const Duration(seconds: 1)),
-                    builder: (context, snapshot) {
-                      final countdownText = _getBookingCountdownText();
-                      final isClosed = countdownText.contains("closed");
-
-                      return Padding(
-                        padding: const EdgeInsets.only(top: 8.0, bottom: 16),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              isClosed ? Icons.lock_outline : Icons.timer,
-                              color: isClosed ? Colors.orange : Colors.green,
-                              size: 20,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              countdownText,
-                              style: TextStyle(
-                                color: isClosed ? Colors.orange : Colors.green,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
+                  GestureDetector(
+                    onTap: _isLoading
+                        ? null
+                        : () async {
+                      setState(() => _isLoading = true);
+                      await _openMapAndShowDistance();
+                      if (mounted) setState(() => _isLoading = false);
                     },
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Address: ${widget.event.venueName ?? 'N/A'}, ${widget.event.venueAddress ?? 'Not available'}',
+                            style: const TextStyle(fontSize: 16),
+                          ),
+                        ),
+                        _isLoading
+                            ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.pink,
+                          ),
+                        )
+                            : IconButton(
+                          icon: const Icon(Icons.copy, size: 20, color: Colors.pink),
+                          onPressed: () {
+                            final textToCopy =
+                                '${widget.event.venueName ?? 'N/A'}, ${widget.event.venueAddress ?? 'Not available'}';
+                            Clipboard.setData(ClipboardData(text: textToCopy));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Address copied!'),
+                                duration: Duration(seconds: 1),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
                   ),
+                  SizedBox(height: 20,),
 
-                  Builder(
+          Builder(
                     builder: (context) {
                       final now = DateTime.now();
                       final startTime = widget.event.startTime;

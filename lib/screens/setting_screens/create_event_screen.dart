@@ -26,26 +26,21 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   final TextEditingController _eventLandmarkController = TextEditingController();
   final TextEditingController _onlineEventLinkController = TextEditingController(); // New controller for online link
   final List<String> questionOptions = [
-    "Social Profile",
-    "Company Website",
-    "LinkedIn",
-    "Instagram",
-    "Other"
-  ];
-  final List<String> predefinedQuestions = [
     "What is your Instagram ID?",
     "What is your Facebook ID?",
-    "What is your LinkedIn profile?",
+    "What is your LinkedIn ID?",
     "What is your GitHub username?",
-    "What is your Email address?",
-    "What is your Phone number?",
-    "What is your Twitter handle?",
-    "What is your current city?",
-    "What is your occupation?"
+    "What is your email address?",
+    "What is your phone number?",
+    "Why do you want to join?",
+    "Have you attended before?",
+    "Do you have any dietary restrictions?",
   ];
 
+  List<String> selectedCustomQuestions = [];
+  bool showQuestionList = false;
+
   final List<String> addedQuestions = [];
-  final List<String> selectedCustomQuestions = [];
 
   // All available tags for selection
   final List<Map<String, String>> allTags = [
@@ -660,28 +655,61 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
               ),
             ),
             const SizedBox(height: 20),
-            Text(
-              "Add Custom Questions",
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  showQuestionList = !showQuestionList;
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 10),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.pink, width: 1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    const SizedBox(width: 10),
+                    const Expanded(
+                      child: Text(
+                        'Select Custom Questions(optional)',
+                        style: TextStyle(color: Colors.black),
+                      ),
+                    ),
+                    Icon(
+                      showQuestionList
+                          ? Icons.keyboard_arrow_up
+                          : Icons.keyboard_arrow_down,
+                       color: Colors.grey.shade500,size: 22,),
+                  ],
+                ),
+              ),
             ),
-            Wrap(
-              spacing: 8,
-              children: questionOptions.map((option) {
-                return ActionChip(
-                  label: Text(option),
-                  backgroundColor: Colors.pink.shade50,
-                  onPressed: () {
-                    _showQuestionInputDialog(option);
+
+            const SizedBox(height: 10),
+
+            /// Show full question list when expanded
+            if (showQuestionList)
+              ...questionOptions.map((question) {
+                final isSelected = selectedCustomQuestions.contains(question);
+                return ListTile(
+                  dense: true,
+                  title: Text(question),
+                  trailing: Icon(
+                    isSelected ? Icons.check_box : Icons.check_box_outline_blank,
+                    color: isSelected ? Colors.pink : Colors.grey,
+                  ),
+                  onTap: () {
+                    setState(() {
+                      if (isSelected) {
+                        selectedCustomQuestions.remove(question);
+                      } else {
+                        selectedCustomQuestions.add(question);
+                      }
+                    });
                   },
                 );
               }).toList(),
-            ),
-            const SizedBox(height: 12),
-            ...selectedCustomQuestions.map((q) => ListTile(
-              leading: const Icon(Icons.question_answer, color: Colors.pink),
-              title: Text(q),
-            )).toList(),
-
             const SizedBox(height: 20),
             // Tag selection field
             GestureDetector(
