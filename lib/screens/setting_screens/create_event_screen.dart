@@ -1,12 +1,10 @@
 // screens/create_event_screen.dart
 import 'dart:async';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 
-import '../../models/create_event_model.dart'; // Ensure this path is correct
 import '../../providers/setting_screens_providers/event_provider.dart'; // Ensure this path is correct
 import '../../widgets/textfield _editprofiile.dart'; // Ensure this path is correct
 import 'venue_list_page.dart'; // Import the new venue_list_page.dart, ensure path is correct
@@ -24,18 +22,10 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   final TextEditingController _eventDescriptionController = TextEditingController();
   final TextEditingController _manualVenueNameController = TextEditingController();
   final TextEditingController _eventLandmarkController = TextEditingController();
-  final TextEditingController _onlineEventLinkController = TextEditingController(); // New controller for online link
-  final List<String> questionOptions = [
-    "What is your Instagram ID?",
-    "What is your Facebook ID?",
-    "What is your LinkedIn ID?",
-    "What is your GitHub username?",
-    "What is your email address?",
-    "What is your phone number?",
-    "Why do you want to join?",
-    "Have you attended before?",
-    "Do you have any dietary restrictions?",
-  ];
+  final TextEditingController _onlineEventLinkController = TextEditingController();
+  final TextEditingController _eventLocationController = TextEditingController();
+  final TextEditingController _questionController = TextEditingController();
+
 
   List<String> selectedCustomQuestions = [];
   bool showQuestionList = false;
@@ -78,124 +68,15 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     _manualVenueNameController.dispose();
     _eventLandmarkController.dispose();
     _onlineEventLinkController.dispose(); // Dispose new controller
-    super.dispose();
-  }
-  void _showQuestionInputDialog(String label) {
-    final TextEditingController _controller = TextEditingController();
+    _eventLocationController.dispose();
+    _questionController.dispose();
 
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Enter question'),
-        content: TextField(
-          controller: _controller,
-          decoration: const InputDecoration(hintText: 'Enter your question'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.pink),
-            onPressed: () {
-              if (_controller.text.trim().isNotEmpty) {
-                setState(() {
-                  selectedCustomQuestions.add(_controller.text.trim());
-                });
-              }
-              Navigator.pop(context);
-            },
-            child: const Text('Add'),
-          ),
-        ],
-      ),
-    );
+    super.dispose();
   }
 
   // Helper method to show a SnackBar message to the user
   void _showMessage(String text) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
-  }
-
-  // Handles the tap on the location selection field, showing a bottom sheet
-  Future<void> _handleLocationTap() async {
-    final eventProvider = Provider.of<EventCreationProvider>(context, listen: false);
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) {
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Drag indicator
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              // Title for the bottom sheet
-              const Text(
-                'Choose Location Option',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 20),
-              // Option to use current location
-              ListTile(
-                leading: const Icon(Icons.my_location, color: Colors.pink),
-                title: const Text(
-                  "Use Current Location",
-                  style: TextStyle(fontSize: 16),
-                ),
-                onTap: () async {
-                  Navigator.pop(context); // Close the bottom sheet
-                  final message = await eventProvider.getCurrentLocation(); // Call provider method
-                  if (message != null) {
-                    _showMessage(message); // Show success/error message
-                  }
-                },
-              ),
-              const Divider(),
-              // Option to enter location manually
-              ListTile(
-                leading: const Icon(Icons.edit_location_alt,
-                    color: Colors.deepPurple),
-                title: const Text(
-                  "Enter Location Manually",
-                  style: TextStyle(fontSize: 16),
-                ),
-                onTap: () async {
-                  Navigator.pop(context); // Close the bottom sheet
-                  final result = await eventProvider.showManualLocationPicker(context); // Call provider method
-                  if (result != null && result.isNotEmpty) {
-                    _showMessage("Selected Manual Location: ${result['display_name']}");
-                  } else if (eventProvider.errorMessage != null) {
-                    _showMessage(eventProvider.errorMessage!);
-                  }
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
   }
 
   // Handles navigation to the VenueListPage and processes the selected venue
@@ -480,54 +361,11 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Location selection (current or manual)
-            GestureDetector(
-              onTap: eventProvider.isFetchingCurrentLocation ? null : _handleLocationTap,
-              child: Container(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(width: 1, color: Colors.pink.shade400),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.location_on_outlined,
-                        color: Colors.pinkAccent, size: 24),
-                    const SizedBox(width: 15),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            (eventProvider.selectedLocation?.isNotEmpty ?? false)
-                                ? eventProvider.selectedLocation!
-                                : 'Tap to select manual or current location',
-                            style: const TextStyle(
-                              color: Colors.black,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const Text(
-                            'Offline location or virtual link',
-                            style:
-                            TextStyle(color: Colors.grey, fontSize: 12),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (eventProvider.isFetchingCurrentLocation)
-                      const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(Colors.pink)),
-                      )
-                    else
-                      Icon(Icons.chevron_right, color: Colors.grey[400]),
-                  ],
-                ),
-              ),
+            TextfieldEditprofiile(
+              controller: _eventLocationController,  // new controller for location input
+              hintText: 'Enter location (e.g.,Delhi)',
+              maxLength: 150,
+              prefixIcon: Icons.location_on_outlined,
             ),
             const SizedBox(height: 10),
             // Landmark input field
@@ -656,10 +494,84 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
             ),
             const SizedBox(height: 20),
             GestureDetector(
-              onTap: () {
-                setState(() {
-                  showQuestionList = !showQuestionList;
-                });
+              onTap: () async {
+                final provider = Provider.of<EventCreationProvider>(context, listen: false);
+
+                _questionController.text = provider.customQuestion; // Pre-fill
+
+                String? enteredQuestion = await showDialog<String>(
+                  context: context,
+                  builder: (context) {
+                    return Dialog(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      backgroundColor: Colors.white,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox(height: 20,),
+                            Text(
+                              'Enter Custom Question',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            TextField(
+                              controller: _questionController,
+                              maxLength: 100,
+                              decoration: InputDecoration(
+                                hintText: 'Type your question...',
+
+                                hintStyle: TextStyle(color: Colors.pink.shade500),
+                                counterText: '', // Hide 0/100
+                                focusedBorder: OutlineInputBorder(
+                                  borderSide: BorderSide(color: Colors.pink.shade400),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderSide: BorderSide(color: Colors.pink.shade400),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.pop(context); // Cancel
+                                  },
+                                  child: Text('Cancel', style: TextStyle(color: Colors.black)),
+                                ),
+                                const SizedBox(width: 8),
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.pink.shade400,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                  ),
+                                  onPressed: () {
+                                    Navigator.pop(context, _questionController.text.trim());
+                                  },
+                                  child: const Text('Save',style: TextStyle(color: Colors.white),),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                );
+
+                if (enteredQuestion != null && enteredQuestion.isNotEmpty) {
+                  provider.setCustomQuestion(enteredQuestion);
+                  _questionController.clear(); // Optional: clear on save
+                }
               },
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 10),
@@ -670,17 +582,19 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                 child: Row(
                   children: [
                     const SizedBox(width: 10),
-                    const Expanded(
-                      child: Text(
-                        'Select Custom Questions(optional)',
-                        style: TextStyle(color: Colors.black),
+                    Expanded(
+                      child: Consumer<EventCreationProvider>(
+                        builder: (context, provider, _) {
+                          return Text(
+                            provider.customQuestion.isNotEmpty
+                                ? provider.customQuestion
+                                : 'Select Custom Questions (optional)',
+                            style: TextStyle(color: Colors.black,fontSize: 18),
+                          );
+                        },
                       ),
                     ),
-                    Icon(
-                      showQuestionList
-                          ? Icons.keyboard_arrow_up
-                          : Icons.keyboard_arrow_down,
-                       color: Colors.grey.shade500,size: 22,),
+                    Icon(Icons.add, color: Colors.grey.shade500, size: 22),
                   ],
                 ),
               ),
@@ -689,27 +603,6 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
             const SizedBox(height: 10),
 
             /// Show full question list when expanded
-            if (showQuestionList)
-              ...questionOptions.map((question) {
-                final isSelected = selectedCustomQuestions.contains(question);
-                return ListTile(
-                  dense: true,
-                  title: Text(question),
-                  trailing: Icon(
-                    isSelected ? Icons.check_box : Icons.check_box_outline_blank,
-                    color: isSelected ? Colors.pink : Colors.grey,
-                  ),
-                  onTap: () {
-                    setState(() {
-                      if (isSelected) {
-                        selectedCustomQuestions.remove(question);
-                      } else {
-                        selectedCustomQuestions.add(question);
-                      }
-                    });
-                  },
-                );
-              }).toList(),
             const SizedBox(height: 20),
             // Tag selection field
             GestureDetector(
@@ -772,6 +665,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                       DropdownButton<String>(
                         value: eventProvider.ticketType,
                         underline: const SizedBox(),
+                        focusColor: Colors.grey.shade400,
                         items: ['Free', 'Paid']
                             .map((type) => DropdownMenuItem<String>(
                           value: type,
@@ -1026,7 +920,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                   description: _eventDescriptionController.text,
                   venueAddress: _onlineEventLinkController.text,
                   venueName: 'Online Event',
-                  tags: selectedTagTitles, customQuestions: [],
+                  tags: selectedTagTitles, customQuestions: [], location: _eventLocationController.text,
                 );
 
                 if (success && mounted) {
@@ -1155,8 +1049,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                     onStepContinue: () async {
                       // Validation logic for each step before proceeding
                       bool canContinue = false;
-                      if (_currentStep == 0) { // Validation for Event Details step
-                        // Base validation for event details
+                      if (_currentStep == 0) { // Step 0 validation
                         if (_eventNameController.text.isNotEmpty &&
                             eventProvider.pickedEventImage != null &&
                             eventProvider.startDate != null &&
@@ -1167,20 +1060,31 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                         } else {
                           _showMessage("Please fill all event details, select an image, and set start/end times.");
                         }
-                      } else if (_currentStep == 1) { // Validation for Location step
-                        if ((eventProvider.selectedLocation?.isNotEmpty ?? false) &&
-                            (_eventLandmarkController.text.isNotEmpty) &&
-                            (eventProvider.useManualVenueEntry ? _manualVenueNameController.text.isNotEmpty : eventProvider.selectedVenueName?.isNotEmpty ?? false)
+                      }
+                      else if (_currentStep == 1) {
+                        print("DEBUG: Step 1 Validation Running");
+                        print("DEBUG: Location: ${_eventLocationController.text}");
+                        print("DEBUG: Landmark: ${_eventLandmarkController.text}");
+                        print("DEBUG: Venue (manual): ${_manualVenueNameController.text}");
+                        print("DEBUG: Venue (selected): ${eventProvider.selectedVenueName}");
+                        print("DEBUG: useManualVenueEntry: ${eventProvider.useManualVenueEntry}");
+
+                        if (_eventLocationController.text.isNotEmpty &&
+                            _eventLandmarkController.text.isNotEmpty &&
+                            (eventProvider.useManualVenueEntry
+                                ? _manualVenueNameController.text.isNotEmpty
+                                : (eventProvider.selectedVenueName?.isNotEmpty ?? false))
                         ) {
                           canContinue = true;
                         } else {
-                          _showMessage("Please select a location, enter a landmark, and specify a venue.");
+                          _showMessage("Please enter Location, Landmark, and Venue Name. Use the switch if typing venue manually.");
                         }
-                      } else if (_currentStep == 2) { // Validation for Description, Tags, Tickets
-                        if (_eventDescriptionController.text.isEmpty) {
-                          _showMessage("Please enter the event description.");
-                        } else {
+                      }
+                      else if (_currentStep == 2) { // Step 2 validation
+                        if (_eventDescriptionController.text.isNotEmpty) {
                           canContinue = true;
+                        } else {
+                          _showMessage("Please enter the event description.");
                         }
                       }
 
@@ -1202,24 +1106,25 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                             context: context,
                             eventName: _eventNameController.text,
                             description: _eventDescriptionController.text,
-                            venueAddress: _eventLandmarkController.text, // For in-person
+                            location: _eventLocationController.text, // 🔴 NEW LINE
+                            venueAddress: _eventLandmarkController.text,
                             venueName: eventProvider.useManualVenueEntry
                                 ? _manualVenueNameController.text
                                 : eventProvider.selectedVenueName ?? '',
                             tags: selectedTagTitles,
-                            customQuestions: selectedCustomQuestions, // ✅ optional
-
+                            customQuestions: selectedCustomQuestions,
                           );
 
-                            if (success && mounted) {
+                          if (success && mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text("🎉 Event created successfully!")),
                             );
                             Navigator.pop(context);
                           } else {
+                            print("DEBUG ERROR: ${eventProvider.errorMessage}");
                             _showMessage(eventProvider.errorMessage ?? "Something went wrong.");
                           }
-                        }
+ }
                       }
                     },
                     onStepCancel: () {

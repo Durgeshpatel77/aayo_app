@@ -463,7 +463,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
 
                 const SizedBox(height: 30),
 
-// Share
+                // Share
                 GestureDetector(
                   onTap: _sharePost,
                   child: Column(

@@ -1,3 +1,4 @@
+import 'package:aayo/screens/home_screens/update_event_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:intl/intl.dart';
@@ -307,6 +308,8 @@ class _EventsscreenState extends State<Eventsscreen> {
                         ),
                       ),
                       Spacer(),
+
+                      // 🔴 Show "Booked" or "Edit" Button
                       if (isBooked)
                         Padding(
                           padding: const EdgeInsets.only(right: 18.0),
@@ -328,6 +331,21 @@ class _EventsscreenState extends State<Eventsscreen> {
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
+                          ),
+                        )
+                      else
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8.0),
+                          child: IconButton(
+                            icon: Icon(Icons.edit, color: Colors.blueAccent),
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => UpdateEventScreen(eventModel: event), // 🔵 Pass event
+                                ),
+                              );
+                            },
                           ),
                         ),
                     ],

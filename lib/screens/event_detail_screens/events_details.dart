@@ -14,7 +14,6 @@ import 'chat_page.dart';
 import 'ordersummart_screen.dart';
 
 import '../../models/event_model.dart';
-import '../other_for_use/expandable_text.dart';
 
 class EventDetailScreen extends StatefulWidget {
   final Event event;
@@ -510,92 +509,6 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                       style:
                           TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 18),
-                  SizedBox(
-                    height: 180,
-                    child: Stack(
-                      children: [
-                        Positioned.fill(
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: Image.asset(
-                              'images/location.jpeg', // ✅ your local image path
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                        ),
-                        Positioned.fill(
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.45),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        ),
-                        const Center(
-                          child: CircleAvatar(
-                            radius: 22,
-                            backgroundColor: Colors.pinkAccent,
-                            child: Icon(
-                              Icons.location_searching_outlined,
-                              color: Colors.white,
-                              size: 30,
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          top: 12,
-                          left: 12,
-                          child: GestureDetector(
-                            onTap: () async {
-                              final lat = widget.event
-                                  .latitude; // This variable was declared but not used.
-                              final lng = widget.event
-                                  .longitude; // This variable was declared but not used.
-
-                              final Uri googleMapsUrl = Uri.parse(
-                                'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng&travelmode=driving',
-                              );
-
-                              if (await canLaunchUrl(googleMapsUrl)) {
-                                await launchUrl(googleMapsUrl,
-                                    mode: LaunchMode.externalApplication);
-                              } else {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                      content:
-                                          Text('Could not open Google Maps')),
-                                );
-                              }
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 14, vertical: 9),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.2),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: const Text(
-                                'See Location',
-                                style: TextStyle(
-                                  color: Colors.black,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ),
-                          ),
-                        )
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
                   GestureDetector(
                     onTap: _isLoading
                         ? null

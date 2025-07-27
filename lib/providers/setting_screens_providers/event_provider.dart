@@ -77,6 +77,14 @@ class EventCreationProvider with ChangeNotifier {
   bool get isPickingImage => _isPickingImage;
   bool get isFetchingCurrentLocation => _isFetchingCurrentLocation;
   // End New Getters
+  String _customQuestion = ''; // 🔴 Add this
+
+  String get customQuestion => _customQuestion; // Getter
+
+  void setCustomQuestion(String question) {
+    _customQuestion = question.trim();
+    notifyListeners();
+  }
 
   void _setLoading(bool value) {
     _isLoading = value;
@@ -284,6 +292,7 @@ class EventCreationProvider with ChangeNotifier {
   Future<bool> createEvent({
     required String eventName,
     required String description,
+    required String location, // ✅ Add this line
     required String venueName,
     required String venueAddress,
     required BuildContext context,
@@ -294,23 +303,20 @@ class EventCreationProvider with ChangeNotifier {
     _setLoading(true);
 
     // ✅ Validate required fields
-    if (eventName.isEmpty ||
+    if (eventName.trim().isEmpty ||
         _startDate == null ||
         _startTime == null ||
         _endDate == null ||
         _endTime == null ||
-        _selectedLocation == null ||
-        _selectedLatitude == null ||
-        _selectedLongitude == null ||
-        _selectedCity == null ||
-        description.isEmpty ||
+        location.trim().isEmpty ||  // ✅ Using manual location from input
+        description.trim().isEmpty ||
         venueName.trim().isEmpty ||
         venueAddress.trim().isEmpty) {
-      _errorMessage =
-      "Please fill all required fields including venue name and landmark.";
+      _errorMessage = "Please fill all required fields including venue name, landmark, and location.";
       _setLoading(false);
       return false;
     }
+
 
     final bool isFreeEvent = (_ticketType == 'Free');
     double? priceToSend = isFreeEvent ? 0.0 : double.tryParse(_ticketPrice);
@@ -356,10 +362,10 @@ class EventCreationProvider with ChangeNotifier {
       request.fields['content'] = description;
       request.fields['startTime'] = startDateTime.toIso8601String();
       request.fields['endTime'] = endDateTime.toIso8601String();
-      request.fields['location'] = _selectedLocation!;
-      request.fields['city'] = _selectedCity!;
-      request.fields['latitude'] = _selectedLatitude.toString();
-      request.fields['longitude'] = _selectedLongitude.toString();
+      request.fields['location'] = location; // ✅ Use manual input now
+      request.fields['city'] = location;       // 🔴 Static city
+      request.fields['latitude'] = "0.0"; // 🔴 Static latitude
+      request.fields['longitude'] = "0.0"; // 🔴 Static longitude
       request.fields['description'] = description;
       request.fields['isFree'] = isFreeEvent.toString();
       request.fields['price'] = priceToSend.toString();
