@@ -81,6 +81,76 @@ class EventCreationProvider with ChangeNotifier {
 
   String get customQuestion => _customQuestion; // Getter
 
+  Map<String, dynamic>? _fetchedEventData;
+  bool _isFetchingSingleEvent = false;
+  String? _fetchEventError;
+
+  Map<String, dynamic>? get fetchedEventData => _fetchedEventData;
+  bool get isFetchingSingleEvent => _isFetchingSingleEvent;
+  String? get fetchEventError => _fetchEventError;
+
+  Future<void> fetchSingleEventById(String eventId) async {
+    _isFetchingSingleEvent = true;
+    _fetchEventError = null;
+    notifyListeners();
+
+    final url = 'http://82.29.167.118:8000/api/post/event'; // ✅ POST for both create & fetch
+    print('🔵 Fetching event via POST: $url');
+
+    final requestBody = {
+      "type": "event",
+      "user": "6885d763501c5817dcefd010",  // Your user ID
+      "postId": eventId,  // Assume this is how server identifies which post to fetch
+    };
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(requestBody),
+      );
+
+      print('📤 Sent Body: ${json.encode(requestBody)}');
+      print('📥 Status Code: ${response.statusCode}');
+      print('📥 Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        _fetchedEventData = data['data'];
+        print('✅ Event Data Fetched: $_fetchedEventData');
+      } else {
+        _fetchEventError = 'Failed to load event. Code: ${response.statusCode}';
+        print('❌ Error: $_fetchEventError');
+      }
+    } catch (e) {
+      _fetchEventError = 'Exception: $e';
+      print('❌ Exception: $e');
+    } finally {
+      _isFetchingSingleEvent = false;
+      notifyListeners();
+    }
+  }
+  // Future<bool> updateEvent(String eventId, Map<String, dynamic> updatedData) async {
+  //   final url = 'http://82.29.167.118:8000/api/post/event/$eventId';
+  //   try {
+  //     final response = await http.put(
+  //       Uri.parse(url),
+  //       headers: {'Content-Type': 'application/json'},
+  //       body: json.encode(updatedData),
+  //     );
+  //     if (response.statusCode == 200) {
+  //       return true;
+  //     } else {
+  //       print('Update failed: ${response.body}');
+  //       return false;
+  //     }
+  //   } catch (e) {
+  //     print('Update error: $e');
+  //     return false;
+  //   }
+  // }
+
+
   void setCustomQuestion(String question) {
     _customQuestion = question.trim();
     notifyListeners();

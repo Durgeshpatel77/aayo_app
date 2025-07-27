@@ -336,16 +336,29 @@ class _EventsscreenState extends State<Eventsscreen> {
                       else
                         Padding(
                           padding: const EdgeInsets.only(right: 8.0),
-                          child: IconButton(
-                            icon: Icon(Icons.edit, color: Colors.blueAccent),
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => UpdateEventScreen(eventModel: event), // 🔵 Pass event
-                                ),
-                              );
+                          child: PopupMenuButton<String>(
+                            icon: Icon(Icons.more_horiz_sharp, color: Colors.grey.shade500),
+                            onSelected: (value) async {
+                              if (value == 'edit') {
+                                await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => UpdateEventScreen(eventData: event),
+                                  ),
+                                );
+
+// After returning, refresh events
+                                final provider = Provider.of<EventCreationProvider>(context, listen: false);
+                                provider.fetchUserPostsFromPrefs(type: 'event');
+                                provider.fetchJoinedEventsFromPrefs();
+                              }
                             },
+                            itemBuilder: (context) => [
+                              const PopupMenuItem(
+                                value: 'edit',
+                                child: Text('Edit Event'),
+                              ),
+                            ],
                           ),
                         ),
                     ],
