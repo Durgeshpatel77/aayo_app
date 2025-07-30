@@ -521,7 +521,10 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                       children: [
                         Expanded(
                           child: Text(
-                            'Address: ${widget.event.venueName ?? 'N/A'}, ${widget.event.venueAddress ?? 'Not available'}',
+                            'Address: '
+                                '${capitalizeFirst(widget.event.venueName) ?? 'No venue name'}, '
+                                '${capitalizeFirst(widget.event.location) ?? 'N/A'}, '
+                                '${capitalizeFirst(widget.event.venueAddress) ?? 'Not available'}',
                             style: const TextStyle(fontSize: 16),
                           ),
                         ),
@@ -637,4 +640,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       ),
     );
   }
+}
+String capitalizeFirst(String? text) {
+  if (text == null || text.isEmpty) return '';
+  return text[0].toUpperCase() + text.substring(1);
 }

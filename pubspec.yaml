@@ -72,6 +72,9 @@ dependencies:
   path_provider: ^2.1.5
   dropdown_button2: ^2.3.9
   flutter_image_compress: ^2.4.0
+  permission_handler: ^12.0.1
+  syncfusion_flutter_xlsio: ^30.1.41
+  open_file: ^3.5.10
 flutter_launcher_icons:
   android: true
   ios: true

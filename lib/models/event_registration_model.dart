@@ -26,4 +26,5 @@ class EventRegistration {
       status: json['status'] ?? 'pending',
     );
   }
+
 }

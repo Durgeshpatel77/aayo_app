@@ -1,7 +1,5 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:provider/provider.dart';
 import 'dart:convert';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -43,6 +41,8 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
   bool _hasJoined = false;
   bool _isJoining = false;
   late Razorpay _razorpay;
+  bool _hasCancelled = false;  // ➕ Add this
+
 
   @override
   void initState() {
@@ -144,10 +144,12 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
     final prefs = await SharedPreferences.getInstance();
     final userId = prefs.getString('backendUserId');
     final joinedEvents = prefs.getStringList('joinedEvents') ?? [];
+    final cancelledEvents = prefs.getStringList('cancelledEvents') ?? []; // ➕ new
 
     setState(() {
       _backendUserId = userId;
       _hasJoined = joinedEvents.contains(widget.eventId);
+      _hasCancelled = cancelledEvents.contains(widget.eventId);  // ➕ track cancel
     });
   }
 
@@ -254,48 +256,99 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
   }
 
   Future<void> _cancelBooking() async {
-    final confirm = await _showCancelBookingDialog();
+    debugPrint('🔶 Starting cancelBooking');
+    debugPrint('🔶 Event ID: ${widget.eventId}');
+    debugPrint('🔶 Backend User ID: $_backendUserId');
 
-    if (confirm != true) return;
+    final confirm = await _showCancelBookingDialog();
+    if (confirm != true) {
+      debugPrint('🔶 User cancelled the dialog');
+      return;
+    }
 
     if (_backendUserId == null) {
+      debugPrint('❌ Backend user ID is null');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('User ID not found.')),
       );
       return;
     }
 
-    final url = 'http://82.29.167.118:8000/api/event/cancel/${widget.eventId}';
+    // ✅ Fetch registrations for this event
+    final provider = EventRegistrationProvider();
+    await provider.fetchRegistrations(widget.eventId);
+    debugPrint('✅ Registrations fetched: ${provider.registrations.length}');
+
+    // 🔍 Debug print each registration to inspect values
+    for (var reg in provider.registrations) {
+      debugPrint('🔍 Registration => id=${reg.id}, registrationId=${reg.registrationId}, eventId=${reg.eventId}, status=${reg.status}');
+    }
+
+    if (provider.registrations.isEmpty) {
+      debugPrint('❌ No registrations found for this event');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No registration found to cancel.')),
+      );
+      return;
+    }
+
+    final matchingReg = provider.registrations.first;
+    debugPrint('✅ Found registrationId (eventRegId): ${matchingReg.registrationId}');
+
+    final eventRegId = matchingReg.registrationId;
+
+    final url = 'http://82.29.167.118:8000/api/event/update-status/${widget.eventId}';
     final headers = {'Content-Type': 'application/json'};
-    final body = {'joinedBy': _backendUserId!};
+    final body = {
+      "joinedBy": _backendUserId!,
+      "eventRegId": eventRegId,
+      "status": "cancelled",
+    };
+
+    debugPrint('📤 Sending cancel request to: $url');
+    debugPrint('📤 Request Body: $body');
 
     try {
-      final response = await http.post(
+      final cancelResponse = await http.put(
         Uri.parse(url),
         headers: headers,
         body: json.encode(body),
       );
 
-      if (response.statusCode == 200) {
+      debugPrint('📥 Cancel Status Code: ${cancelResponse.statusCode}');
+      debugPrint('📥 Cancel Response Body: ${cancelResponse.body}');
+
+      if (cancelResponse.statusCode == 200) {
         final prefs = await SharedPreferences.getInstance();
+
+        // Remove from joinedEvents
         final joinedEvents = prefs.getStringList('joinedEvents') ?? [];
         joinedEvents.remove(widget.eventId);
         await prefs.setStringList('joinedEvents', joinedEvents);
 
+        // 🔥 Save to cancelledEvents
+        List<String> cancelledEvents = prefs.getStringList('cancelledEvents') ?? [];
+        if (!cancelledEvents.contains(widget.eventId)) {
+          cancelledEvents.add(widget.eventId);
+          await prefs.setStringList('cancelledEvents', cancelledEvents);
+        }
+
         setState(() {
           _hasJoined = false;
+          _hasCancelled = true; // ➕ Booking disabled flag
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('❌ Booking Cancelled')),
         );
       } else {
-        final resBody = json.decode(response.body);
+        final resBody = json.decode(cancelResponse.body);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to cancel: ${resBody['message']}')),
         );
       }
     } catch (e) {
+      debugPrint('❌ Exception during cancellation: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e')),
       );
@@ -503,25 +556,31 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
                   child: GestureDetector(
                     onTap: _isJoining
                         ? null
-                        : (_hasJoined && widget.ticketPrice == 0.0)
-                        ? _cancelBooking
-                        : (!_hasJoined ? _startPayment : null),
+                        : _hasCancelled
+                        ? () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('You already canceled joining this event.')),
+                      );
+                    }
+                        : _hasJoined
+                        ? (widget.ticketPrice == 0.0 ? _cancelBooking : null)
+                        : _startPayment,
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 300),
                       width: double.infinity,
                       height: 50,
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        color: _hasJoined && widget.ticketPrice == 0.0
-                            ? Colors.redAccent
-                            : _hasJoined
-                            ? Colors.grey.shade600
-                            : _isJoining
+                        color: _isJoining
                             ? Colors.pink.shade300
-                            : const Color(0xFFE91E63),
+                            : (_hasCancelled
+                            ? Colors.grey // Disabled color
+                            : _hasJoined
+                            ? (widget.ticketPrice == 0.0 ? Colors.redAccent : Colors.grey.shade600)
+                            : const Color(0xFFE91E63)),
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
-                          if (!_hasJoined && !_isJoining)
+                          if (!_hasJoined && !_isJoining && !_hasCancelled)
                             BoxShadow(
                               color: Colors.pink.withOpacity(0.3),
                               offset: const Offset(0, 4),
@@ -532,9 +591,11 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
                       child: Text(
                         _isJoining
                             ? 'Booking...'
+                            : (_hasCancelled
+                            ? 'Booking Disabled'
                             : (_hasJoined
                             ? (widget.ticketPrice == 0.0 ? 'Cancel Booking' : 'Booked')
-                            : 'Book'),
+                            : 'Book')),
                         style: const TextStyle(
                           fontSize: 18,
                           color: Colors.white,

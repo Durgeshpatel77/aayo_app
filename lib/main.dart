@@ -1,4 +1,3 @@
-// main.dart
 import 'package:aayo/firebase_options.dart';
 import 'package:aayo/providers/approve_events_provider/event_registration_provider.dart';
 import 'package:aayo/providers/approve_events_provider/guest_page_provider.dart';
@@ -15,13 +14,22 @@ import 'package:aayo/providers/setting_screens_providers/write_to_us_provider.da
 import 'package:aayo/providers/onording_login_screens_providers/user_profile_provider.dart';
 import 'package:aayo/screens/login_and_onbording_screens/splash_screen.dart';
 import 'package:aayo/services/notification_services.dart';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-/// ✅ ADD GLOBAL navigator key
+/// ✅ Notification plugins
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:open_file/open_file.dart';
+
+/// ✅ Global navigator key
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+/// ✅ Global notification plugin instance
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+FlutterLocalNotificationsPlugin();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,10 +41,32 @@ void main() async {
   FirebaseMessaging.onBackgroundMessage(NotificationService.firebaseMessagingBackgroundHandler);
 
   print('🔧 Initializing NotificationService...');
-  await NotificationService.initialize(); // This will wait for token
+  await NotificationService.initialize();
+
+  print('🔧 Initializing flutterLocalNotifications...');
+  await _initializeLocalNotifications();
 
   print('🚀 Running app...');
   runApp(const MyApp());
+}
+
+/// ✅ Local Notifications Initialization
+Future<void> _initializeLocalNotifications() async {
+  const AndroidInitializationSettings androidSettings =
+  AndroidInitializationSettings('@mipmap/ic_launcher');
+
+  final InitializationSettings initSettings =
+  InitializationSettings(android: androidSettings);
+
+  await flutterLocalNotificationsPlugin.initialize(
+    initSettings,
+    onDidReceiveNotificationResponse: (NotificationResponse response) async {
+      final filePath = response.payload;
+      if (filePath != null && filePath.isNotEmpty) {
+        await OpenFile.open(filePath);
+      }
+    },
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -59,18 +89,13 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AddPostProvider()),
         ChangeNotifierProvider(create: (_) => GuestProvider()),
         ChangeNotifierProvider(create: (_) => EventRegistrationProvider()),
-        ChangeNotifierProvider(create: (_) => NotificationProvider(),
-        ),
-
+        ChangeNotifierProvider(create: (_) => NotificationProvider()),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'Aayo App',
-
-        /// ✅ Set global navigatorKey
         navigatorKey: navigatorKey,
-
-        home: SplashScreen(), // Always show splash first
+        home: SplashScreen(),
       ),
     );
   }

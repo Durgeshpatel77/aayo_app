@@ -96,7 +96,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
         final approved = list.where((e) => e.status == 'approved').toList();
         final pending = list.where((e) => e.status == 'pending').toList();
         final declined = list.where((e) => e.status == 'declined').toList();
-        final waiting = list.where((e) => e.status == 'waiting').toList();
+        final cancelled = list.where((e) => e.status == 'cancelled').toList();
 
         return Scaffold(
           backgroundColor: Colors.white,
@@ -117,7 +117,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
                   children: [
                     _buildStatusCard("Declined", Icons.cancel, Colors.red, declined),
                     const SizedBox(width: 12),
-                    _buildStatusCard("Waiting", Icons.access_time, Colors.deepPurple, waiting),
+                    _buildStatusCard("Cancelled", Icons.cancel_schedule_send, Colors.grey, cancelled),
                   ],
                 ),
                 const SizedBox(height: 20),
