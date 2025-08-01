@@ -31,6 +31,9 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   bool showQuestionList = false;
 
   final List<String> addedQuestions = [];
+  List<String> addedCustomQuestions = [];
+
+
 
   // All available tags for selection
   final List<Map<String, String>> allTags = [
@@ -99,6 +102,34 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
         _showMessage('Selected Venue: ${eventProvider.selectedVenueName}');
       }
     }
+  }
+  void _resetEventForm() {
+    _eventNameController.clear();
+    _eventDescriptionController.clear();
+    _manualVenueNameController.clear();
+    _eventLandmarkController.clear();
+    _onlineEventLinkController.clear();
+    _eventLocationController.clear();
+    _questionController.clear();
+
+    setState(() {
+      selectedTags.clear();
+      selectedCustomQuestions.clear(); // Clear your questions list
+    });
+
+    final eventProvider = Provider.of<EventCreationProvider>(context, listen: false);
+    eventProvider.setPickedEventImage(null);
+    eventProvider.setStartDate(null);
+    eventProvider.setStartTime(null);
+    eventProvider.setEndDate(null);
+    eventProvider.setEndTime(null);
+    eventProvider.setTicketType('Free');
+    eventProvider.setTicketPrice('');
+    eventProvider.setSelectedVenueName(null);
+    eventProvider.setUseManualVenueEntry(false);
+    eventProvider.setCustomQuestion(''); // ✅ clear question string
+
+    debugPrint("✅ All form and provider data cleared.");
   }
 
   // Shows a modal bottom sheet for selecting event tags
@@ -920,15 +951,19 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                   description: _eventDescriptionController.text,
                   venueAddress: _onlineEventLinkController.text,
                   venueName: 'Online Event',
-                  tags: selectedTagTitles, customQuestions: [], location: _eventLocationController.text,
+                  tags: selectedTagTitles,
+                  customQuestions: addedCustomQuestions, // ✅ Correct dynamic list
+                  location: _eventLocationController.text,
                 );
 
                 if (success && mounted) {
+                  _resetEventForm(); // ✅ Only this, no provider.clearAllEventData()
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text("🎉 Event created successfully!")),
                   );
                   Navigator.pop(context);
-                } else {
+                }
+                else {
                   _showMessage(eventProvider.errorMessage ?? "Something went wrong.");
                 }
               },
@@ -941,7 +976,15 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                 ),
               ),
               child: eventProvider.isLoading
-                  ? const CircularProgressIndicator(color: Colors.white)
+                  ? FutureBuilder(
+                future: Future.delayed(Duration(seconds: 10), () => 'timeout'),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.done) {
+                    return Text('Timeout... Check Logs', style: TextStyle(color: Colors.red));
+                  }
+                  return CircularProgressIndicator(color: Colors.white);
+                },
+              )
                   : const Text('Create Event'),
             ),
           ),

@@ -13,11 +13,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart'; // Import image_picker
 import 'package:geolocator/geolocator.dart'; // Import geolocator
 
-import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 
 import '../../models/create_event_model.dart';
-import '../home_screens_providers/add_post_provider.dart';
 
 class EventCreationProvider with ChangeNotifier {
   final List<EventModel> _allEvents = [];
@@ -362,7 +360,7 @@ class EventCreationProvider with ChangeNotifier {
   Future<bool> createEvent({
     required String eventName,
     required String description,
-    required String location, // ✅ Add this line
+    required String location,
     required String venueName,
     required String venueAddress,
     required BuildContext context,
@@ -372,13 +370,13 @@ class EventCreationProvider with ChangeNotifier {
     _clearError();
     _setLoading(true);
 
-    // ✅ Validate required fields
+    // Validate required fields
     if (eventName.trim().isEmpty ||
         _startDate == null ||
         _startTime == null ||
         _endDate == null ||
         _endTime == null ||
-        location.trim().isEmpty ||  // ✅ Using manual location from input
+        location.trim().isEmpty ||
         description.trim().isEmpty ||
         venueName.trim().isEmpty ||
         venueAddress.trim().isEmpty) {
@@ -386,7 +384,6 @@ class EventCreationProvider with ChangeNotifier {
       _setLoading(false);
       return false;
     }
-
 
     final bool isFreeEvent = (_ticketType == 'Free');
     double? priceToSend = isFreeEvent ? 0.0 : double.tryParse(_ticketPrice);
@@ -402,7 +399,8 @@ class EventCreationProvider with ChangeNotifier {
       final backendUserId = prefs.getString("backendUserId");
 
       if (backendUserId == null || backendUserId.isEmpty) {
-        _errorMessage = "User not logged in or backend user ID is missing.";
+        _errorMessage = "User not logged in.";
+        _setLoading(false);
         return false;
       }
 
@@ -425,101 +423,70 @@ class EventCreationProvider with ChangeNotifier {
       final uri = Uri.parse('http://82.29.167.118:8000/api/post/event');
       final request = http.MultipartRequest('POST', uri);
 
-      // 🔗 Add required fields
+      // Add fields
       request.fields['type'] = "event";
       request.fields['user'] = backendUserId;
       request.fields['title'] = eventName;
       request.fields['content'] = description;
       request.fields['startTime'] = startDateTime.toIso8601String();
       request.fields['endTime'] = endDateTime.toIso8601String();
-      request.fields['location'] = location; // ✅ Use manual input now
-      request.fields['city'] = location;       // 🔴 Static city
-      request.fields['latitude'] = "0.0"; // 🔴 Static latitude
-      request.fields['longitude'] = "0.0"; // 🔴 Static longitude
+      request.fields['location'] = location;
+      request.fields['city'] = location; // Use actual city if available
+      request.fields['latitude'] = "0.0"; // Replace with actual lat if needed
+      request.fields['longitude'] = "0.0"; // Replace with actual lon if needed
       request.fields['description'] = description;
       request.fields['isFree'] = isFreeEvent.toString();
       request.fields['price'] = priceToSend.toString();
       request.fields['venueName'] = venueName;
       request.fields['venueAddress'] = venueAddress;
-
-      // ✅ Add tags
       request.fields['tags'] = tags.join(',');
-      debugPrint("🟢 Tags sent to server: ${request.fields['tags']}");
 
-      // ✅ Add customQuestions as JSON string
+      debugPrint("🟢 Tags: ${request.fields['tags']}");
+
+      // Add customQuestions
       if (customQuestions.isNotEmpty) {
-        request.fields['customQuestions'] = customQuestions.join(',');
-        debugPrint("✅ customQuestions added: ${request.fields['customQuestions']}");
+        request.fields['customQuestions'] = jsonEncode(customQuestions);
+        debugPrint("✅ customQuestions JSON: ${request.fields['customQuestions']}");
       }
 
-      // 📸 Attach media if available
+      // Add image if available
       if (_pickedEventImage != null) {
-        final image = await http.MultipartFile.fromPath(
-          'media',
-          _pickedEventImage!.path,
-        );
+        final image = await http.MultipartFile.fromPath('media', _pickedEventImage!.path);
         request.files.add(image);
       } else {
-        debugPrint("No event image picked for creation.");
+        debugPrint("No event image picked.");
       }
 
-      debugPrint("📤 Sending fields for event creation: ${request.fields}");
-      debugPrint("📸 File count: ${request.files.length}");
-
+      debugPrint("📤 Sending request: ${request.fields}");
       final streamedResponse = await request.send();
       final respStr = await streamedResponse.stream.bytesToString();
 
       debugPrint("📥 Status Code: ${streamedResponse.statusCode}");
-      debugPrint("📥 Raw Response Body: $respStr");
+      debugPrint("📥 Response Body: $respStr");
 
       if (respStr.isNotEmpty) {
         final decoded = json.decode(respStr);
+        debugPrint("📥 Decoded Response: $decoded");
 
-        if (streamedResponse.statusCode == 201) {
-          _lastApiResponse = decoded;
-          await fetchUserPostsFromPrefs();
-
-          final mediaList = decoded['data']['media'] as List?;
-          final String eventImageUrl = (mediaList != null && mediaList.isNotEmpty)
-              ? 'http://82.29.167.118:8000/${mediaList[0]}'
-              : '';
-
-          final senderName = prefs.getString('backendUserName') ?? 'Someone';
-
-          await sendEventNotificationToFollowers(
-            eventImageUrl: eventImageUrl,
-            eventTitle: eventName,
-            context: context,
-            senderName: senderName,
-          );
-
-          // ✅ Reset state
-          _pickedEventImage = null;
-          _selectedLocation = null;
-          _selectedLatitude = null;
-          _selectedLongitude = null;
-          _selectedCity = null;
-          _selectedVenueName = null;
-          _useManualVenueEntry = false;
-          _startDate = null;
-          _startTime = null;
-          _endDate = null;
-          _endTime = null;
-          _ticketType = 'Free';
-          _ticketPrice = '';
-          notifyListeners();
-          return true;
+        if (decoded['success'] == true) {
+          // Check server returned customQuestions
+          if (decoded['data']?['eventDetails']?['customQuestions'] != null) {
+            debugPrint("✅ Server Stored Custom Questions: ${decoded['data']['eventDetails']['customQuestions']}");
+          } else {
+            debugPrint("⚠️ Server did not return customQuestions.");
+          }
+          return true; // ✅ Success
         } else {
-          _errorMessage = 'Server error: ${decoded['message'] ?? 'Unknown error'} - Status Code: ${streamedResponse.statusCode}';
+          _errorMessage = 'Server error: ${decoded['message'] ?? 'Unknown error'}';
           return false;
         }
       } else {
-        _errorMessage = 'Empty response from server. Status Code: ${streamedResponse.statusCode}';
+        _errorMessage = 'Empty response from server.';
         return false;
       }
     } catch (e) {
-      _errorMessage = 'Network error during event creation: $e';
-      print('Network Error: $_errorMessage');
+      _errorMessage = 'Exception during event creation: $e';
+      debugPrint("❌ Exception: $_errorMessage");
       return false;
     } finally {
       _setLoading(false);
@@ -1028,13 +995,11 @@ class EventCreationProvider with ChangeNotifier {
     _ticketPrice = '';
     _selectedVenueName = null;
     _useManualVenueEntry = false;
-
-    // Removed old location logic
     _selectedLocation = null;
     _selectedLatitude = null;
     _selectedLongitude = null;
     _selectedCity = null;
-
+    _customQuestion = '';
     notifyListeners();
   }
 
