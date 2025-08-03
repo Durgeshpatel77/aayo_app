@@ -143,10 +143,19 @@ class _SingleUserProfileScreenState extends State<SingleUserProfileScreen> with 
             'profile': '',
           });
           isFollowing = true;
+
+          // ✅ Send notification to the followed user
+          debugPrint('🔔 Sending follow notification to: ${_userProfileData['fcmToken']}');
+          provider.sendFollowNotification(
+            toUserFcmToken: _userProfileData['fcmToken'] ?? '',
+            fromUserName: currentUserName,
+          );
         }
+
         _userProfileData['followers'] = followers;
       });
     }
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(result['message'] ?? 'Action completed')),
     );

@@ -168,15 +168,16 @@ class FetchEditUserProvider with ChangeNotifier {
 
   //-------------------- fetch followers ----------------------
   Future<Map<String, dynamic>> toggleFollow(String targetUserId) async {
-
     try {
       final prefs = await SharedPreferences.getInstance();
       final backendUserId = prefs.getString('backendUserId');
+      final backendUserName = prefs.getString('backendUserName') ?? 'Someone';
 
       if (backendUserId == null) {
         debugPrint('❌ backendUserId not found in SharedPreferences');
         throw Exception('backendUserId not found in SharedPreferences');
       }
+
       final url = Uri.parse('$_baseUrl/api/user/follow/$backendUserId');
       final body = {'followingId': targetUserId};
 
@@ -195,22 +196,29 @@ class FetchEditUserProvider with ChangeNotifier {
       final decoded = json.decode(response.body);
 
       if (response.statusCode == 200 && decoded['success'] == true) {
-        /// ❗ Backend bug workaround: swap values
-        final backendIncorrectFollowers = decoded['data']['followers']; // actually 'following'
-        final backendIncorrectFollowing = decoded['data']['following']; // actually 'followers'
+        // ✅ Extract data from backend
+        final followersRaw = decoded['data']['followers'] ?? [];
+        final followingRaw = decoded['data']['following'] ?? [];
 
-        // Save correct values manually
-        final correctedFollowers = backendIncorrectFollowing ?? []; // who follows target user
-        final correctedFollowing = backendIncorrectFollowers ?? []; // whom current user follows
-
-        _currentUserFollowing = List.from(correctedFollowing); // your updated following list
+        // ✅ Update local following list
+        _currentUserFollowing = List.from(followingRaw);
         notifyListeners();
+
+        // ✅ Fetch followed user’s FCM token
+        final targetUser = await fetchUserById(targetUserId);
+        final targetFcmToken = targetUser['fcmToken'] ?? '';
+
+        // ✅ Send push notification
+        await sendFollowNotification(
+          toUserFcmToken: targetFcmToken,
+          fromUserName: backendUserName,
+        );
 
         return {
           'success': true,
           'message': decoded['message'],
-          'targetFollowers': correctedFollowers,
-          'currentFollowing': _currentUserFollowing,
+          'targetFollowers': List.from(followersRaw),
+          'currentFollowing': List.from(followingRaw),
         };
       } else {
         debugPrint('❌ Follow request failed: ${decoded['message']}');
@@ -219,12 +227,6 @@ class FetchEditUserProvider with ChangeNotifier {
           'message': decoded['message'] ?? 'Failed to follow/unfollow',
         };
       }
-    } on FormatException catch (e) {
-      debugPrint('❌ JSON decode error: $e');
-      return {
-        'success': false,
-        'message': 'Invalid server response format: $e',
-      };
     } catch (e) {
       debugPrint('❌ toggleFollow() exception: $e');
       return {
@@ -322,14 +324,12 @@ class FetchEditUserProvider with ChangeNotifier {
     required String toUserFcmToken,
     required String fromUserName,
   }) async {
-    if (toUserFcmToken.trim().isEmpty ||
-        !toUserFcmToken.contains(':') ||
-        toUserFcmToken.length < 30) {
+    if (toUserFcmToken.trim().isEmpty || !toUserFcmToken.contains(':') || toUserFcmToken.length < 30) {
       debugPrint('❌ Invalid FCM token — skipping notification.');
       return;
     }
 
-    debugPrint('📛 Valid token used: $toUserFcmToken');
+    debugPrint('📛 Valid FCM token: $toUserFcmToken');
 
     const url = 'http://82.29.167.118:8000/api/send-notification';
     final body = {
@@ -339,17 +339,23 @@ class FetchEditUserProvider with ChangeNotifier {
     };
 
     try {
-      debugPrint('📤 Sending follow notification...');
+      debugPrint('📤 Sending notification to API...');
       final res = await http.post(
         Uri.parse(url),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(body),
       );
 
-      debugPrint('✅ Follow notification response: ${res.statusCode}');
-      debugPrint('📥 Response: ${res.body}');
+      debugPrint('📬 Status Code: ${res.statusCode}');
+      debugPrint('📥 Body: ${res.body}');
+
+      if (res.statusCode == 200) {
+        debugPrint('✅ Notification API accepted the request.');
+      } else {
+        debugPrint('❌ Notification API failed with status: ${res.statusCode}');
+      }
     } catch (e) {
-      debugPrint('❌ Error sending follow notification: $e');
+      debugPrint('💥 Exception sending follow notification: $e');
     }
   }
 
