@@ -130,7 +130,7 @@ class AddPostProvider with ChangeNotifier {
     _isLoading = true;
     notifyListeners();
 
-    String? errorMessage;
+    String? resultMessage;
 
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -148,7 +148,7 @@ class AddPostProvider with ChangeNotifier {
           ? _titleController.text.trim()
           : 'New Post';
       request.fields['content'] = _postController.text.trim();
-      request.fields['tags'] = _selectedCategories.join(','); // ✅ Add this line
+      request.fields['tags'] = _selectedCategories.join(',');
 
       if (_selectedImage != null) {
         request.files.add(await http.MultipartFile.fromPath(
@@ -158,47 +158,63 @@ class AddPostProvider with ChangeNotifier {
         ));
       }
 
-      var response = await request.send();
-      final responseBody = await http.Response.fromStream(response);
+      debugPrint("📤 Sending post request...");
+      final streamedResponse = await request.send();
+      final responseBody = await http.Response.fromStream(streamedResponse);
 
-      if (response.statusCode == 201) {
+      if (streamedResponse.statusCode == 201) {
         final responseData = json.decode(responseBody.body);
         final mediaList = responseData['data']['media'] as List?;
         final title = responseData['data']['title'] ?? 'New Post';
 
         if (mediaList != null && mediaList.isNotEmpty) {
           final imageUrl = '$_apiBaseUrl/${mediaList[0]}';
+          final senderName = prefs.getString('backendUserName') ?? 'Someone';
 
-          final prefs = await SharedPreferences.getInstance();
-          final senderName =
-              prefs.getString('backendUserName') ?? 'Someone';
+          try {
+            final followersUrl = Uri.parse('$_apiBaseUrl/api/user/$backendUserId');
+            final followersResponse = await http.get(followersUrl);
 
-          await sendPostNotificationToFollowers(
-            context: context,
-            postImageUrl: imageUrl,
-            postTitle: title,
-            senderName: senderName,
-          );
+            if (followersResponse.statusCode == 200) {
+              final followersData = jsonDecode(followersResponse.body);
+              final followersList = followersData['data']['followers'] as List;
 
+              for (final follower in followersList) {
+                final followerId = follower['_id'];
+                await sendNotificationToFollower(
+                  receiverUserId: followerId,
+                  title: 'New Post',
+                  body: '$senderName just posted something!',
+                  dataTitle: title,
+                  dataImage: imageUrl,
+                  dataType: 'post',
+                );
+              }
+            } else {
+              debugPrint('❌ Failed to fetch followers for notifications. Status: ${followersResponse.statusCode}');
+            }
+          } catch (e, stack) {
+            debugPrint('🚨 Failed to send notifications: $e');
+            debugPrint('📍 Stack trace:\n$stack');
+          }
         }
 
         clearPost();
-        errorMessage = null;
+        //resultMessage = 'Post created successfully!';
+      } else {
+        final errorData = json.decode(responseBody.body);
+        resultMessage = 'Failed to share post: ${errorData['message'] ?? streamedResponse.statusCode}';
       }
-      else {
-        final error = json.decode(responseBody.body);
-        errorMessage =
-        'Failed to share post: ${error['message'] ?? response.statusCode}';
-      }
-    } catch (e) {
-      debugPrint('Error creating post: $e');
-      errorMessage = 'An error occurred: $e';
+    } catch (e, stackTrace) {
+      debugPrint('❌ Exception in createPost: $e');
+      debugPrint('📍 Stack trace:\n$stackTrace');
+      resultMessage = 'An unexpected error occurred while creating the post.';
     } finally {
       _isLoading = false;
       notifyListeners();
     }
 
-    return errorMessage;
+    return resultMessage;
   }
 
   /// ✅ 5. FETCH POSTS FOR LOGGED-IN USER
@@ -220,7 +236,8 @@ class AddPostProvider with ChangeNotifier {
             .where((post) => post['user']?['_id'] == userId)
             .map((postJson) => Event.fromJson(postJson))
             .toList();
-      } else {
+      }
+      else {
         throw Exception('Failed to load posts');
       }
     } catch (e) {
@@ -283,103 +300,154 @@ class AddPostProvider with ChangeNotifier {
       return [];
     }
   }
+
+
   /// ✅ 8 sendPostNotificationToFollowers
-  Future<void> sendPostNotificationToFollowers({
-    required BuildContext context,
-    required String postImageUrl,
-    required String postTitle,
-    required String senderName,
+  Future<void> sendNotificationToFollower({
+    required String receiverUserId,
+    required String title,
+    required String body,
+    required String dataTitle,
+    required String dataImage,
+    required String dataType,
   }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final backendUserId = prefs.getString('backendUserId');
-      final userMobile = prefs.getString('backendUserMobile') ?? '';
-      final rawUserAvatar = prefs.getString('backendUserProfile') ?? '';
+      final senderUserId = prefs.getString('backendUserId');
 
-      final String userAvatar = rawUserAvatar.startsWith('http')
-          ? rawUserAvatar
-          : 'http://82.29.167.118:8000$rawUserAvatar';
-
-      if (backendUserId == null || backendUserId.isEmpty) {
-        debugPrint('❌ backendUserId missing — cannot send notification');
+      if (senderUserId == null || senderUserId.isEmpty) {
+        debugPrint('❌ Sender user ID is missing');
         return;
       }
 
-      // 🔁 Fetch followers
-      final followersUrl = Uri.parse('http://82.29.167.118:8000/api/user/$backendUserId');
-      final followersResponse = await http.get(followersUrl);
+      final Uri url = Uri.parse('http://82.29.167.118:8000/api/notification');
 
-      if (followersResponse.statusCode != 200) {
-        debugPrint('❌ Failed to fetch followers');
-        return;
-      }
-
-      final followersData = jsonDecode(followersResponse.body);
-      final followersList = followersData['data']['followers'] as List;
-
-      for (var follower in followersList) {
-        final followerId = follower['_id'];
-
-        // 🔍 Fetch follower FCM token
-        final followerDetailUrl = Uri.parse('http://82.29.167.118:8000/api/user/$followerId');
-        final detailResponse = await http.get(followerDetailUrl);
-
-        if (detailResponse.statusCode != 200) {
-          debugPrint('❌ Failed to fetch follower $followerId');
-          continue;
+      final notificationBody = jsonEncode({
+        "sender": senderUserId,
+        "receiver": receiverUserId,
+        "title": title,
+        "body": body,
+        "data": {
+          "title": dataTitle,
+          "image": dataImage,
+          "type": dataType,
         }
+      });
 
-        final followerData = jsonDecode(detailResponse.body);
-        final fcmToken = followerData['data']['fcmToken'];
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: notificationBody,
+      );
 
-        if (fcmToken == null || fcmToken.toString().isEmpty) {
-          debugPrint('⚠️ Skipping follower $followerId — no FCM token');
-          continue;
-        }
-
-        // 📤 Send notification
-        final notificationUrl = Uri.parse('http://82.29.167.118:8000/api/send-notification');
-
-        final body = jsonEncode({
-          "fcmToken": fcmToken,
-          "title": "$senderName posted something new!",
-          "body": postTitle.isNotEmpty ? postTitle : 'Check out the latest post!',
-          "imageUrl": postImageUrl, // 🖼️ show post in big picture
-          "data": {
-            "userId": backendUserId,
-            "userName": senderName,
-            "userMobile": userMobile,
-            "userAvatar": userAvatar, // 👤 Avatar passed to client
-            "postImage": postImageUrl,
-            "type": "post"
-          }
-        });
-
-        final response = await http.post(
-          notificationUrl,
-          headers: {'Content-Type': 'application/json'},
-          body: body,
-        );
-
-        if (response.statusCode == 200) {
-          debugPrint('✅ Notification sent to $followerId');
-        } else {
-          debugPrint('❌ Failed to send to $followerId');
-          debugPrint('📥 ${response.body}');
-        }
-      }
-
-      // ✅ Show toast once all done
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('📣 Notifications sent to followers!')),
-        );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        debugPrint("✅ Notification sent to $receiverUserId");
+      } else {
+        debugPrint("❌ Failed to send notification: ${response.statusCode}");
+        debugPrint("📥 Response: ${response.body}");
       }
     } catch (e, stack) {
-      debugPrint('❌ Exception while sending post notification: $e');
-      debugPrint('🧱 Stacktrace:\n$stack');
+      debugPrint("🛑 Error sending notification: $e");
+      debugPrint("📍 Stacktrace:\n$stack");
     }
   }
+
+  // Future<void> sendPostNotificationToFollowers({
+  //   required BuildContext context,
+  //   required String postImageUrl,
+  //   required String postTitle,
+  //   required String senderName,
+  // }) async {
+  //   try {
+  //     final prefs = await SharedPreferences.getInstance();
+  //     final backendUserId = prefs.getString('backendUserId');
+  //     final userMobile = prefs.getString('backendUserMobile') ?? '';
+  //     final rawUserAvatar = prefs.getString('backendUserProfile') ?? '';
+  //
+  //     final String userAvatar = rawUserAvatar.startsWith('http')
+  //         ? rawUserAvatar
+  //         : 'http://82.29.167.118:8000$rawUserAvatar';
+  //
+  //     if (backendUserId == null || backendUserId.isEmpty) {
+  //       debugPrint('❌ backendUserId missing — cannot send notification');
+  //       return;
+  //     }
+  //
+  //     // 🔁 Fetch followers
+  //     final followersUrl = Uri.parse('http://82.29.167.118:8000/api/user/$backendUserId');
+  //     final followersResponse = await http.get(followersUrl);
+  //
+  //     if (followersResponse.statusCode != 200) {
+  //       debugPrint('❌ Failed to fetch followers');
+  //       return;
+  //     }
+  //
+  //     final followersData = jsonDecode(followersResponse.body);
+  //     final followersList = followersData['data']['followers'] as List;
+  //
+  //     for (var follower in followersList) {
+  //       final followerId = follower['_id'];
+  //
+  //       // 🔍 Fetch follower FCM token
+  //       final followerDetailUrl = Uri.parse('http://82.29.167.118:8000/api/user/$followerId');
+  //       final detailResponse = await http.get(followerDetailUrl);
+  //
+  //       if (detailResponse.statusCode != 200) {
+  //         debugPrint('❌ Failed to fetch follower $followerId');
+  //         continue;
+  //       }
+  //
+  //       final followerData = jsonDecode(detailResponse.body);
+  //       final fcmToken = followerData['data']['fcmToken'];
+  //
+  //       if (fcmToken == null || fcmToken.toString().isEmpty) {
+  //         debugPrint('⚠️ Skipping follower $followerId — no FCM token');
+  //         continue;
+  //       }
+  //
+  //       // 📤 Send notification
+  //       final notificationUrl = Uri.parse('http://82.29.167.118:8000/api/send-notification');
+  //
+  //       final body = jsonEncode({
+  //         "fcmToken": fcmToken,
+  //         "title": "$senderName posted something new!",
+  //         "body": postTitle.isNotEmpty ? postTitle : 'Check out the latest post!',
+  //         "imageUrl": postImageUrl, // 🖼️ show post in big picture
+  //         "data": {
+  //           "userId": backendUserId,
+  //           "userName": senderName,
+  //           "userMobile": userMobile,
+  //           "userAvatar": userAvatar, // 👤 Avatar passed to client
+  //           "postImage": postImageUrl,
+  //           "type": "post"
+  //         }
+  //       });
+  //
+  //       final response = await http.post(
+  //         notificationUrl,
+  //         headers: {'Content-Type': 'application/json'},
+  //         body: body,
+  //       );
+  //
+  //       if (response.statusCode == 200) {
+  //         debugPrint('✅ Notification sent to $followerId');
+  //       } else {
+  //         debugPrint('❌ Failed to send to $followerId');
+  //         debugPrint('📥 ${response.body}');
+  //       }
+  //     }
+  //
+  //     // ✅ Show toast once all done
+  //     if (context.mounted) {
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         const SnackBar(content: Text('📣 Notifications sent to followers!')),
+  //       );
+  //     }
+  //   } catch (e, stack) {
+  //     debugPrint('❌ Exception while sending post notification: $e');
+  //     debugPrint('🧱 Stacktrace:\n$stack');
+  //   }
+  // }
 
   /// ✅ CLEAN UP
   @override

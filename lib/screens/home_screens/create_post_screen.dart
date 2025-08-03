@@ -296,14 +296,17 @@ SizedBox(height: 20,),
                     onPressed: addPostProvider.isPostEnabled
                         ? () async {
                       final message = await addPostProvider.createPost(context);
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                    content: Text(
-                                        message ?? 'Post creation finished.')),
-                              );
-                            }
-                          }
+                      if (!mounted) return;
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            message ?? '✅ Post created successfully!',
+                          ),
+                          backgroundColor: message == null ? Colors.green : Colors.red,
+                        ),
+                      );
+                    }
                         : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: addPostProvider.isPostEnabled

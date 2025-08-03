@@ -1175,7 +1175,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                             print("DEBUG ERROR: ${eventProvider.errorMessage}");
                             _showMessage(eventProvider.errorMessage ?? "Something went wrong.");
                           }
- }
+                        }
                       }
                     },
                     onStepCancel: () {

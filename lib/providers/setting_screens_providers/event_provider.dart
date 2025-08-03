@@ -340,7 +340,7 @@ class EventCreationProvider with ChangeNotifier {
           desiredAccuracy: LocationAccuracy.high);
 
       List<Placemark> placemarks =
-          await placemarkFromCoordinates(position.latitude, position.longitude);
+      await placemarkFromCoordinates(position.latitude, position.longitude);
 
       Placemark place = placemarks[0];
       String address =
@@ -570,7 +570,7 @@ class EventCreationProvider with ChangeNotifier {
       return List<Map<String, dynamic>>.from(data);
     } else {
       _errorMessage =
-          'Failed to fetch location suggestions: ${response.statusCode}';
+      'Failed to fetch location suggestions: ${response.statusCode}';
       print('Failed to fetch location suggestions: ${response.statusCode}');
       return [];
     }
@@ -711,7 +711,7 @@ class EventCreationProvider with ChangeNotifier {
 
       for (final id in joinedEventIds) {
         final response =
-            await http.get(Uri.parse('http://82.29.167.118:8000/api/post/$id'));
+        await http.get(Uri.parse('http://82.29.167.118:8000/api/post/$id'));
 
         if (response.statusCode == 200) {
           final data = json.decode(response.body)['data'];
@@ -753,9 +753,9 @@ class EventCreationProvider with ChangeNotifier {
           posts
               .map((json) => EventModel.fromJson(json))
               .where((event) =>
-                  event.type == 'event' &&
-                  event.eventDetails != null &&
-                  event.eventDetails!.endTime.isBefore(now))
+          event.type == 'event' &&
+              event.eventDetails != null &&
+              event.eventDetails!.endTime.isBefore(now))
               .toList(),
         );
       }
@@ -785,7 +785,7 @@ class EventCreationProvider with ChangeNotifier {
 
       // 🔁 Step 1: Get all followers
       final followersUrl =
-          Uri.parse('http://82.29.167.118:8000/api/user/$backendUserId');
+      Uri.parse('http://82.29.167.118:8000/api/user/$backendUserId');
       final followersResponse = await http.get(followersUrl);
 
       if (followersResponse.statusCode != 200) {
@@ -814,7 +814,7 @@ class EventCreationProvider with ChangeNotifier {
           if (fcmToken != null && fcmToken.toString().isNotEmpty) {
             // 📤 Step 3: Send notification
             final notificationUrl =
-                Uri.parse('http://82.29.167.118:8000/api/send-notification');
+            Uri.parse('http://82.29.167.118:8000/api/send-notification');
 
             final notificationBody = {
               'fcmToken': fcmToken,
