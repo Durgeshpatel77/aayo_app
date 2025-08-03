@@ -957,11 +957,12 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                   context: context,
                   eventName: _eventNameController.text,
                   description: _eventDescriptionController.text,
-                  venueAddress: _onlineEventLinkController.text,
+                  venueAddress: _onlineEventLinkController.text, // Link
                   venueName: 'Online Event',
                   tags: selectedTagTitles,
-                  customQuestions: addedCustomQuestions, // ✅ Correct dynamic list
-                  location: _eventLocationController.text,
+                  customQuestions: addedCustomQuestions,
+                  location: 'Online', // For API consistency
+                  isOnlineEvent: true, // 🆕 Pass online event flag
                 );
 
                 if (success && mounted) {

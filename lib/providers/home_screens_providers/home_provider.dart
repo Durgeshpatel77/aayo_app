@@ -53,21 +53,8 @@ class HomeProvider extends ChangeNotifier {
   void checkForNewPosts(List<Event> latestEvents) {
     if (_allEvents.isEmpty || latestEvents.isEmpty) return;
 
-    // Find latest post (not event)
-    final latestPost = latestEvents.firstWhere(
-          (event) => event.isPost,
-      orElse: () => Event.empty(), // Fallback if no post found
-    );
-
-    final currentFirstPost = _allEvents.firstWhere(
-          (event) => event.isPost,
-      orElse: () => Event.empty(),
-    );
-
-    if (latestPost.id.isNotEmpty &&
-        latestPost.id != currentFirstPost.id &&
-        currentFirstPost.id.isNotEmpty) {
-      setHasNewPosts(true);
+    if (latestEvents.first.id != _allEvents.first.id) {
+      setHasNewPosts(true); // Public method to show button
     }
   }
 

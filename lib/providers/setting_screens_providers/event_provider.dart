@@ -366,33 +366,38 @@ class EventCreationProvider with ChangeNotifier {
     required BuildContext context,
     required List<String> tags,
     required List<String> customQuestions,
+    bool isOnlineEvent = false, // 🆕
   }) async {
     _clearError();
     _setLoading(true);
 
-    // Validate required fields
+    // ✅ Validate common required fields
     if (eventName.trim().isEmpty ||
         _startDate == null ||
         _startTime == null ||
         _endDate == null ||
         _endTime == null ||
-        location.trim().isEmpty ||
-        description.trim().isEmpty ||
-        venueName.trim().isEmpty ||
-        venueAddress.trim().isEmpty) {
-      _errorMessage = "Please fill all required fields including venue name, landmark, and location.";
+        description.trim().isEmpty) {
+      _errorMessage = "Please fill all required fields.";
       _setLoading(false);
       return false;
     }
 
+    // ✅ Extra validation for OFFLINE events only
+    if (!isOnlineEvent) {
+      if (location.trim().isEmpty ||
+          venueName.trim().isEmpty ||
+          venueAddress.trim().isEmpty) {
+        _errorMessage = "Please fill location, venue name, and address for offline events.";
+        _setLoading(false);
+        return false;
+      }
+    }
+
+    // ✅ Determine ticket type & price
     final bool isFreeEvent = (_ticketType == 'Free');
-    double? priceToSend = isFreeEvent ? 0.0 : double.tryParse(_ticketPrice);
-
-    if (!isFreeEvent && (priceToSend == null || priceToSend <= 0)) {
-      _errorMessage = "Please enter a valid ticket price for paid events.";
-      _setLoading(false);
-      return false;
-    }
+    final double priceToSend =
+    isFreeEvent ? 0.0 : double.tryParse(_ticketPrice) ?? 0.0;
 
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -404,6 +409,7 @@ class EventCreationProvider with ChangeNotifier {
         return false;
       }
 
+      // ✅ Build start & end datetime
       final DateTime startDateTime = DateTime(
         _startDate!.year,
         _startDate!.month,
@@ -423,33 +429,45 @@ class EventCreationProvider with ChangeNotifier {
       final uri = Uri.parse('http://82.29.167.118:8000/api/post/event');
       final request = http.MultipartRequest('POST', uri);
 
-      // Add fields
+      // 🟢 Always-required fields for both online & offline events
       request.fields['type'] = "event";
       request.fields['user'] = backendUserId;
       request.fields['title'] = eventName;
       request.fields['content'] = description;
       request.fields['startTime'] = startDateTime.toIso8601String();
       request.fields['endTime'] = endDateTime.toIso8601String();
-      request.fields['location'] = location;
-      request.fields['city'] = location; // Use actual city if available
-      request.fields['latitude'] = "0.0"; // Replace with actual lat if needed
-      request.fields['longitude'] = "0.0"; // Replace with actual lon if needed
-      request.fields['description'] = description;
       request.fields['isFree'] = isFreeEvent.toString();
       request.fields['price'] = priceToSend.toString();
-      request.fields['venueName'] = venueName;
-      request.fields['venueAddress'] = venueAddress;
-      request.fields['tags'] = tags.join(',');
+      request.fields['tags'] = tags.isNotEmpty ? tags.join(',') : '';
+      request.fields['description'] = description;
+
+      // 🟡 Online/Offline-specific location fields
+      request.fields['isOnlineEvent'] = isOnlineEvent.toString();
+      if (isOnlineEvent) {
+        request.fields['venueName'] = 'Online Event';
+        request.fields['venueAddress'] = venueAddress; // Online link
+        request.fields['location'] = 'Online';
+        request.fields['city'] = 'Online';
+        request.fields['latitude'] = "0.0";
+        request.fields['longitude'] = "0.0";
+      } else {
+        request.fields['venueName'] = venueName;
+        request.fields['venueAddress'] = venueAddress;
+        request.fields['location'] = location;
+        request.fields['city'] = location; // Or actual city if available
+        request.fields['latitude'] = _selectedLatitude?.toString() ?? "0.0";
+        request.fields['longitude'] = _selectedLongitude?.toString() ?? "0.0";
+      }
 
       debugPrint("🟢 Tags: ${request.fields['tags']}");
 
-      // Add customQuestions
+      // ✅ Add customQuestions if any
       if (customQuestions.isNotEmpty) {
         request.fields['customQuestions'] = jsonEncode(customQuestions);
         debugPrint("✅ customQuestions JSON: ${request.fields['customQuestions']}");
       }
 
-      // Add image if available
+      // ✅ Add event image if selected
       if (_pickedEventImage != null) {
         final image = await http.MultipartFile.fromPath('media', _pickedEventImage!.path);
         request.files.add(image);
@@ -469,7 +487,7 @@ class EventCreationProvider with ChangeNotifier {
         debugPrint("📥 Decoded Response: $decoded");
 
         if (decoded['success'] == true) {
-          clearAllEventData(); // ✅ Clear form
+          clearAllEventData(); // ✅ Reset form
 
           if (decoded['data']?['eventDetails']?['customQuestions'] != null) {
             debugPrint("✅ Server Stored Custom Questions: ${decoded['data']['eventDetails']['customQuestions']}");
@@ -478,8 +496,7 @@ class EventCreationProvider with ChangeNotifier {
           }
 
           return true; // ✅ Success
-        }
-        else {
+        } else {
           _errorMessage = 'Server error: ${decoded['message'] ?? 'Unknown error'}';
           return false;
         }

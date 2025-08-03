@@ -160,38 +160,11 @@ class Event {
         'longitude': longitude,
         'venueName': venueName,
         'venueAddress': venueAddress,
+
       }
     };
   }
 
-  /// ✅ Add this: Empty event for fallback
-  factory Event.empty() => Event(
-    id: '',
-    title: '',
-    content: '',
-    location: '',
-    startTime: DateTime.now(),
-    endTime: DateTime.now(),
-    isFree: true,
-    organizerId: '',
-    price: 0.0,
-    likes: [],
-    comments: [],
-    image: '',
-    media: [],
-    organizer: '',
-    organizerProfile: '',
-    createdAt: DateTime.now(),
-    type: 'post', // default type
-    latitude: 0.0,
-    longitude: 0.0,
-    organizerFcmToken: '',
-    organizerMobile: '',
-    venueName: '',
-    venueAddress: '',
-  );
-
   bool get isEvent => type == 'event';
   bool get isPost => type == 'post';
 }
-
