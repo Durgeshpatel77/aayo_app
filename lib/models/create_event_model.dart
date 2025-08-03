@@ -28,8 +28,9 @@ class EventDetails {
   final String description;
   final bool isFree;
   final double price;
-  final String? venueName;     // ✅ new
-  final String? venueAddress;  // ✅ new (used for landmark)
+  final String? venueName;
+  final String? venueAddress;
+  final List<String>? customQuestions; // ✅ Add this
 
   EventDetails({
     required this.title,
@@ -44,7 +45,7 @@ class EventDetails {
     required this.price,
     this.venueName,
     this.venueAddress,
-
+    this.customQuestions, // ✅
   });
 
   factory EventDetails.fromJson(Map<String, dynamic> json) {
@@ -59,9 +60,11 @@ class EventDetails {
       description: json['description'] as String? ?? '',
       isFree: json['isFree'] as bool? ?? true,
       price: (json['price'] as num?)?.toDouble() ?? 0.0,
-      venueName: json['venueName'] as String?,       // ✅
-      venueAddress: json['venueAddress'] as String?, // ✅
-
+      venueName: json['venueName'] as String?,
+      venueAddress: json['venueAddress'] as String?,
+      customQuestions: (json['customQuestions'] as List<dynamic>?)
+          ?.map((e) => e.toString())
+          .toList(), // ✅ Parse correctly
     );
   }
 }

@@ -22,6 +22,54 @@ class HomeProvider extends ChangeNotifier {
   List<Event> get allEvents => _allEvents;
 
   int get selectedIndex => _selectedIndex;
+  bool _hasNewPosts = false;
+
+  bool get hasNewPosts => _hasNewPosts;
+  Future<List<Event>> fetchLatestEventsForCheck() async {
+    final url = Uri.parse('$_base?page=1'); // Fetch page 1 only
+
+    try {
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+        final data = json['data'];
+
+        if (data != null && data['posts'] is List) {
+          final posts = data['posts'] as List;
+          return posts.map((e) => Event.fromJson(e)).toList();
+        }
+      }
+    } catch (e) {
+      debugPrint("❌ Error fetching latest posts for check: $e");
+    }
+    return [];
+  }
+
+  void setHasNewPosts(bool value) {
+    _hasNewPosts = value;
+    notifyListeners();
+  }
+  void checkForNewPosts(List<Event> latestEvents) {
+    if (_allEvents.isEmpty || latestEvents.isEmpty) return;
+
+    // Find latest post (not event)
+    final latestPost = latestEvents.firstWhere(
+          (event) => event.isPost,
+      orElse: () => Event.empty(), // Fallback if no post found
+    );
+
+    final currentFirstPost = _allEvents.firstWhere(
+          (event) => event.isPost,
+      orElse: () => Event.empty(),
+    );
+
+    if (latestPost.id.isNotEmpty &&
+        latestPost.id != currentFirstPost.id &&
+        currentFirstPost.id.isNotEmpty) {
+      setHasNewPosts(true);
+    }
+  }
 
 
   String? getFcmTokenByUserId(String userId) {
@@ -77,7 +125,6 @@ class HomeProvider extends ChangeNotifier {
 
   Future<void> fetchAll() async {
     _loading = true;
-
     notifyListeners();
 
     List<Event> combined = [];
@@ -96,8 +143,11 @@ class HomeProvider extends ChangeNotifier {
       debugPrint('❌ Failed to fetch posts: $e');
     }
 
-    _allEvents = combined
-      ..sort((a, b) => b.createdAt.compareTo(a.createdAt)); // ⬅️ Newest first
+    combined.sort((a, b) => b.createdAt.compareTo(a.createdAt)); // Newest first
+
+    checkForNewPosts(combined); // 🆕 Check for updates
+
+    _allEvents = combined;
     _loading = false;
     notifyListeners();
   }

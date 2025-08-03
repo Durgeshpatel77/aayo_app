@@ -469,14 +469,17 @@ class EventCreationProvider with ChangeNotifier {
         debugPrint("📥 Decoded Response: $decoded");
 
         if (decoded['success'] == true) {
-          // Check server returned customQuestions
+          clearAllEventData(); // ✅ Clear form
+
           if (decoded['data']?['eventDetails']?['customQuestions'] != null) {
             debugPrint("✅ Server Stored Custom Questions: ${decoded['data']['eventDetails']['customQuestions']}");
           } else {
             debugPrint("⚠️ Server did not return customQuestions.");
           }
+
           return true; // ✅ Success
-        } else {
+        }
+        else {
           _errorMessage = 'Server error: ${decoded['message'] ?? 'Unknown error'}';
           return false;
         }
@@ -695,128 +698,6 @@ class EventCreationProvider with ChangeNotifier {
     }
   }
 
-  // Method to show manual location picker (will need to be triggered from UI)
-  Future<Map<String, dynamic>?> showManualLocationPicker(
-      BuildContext context) async {
-    TextEditingController _searchController = TextEditingController();
-    List<Map<String, dynamic>> _suggestions = [];
-    bool _isLoadingSuggestions = false; // Internal loading for suggestions
-
-    final result = await showDialog<Map<String, dynamic>?>(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(builder: (context, setState) {
-          Timer? _debounce;
-
-          void _onSearchChanged(String value) {
-            if (_debounce?.isActive ?? false) _debounce!.cancel();
-
-            _debounce = Timer(const Duration(milliseconds: 500), () async {
-              if (value.isNotEmpty) {
-                setState(() => _isLoadingSuggestions = true);
-                try {
-                  final results = await fetchLocationSuggestions(value);
-                  setState(() {
-                    _suggestions = results;
-                    _isLoadingSuggestions = false;
-                  });
-                } catch (e) {
-                  setState(() {
-                    _suggestions = [];
-                    _isLoadingSuggestions = false;
-                  });
-                }
-              } else {
-                setState(() {
-                  _suggestions.clear();
-                  _isLoadingSuggestions = false;
-                });
-              }
-            });
-          }
-
-          return Dialog(
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: SizedBox(
-              height: 700,
-              width: double.infinity,
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: TextField(
-                      controller: _searchController,
-                      decoration: InputDecoration(
-                        hintText: 'Search location...',
-                        prefixIcon: const Icon(Icons.search),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide:
-                              BorderSide(color: Colors.pink.shade400, width: 1),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide:
-                              BorderSide(color: Colors.pink.shade400, width: 1),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide:
-                              BorderSide(color: Colors.pink.shade400, width: 1),
-                        ),
-                      ),
-                      onChanged: _onSearchChanged,
-                    ),
-                  ),
-                  if (_isLoadingSuggestions)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 20),
-                      child: CircularProgressIndicator(),
-                    ),
-                  Expanded(
-                    child: !_isLoadingSuggestions && _suggestions.isEmpty
-                        ? const Center(child: Text("Search for a location"))
-                        : ListView.builder(
-                            itemCount: _suggestions.length,
-                            itemBuilder: (context, index) {
-                              final suggestion = _suggestions[index];
-                              return ListTile(
-                                title: Text(suggestion['display_name']),
-                                onTap: () {
-                                  Navigator.pop(context, {
-                                    'display_name': suggestion['display_name'],
-                                    'lat': suggestion['lat'],
-                                    'lon': suggestion['lon'],
-                                    'address': suggestion['address'],
-                                  });
-                                },
-                              );
-                            },
-                          ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        });
-      },
-    );
-
-    if (result != null && result.isNotEmpty) {
-      setSelectedLocation(
-        result['display_name'],
-        double.tryParse(result['lat']),
-        double.tryParse(result['lon']),
-        result['address']?['city'] ??
-            result['address']?['town'] ??
-            result['address']?['village'] ??
-            "Unknown",
-      );
-    }
-    return result; // Return the result to the UI for displaying messages
-  }
-
   Future<void> fetchJoinedEventsFromPrefs() async {
     _clearError();
     _setFetchingEvents(true);
@@ -999,7 +880,7 @@ class EventCreationProvider with ChangeNotifier {
     _selectedLatitude = null;
     _selectedLongitude = null;
     _selectedCity = null;
-    _customQuestion = '';
+    _customQuestion = ''; // ✅
     notifyListeners();
   }
 

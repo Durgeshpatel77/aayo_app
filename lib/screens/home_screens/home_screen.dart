@@ -1,6 +1,7 @@
 // lib/screens/home_screens/home_tab_content.dart (home_screen.dart)
 
 // ... (existing imports - ensure correct path for UserProfileProvider)
+import 'dart:async';
 import 'dart:math';
 
 import 'package:aayo/screens/home_screens/post_detail_screens.dart';
@@ -537,11 +538,16 @@ class _HomeTabContentState extends State<HomeTabContent> {
   final ScrollController _scrollController = ScrollController();
   bool _locationFetched = false;
   Set<String> _selectedFilters = {'event', 'post'}; // Default: show both
+  Timer? _pollingTimer;
+
+  @override
 
   @override
   void initState() {
     super.initState();
     _fetchCurrentLocationOnce(); // 👈 fetch location only once
+    _startPollingForNewPosts(); // Start timer
+
     // Fetch initial events when the widget is initialized
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<HomeProvider>(context, listen: false).fetchInitialEvents();
@@ -556,11 +562,20 @@ class _HomeTabContentState extends State<HomeTabContent> {
     });
 
   }
+  void _startPollingForNewPosts() {
+    _pollingTimer = Timer.periodic(const Duration(seconds: 30), (timer) async {
+      final homeProvider = Provider.of<HomeProvider>(context, listen: false);
+      final latestEvents = await homeProvider.fetchLatestEventsForCheck();
+      homeProvider.checkForNewPosts(latestEvents);
+    });
+  }
 
   @override
   void dispose() {
     _scrollController.dispose();
     _searchController.dispose();
+    _pollingTimer?.cancel();
+
     super.dispose();
   }
 
@@ -634,127 +649,162 @@ class _HomeTabContentState extends State<HomeTabContent> {
 
   @override
   Widget build(BuildContext context) {
-    return RefreshIndicator(
-      color: Colors.pink,
-      onRefresh: () async {
-        await Provider.of<HomeProvider>(context, listen: false).fetchAll();
-      },
-      child: SingleChildScrollView(
-        controller: _scrollController,
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Location + Notification
-            Row(
+    return Stack(
+      children: [
+        RefreshIndicator(
+          color: Colors.pink,
+          onRefresh: () async {
+            await Provider.of<HomeProvider>(context, listen: false).fetchAll();
+          },
+          child: SingleChildScrollView(
+            controller: _scrollController,
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.location_on, color: Colors.pink),
-                const SizedBox(width: 8),
-                Text(
-                  _currentCity ?? 'Fetching location...',
-                  maxLines: 1,
-                  style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.bold),
+                // Location + Notification
+                Row(
+                  children: [
+                    const Icon(Icons.location_on, color: Colors.pink),
+                    const SizedBox(width: 8),
+                    Text(
+                      _currentCity ?? 'Fetching location...',
+                      maxLines: 1,
+                      style: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            const SizedBox(height: 20),
+                const SizedBox(height: 20),
 
-            // Search
-            GestureDetector(
-              onTap: () {
-                FocusScope.of(context).unfocus(); // Hide keyboard
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const SearchFilterScreen()),
-                );
-              },
-              child: AbsorbPointer( // Prevent default focus
-                child: TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: "Search Events and Posts",
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: _searchController.text.isNotEmpty
-                        ? IconButton(
-                      icon: const Icon(Icons.close, color: Colors.black),
-                      onPressed: () {
-                        _searchController.clear();
-                        Provider.of<HomeProvider>(context, listen: false).fetchAll();
-                      },
-                    )
-                        : null,
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Colors.pink),
+                // Search
+                GestureDetector(
+                  onTap: () {
+                    FocusScope.of(context).unfocus(); // Hide keyboard
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const SearchFilterScreen()),
+                    );
+                  },
+                  child: AbsorbPointer( // Prevent default focus
+                    child: TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText: "Search Events and Posts",
+                        prefixIcon: const Icon(Icons.search),
+                        suffixIcon: _searchController.text.isNotEmpty
+                            ? IconButton(
+                          icon: const Icon(Icons.close, color: Colors.black),
+                          onPressed: () {
+                            _searchController.clear();
+                            Provider.of<HomeProvider>(context, listen: false).fetchAll();
+                          },
+                        )
+                            : null,
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Colors.pink),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Colors.pink, width: 2),
+                        ),
+                        filled: true,
+                        fillColor: Colors.grey[100],
+                      ),
                     ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Colors.pink, width: 2),
-                    ),
-                    filled: true,
-                    fillColor: Colors.grey[100],
                   ),
                 ),
-              ),
-            ),
-            const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                _buildFilterBox('event','Events'),
-                _buildFilterBox('post', 'Posts'),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _buildFilterBox('event','Events'),
+                    _buildFilterBox('post', 'Posts'),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Column(
+                  children: [
+                    if (widget.isLoading)
+                      ...List.generate(5, (_) => const EventCardShimmer())
+                    else if (widget.allEvents.isEmpty)
+                      const Center(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: 40),
+                          child: Text(
+                            'No relevant search found.',
+                            style: TextStyle(fontSize: 16, color: Colors.grey),
+                          ),
+                        ),
+                      )
+                    else
+                      ...widget.allEvents.where((event) {
+                        if (_selectedFilters.contains('event') && event.isEvent) return true;
+                        if (_selectedFilters.contains('post') && event.isPost) return true;
+                        return false; // no matching selection
+                      })
+                          .map((event) {
+                        return GestureDetector(
+                          onTap: () => widget.onItemTapped(event),
+                          child: EventCard(
+                            event: event,
+                            highlight: _searchController.text.trim(),
+                          ),
+                        );
+                      }).toList(),
+                  ],
+                ),
+                Consumer<HomeProvider>(
+                  builder: (context, provider, _) {
+                    if (provider.isLoadingMore) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        child: Center(child: CircularProgressIndicator(color: Colors.pink)),
+                      );
+                    }
+                    return const SizedBox(height: 12);
+                  },
+                ),
               ],
             ),
-            const SizedBox(height: 16),
-            Column(
-              children: [
-                if (widget.isLoading)
-                  ...List.generate(5, (_) => const EventCardShimmer())
-                else if (widget.allEvents.isEmpty)
-                  const Center(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 40),
-                      child: Text(
-                        'No relevant search found.',
-                        style: TextStyle(fontSize: 16, color: Colors.grey),
-                      ),
-                    ),
-                  )
-                else
-                  ...widget.allEvents.where((event) {
-                    if (_selectedFilters.contains('event') && event.isEvent) return true;
-                    if (_selectedFilters.contains('post') && event.isPost) return true;
-                    return false; // no matching selection
-                  })
-                      .map((event) {
-                    return GestureDetector(
-                      onTap: () => widget.onItemTapped(event),
-                      child: EventCard(
-                        event: event,
-                        highlight: _searchController.text.trim(),
-                      ),
-                    );
-                  }).toList(),
-              ],
-            ),
-            Consumer<HomeProvider>(
-              builder: (context, provider, _) {
-                if (provider.isLoadingMore) {
-                  return const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 16),
-                    child: Center(child: CircularProgressIndicator(color: Colors.pink)),
-                  );
-                }
-                return const SizedBox(height: 12);
-              },
-            ),
-          ],
+          ),
         ),
-      ),
+
+        // 🎯 New Posts Button — Only Added Part
+        Consumer<HomeProvider>(
+          builder: (context, homeProvider, _) {
+            if (!homeProvider.hasNewPosts) return SizedBox.shrink();
+
+            return Positioned(
+              bottom: 10,
+              left: MediaQuery.of(context).size.width / 2 - 70,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  homeProvider.setHasNewPosts(false); // hide button
+                  homeProvider.fetchAll(); // reload posts
+                  _scrollController.animateTo(
+                    0,
+                    duration: const Duration(milliseconds: 400),
+                    curve: Curves.easeInOut,
+                  );
+                },
+                label: const Text('New Posts', style: TextStyle(color: Colors.white)),
+                icon: const Icon(Icons.arrow_upward, color: Colors.white),
+
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.pink,
+                  shape: const StadiumBorder(),
+                  elevation: 5,
+                ),
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 }

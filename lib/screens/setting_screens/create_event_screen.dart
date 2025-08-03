@@ -32,6 +32,8 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
 
   final List<String> addedQuestions = [];
   List<String> addedCustomQuestions = [];
+  List<TextEditingController> _customQuestionControllers = [];
+
 
 
 
@@ -103,34 +105,34 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
       }
     }
   }
-  void _resetEventForm() {
-    _eventNameController.clear();
-    _eventDescriptionController.clear();
-    _manualVenueNameController.clear();
-    _eventLandmarkController.clear();
-    _onlineEventLinkController.clear();
-    _eventLocationController.clear();
-    _questionController.clear();
-
-    setState(() {
-      selectedTags.clear();
-      selectedCustomQuestions.clear(); // Clear your questions list
-    });
-
-    final eventProvider = Provider.of<EventCreationProvider>(context, listen: false);
-    eventProvider.setPickedEventImage(null);
-    eventProvider.setStartDate(null);
-    eventProvider.setStartTime(null);
-    eventProvider.setEndDate(null);
-    eventProvider.setEndTime(null);
-    eventProvider.setTicketType('Free');
-    eventProvider.setTicketPrice('');
-    eventProvider.setSelectedVenueName(null);
-    eventProvider.setUseManualVenueEntry(false);
-    eventProvider.setCustomQuestion(''); // ✅ clear question string
-
-    debugPrint("✅ All form and provider data cleared.");
-  }
+  // void _resetEventForm() {
+  //   _eventNameController.clear();
+  //   _eventDescriptionController.clear();
+  //   _manualVenueNameController.clear();
+  //   _eventLandmarkController.clear();
+  //   _onlineEventLinkController.clear();
+  //   _eventLocationController.clear();
+  //   _questionController.clear();
+  //
+  //   setState(() {
+  //     selectedTags.clear();
+  //     selectedCustomQuestions.clear(); // Clear your questions list
+  //   });
+  //
+  //   final eventProvider = Provider.of<EventCreationProvider>(context, listen: false);
+  //   eventProvider.setPickedEventImage(null);
+  //   eventProvider.setStartDate(null);
+  //   eventProvider.setStartTime(null);
+  //   eventProvider.setEndDate(null);
+  //   eventProvider.setEndTime(null);
+  //   eventProvider.setTicketType('Free');
+  //   eventProvider.setTicketPrice('');
+  //   eventProvider.setSelectedVenueName(null);
+  //   eventProvider.setUseManualVenueEntry(false);
+  //   eventProvider.setCustomQuestion(''); // ✅ clear question string
+  //
+  //   debugPrint("✅ All form and provider data cleared.");
+  // }
 
   // Shows a modal bottom sheet for selecting event tags
   void _showTagSelector() {
@@ -620,7 +622,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                             provider.customQuestion.isNotEmpty
                                 ? provider.customQuestion
                                 : 'Select Custom Questions (optional)',
-                            style: TextStyle(color: Colors.black,fontSize: 18),
+                            style: TextStyle(color: Colors.black, fontSize: 18),
                           );
                         },
                       ),
@@ -944,6 +946,12 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                 selectedTags.map((tag) => tag['title']!.replaceAll('"', '')).toList();
 
                 debugPrint("🟢 Cleaned Tags to Send: $selectedTagTitles");
+                List<String> selectedCustomQuestions = _customQuestionControllers
+                    .map((c) => c.text.trim())
+                    .where((q) => q.isNotEmpty)
+                    .toList();
+
+                debugPrint("📤 Custom questions to send: $selectedCustomQuestions");
 
                 bool success = await eventProvider.createEvent(
                   context: context,
@@ -957,7 +965,6 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                 );
 
                 if (success && mounted) {
-                  _resetEventForm(); // ✅ Only this, no provider.clearAllEventData()
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text("🎉 Event created successfully!")),
                   );
@@ -1163,7 +1170,8 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                               const SnackBar(content: Text("🎉 Event created successfully!")),
                             );
                             Navigator.pop(context);
-                          } else {
+                          }
+                          else {
                             print("DEBUG ERROR: ${eventProvider.errorMessage}");
                             _showMessage(eventProvider.errorMessage ?? "Something went wrong.");
                           }
