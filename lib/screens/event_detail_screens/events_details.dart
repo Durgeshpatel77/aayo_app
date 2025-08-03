@@ -521,7 +521,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                       children: [
                         Expanded(
                           child: Text(
-                            'Address: '
+                            widget.event.isOnlineEvent
+                                ? 'Event Link: ${widget.event.venueAddress ?? 'Not available'}'
+                                : 'Address: '
                                 '${capitalizeFirst(widget.event.venueName) ?? 'No venue name'}, '
                                 '${capitalizeFirst(widget.event.location) ?? 'N/A'}, '
                                 '${capitalizeFirst(widget.event.venueAddress) ?? 'Not available'}',
@@ -540,12 +542,13 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                             : IconButton(
                           icon: const Icon(Icons.copy, size: 20, color: Colors.pink),
                           onPressed: () {
-                            final textToCopy =
-                                '${widget.event.venueName ?? 'N/A'}, ${widget.event.venueAddress ?? 'Not available'}';
+                            final textToCopy = widget.event.isOnlineEvent
+                                ? widget.event.venueAddress ?? ''
+                                : '${widget.event.venueName ?? 'N/A'}, ${widget.event.venueAddress ?? 'Not available'}';
                             Clipboard.setData(ClipboardData(text: textToCopy));
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text('Address copied!'),
+                                content: Text('Copied to clipboard!'),
                                 duration: Duration(seconds: 1),
                               ),
                             );

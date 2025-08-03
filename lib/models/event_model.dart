@@ -27,6 +27,8 @@ class Event {
   final String? venueName;
   final String? venueAddress;
 
+  /// 🆕 New field
+  final bool isOnlineEvent;
 
   Event({
     required this.id,
@@ -52,7 +54,7 @@ class Event {
     this.organizerMobile,
     this.venueName,
     this.venueAddress,
-
+    this.isOnlineEvent = false, // default
   });
 
   factory Event.fromJson(Map<String, dynamic> json) {
@@ -88,21 +90,21 @@ class Event {
 
     final rawCreatedAt = json['createdAt'] ?? eventDetails['createdAt'];
 
-    /// ✅ Debug print for FCM Token from server
-    //debugPrint("📨 Parsed Organizer FCM Token: ${user['fcmToken']}");
-
     return Event(
       id: json['_id'] ?? '',
       title: json['title'] ?? '',
       content: json['content'] ?? '',
       location: eventDetails['location'] ?? '',
-      startTime: DateTime.tryParse(eventDetails['startTime'] ?? '') ?? DateTime.now(),
-      endTime: DateTime.tryParse(eventDetails['endTime'] ?? '') ?? DateTime.now(),
+      startTime: DateTime.tryParse(eventDetails['startTime'] ?? '') ??
+          DateTime.now(),
+      endTime: DateTime.tryParse(eventDetails['endTime'] ?? '') ??
+          DateTime.now(),
       isFree: eventDetails['isFree'] ?? true,
       organizerId: user['_id'] as String? ?? '',
       price: (eventDetails['price'] ?? 0).toDouble(),
       likes: (json['likes'] as List<dynamic>? ?? [])
-          .map((e) => e is Map && e['_id'] is String ? e['_id'] as String : null)
+          .map((e) =>
+      e is Map && e['_id'] is String ? e['_id'] as String : null)
           .whereType<String>()
           .toList(),
       comments: commentsJson.map((c) => CommentModel.fromJson(c)).toList(),
@@ -114,14 +116,16 @@ class Event {
           final mediaList = json['media'] as List;
           final firstMedia = mediaList.first;
           if (firstMedia is String) return formatUrl(firstMedia);
-          if (firstMedia is Map && firstMedia['url'] is String) return formatUrl(firstMedia['url']);
+          if (firstMedia is Map && firstMedia['url'] is String)
+            return formatUrl(firstMedia['url']);
         }
         return '';
       })(),
       media: parsedMedia,
       organizer: user['name'] ?? '',
       organizerProfile: fullOrganizerProfileUrl,
-      createdAt: DateTime.tryParse(rawCreatedAt ?? '')?.toLocal() ?? DateTime.now(),
+      createdAt:
+      DateTime.tryParse(rawCreatedAt ?? '')?.toLocal() ?? DateTime.now(),
       type: parsedType,
       latitude: (eventDetails['latitude'] ?? 0.0).toDouble(),
       longitude: (eventDetails['longitude'] ?? 0.0).toDouble(),
@@ -129,6 +133,7 @@ class Event {
       organizerMobile: user['mobile'],
       venueName: eventDetails['venueName'],
       venueAddress: eventDetails['venueAddress'],
+      isOnlineEvent: eventDetails['isOnlineEvent'] ?? false, // 🆕 parsed
     );
   }
 
@@ -160,7 +165,7 @@ class Event {
         'longitude': longitude,
         'venueName': venueName,
         'venueAddress': venueAddress,
-
+        'isOnlineEvent': isOnlineEvent, // 🆕 added to json
       }
     };
   }

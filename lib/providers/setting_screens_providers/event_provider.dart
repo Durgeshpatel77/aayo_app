@@ -487,16 +487,34 @@ class EventCreationProvider with ChangeNotifier {
         debugPrint("📥 Decoded Response: $decoded");
 
         if (decoded['success'] == true) {
-          clearAllEventData(); // ✅ Reset form
+          // ✅ Extract event data from API response
+          final eventData = decoded['data'];
+          final eventId = eventData['_id'] ?? '';
+          final eventTitle = eventData['title'] ?? 'New Event';
 
-          if (decoded['data']?['eventDetails']?['customQuestions'] != null) {
-            debugPrint("✅ Server Stored Custom Questions: ${decoded['data']['eventDetails']['customQuestions']}");
-          } else {
-            debugPrint("⚠️ Server did not return customQuestions.");
+          // Get event image if available
+          String eventImageUrl = '';
+          if (eventData['image'] != null && eventData['image'].toString().isNotEmpty) {
+            eventImageUrl = 'http://82.29.167.118:8000/${eventData['image']}';
+          } else if (eventData['media'] is List && eventData['media'].isNotEmpty) {
+            eventImageUrl = 'http://82.29.167.118:8000/${eventData['media'][0]}';
           }
 
-          return true; // ✅ Success
-        } else {
+          // ✅ Get creator's username
+          final prefs = await SharedPreferences.getInstance();
+          final creatorName = prefs.getString('backendUserName') ?? 'Someone';
+
+          // ✅ Send notifications to followers with username
+          await sendNotificationToFollowersForEvent(
+            eventId: eventId,
+            eventTitle: "$creatorName created a new event: $eventTitle",
+            eventImageUrl: eventImageUrl,
+          );
+
+          clearAllEventData(); // ✅ Reset form
+          return true;
+        }
+        else {
           _errorMessage = 'Server error: ${decoded['message'] ?? 'Unknown error'}';
           return false;
         }
@@ -783,104 +801,64 @@ class EventCreationProvider with ChangeNotifier {
     }
   }
 
-  Future<void> sendEventNotificationToFollowers({
-    required BuildContext context,
-    required String eventImageUrl,
+  Future<void> sendNotificationToFollowersForEvent({
+    required String eventId,
     required String eventTitle,
-    required String senderName,
+    required String eventImageUrl,
   }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final backendUserId = prefs.getString('backendUserId');
-      final userMobile = prefs.getString('backendUserMobile') ?? '';
-      final userAvatar = prefs.getString('backendUserProfile') ?? '';
+      final backendUserName = prefs.getString('backendUserName') ?? 'Someone';
 
       if (backendUserId == null || backendUserId.isEmpty) {
-        debugPrint('❌ backendUserId missing — cannot send event notification');
+        debugPrint('❌ User not logged in, cannot send notifications.');
         return;
       }
 
-      // 🔁 Step 1: Get all followers
-      final followersUrl =
-      Uri.parse('http://82.29.167.118:8000/api/user/$backendUserId');
+      // Step 1: Fetch followers
+      final followersUrl = Uri.parse('http://82.29.167.118:8000/api/user/$backendUserId');
       final followersResponse = await http.get(followersUrl);
 
-      if (followersResponse.statusCode != 200) {
-        debugPrint('❌ Failed to fetch followers for notification');
-        debugPrint('📥 Status: ${followersResponse.statusCode}');
-        debugPrint('📥 Body: ${followersResponse.body}');
-        return;
-      }
+      if (followersResponse.statusCode == 200) {
+        final followersData = jsonDecode(followersResponse.body);
+        final followersList = followersData['data']['followers'] as List;
 
-      final followersData = jsonDecode(followersResponse.body);
-      final followersList = followersData['data']['followers'] as List;
+        // Step 2: Send notification to each follower
+        for (final follower in followersList) {
+          final followerId = follower['_id'];
 
-      // 🔁 Loop through each follower
-      for (var follower in followersList) {
-        final followerId = follower['_id'];
+          final notificationBody = jsonEncode({
+            "sender": backendUserId,
+            "receiver": followerId,
+            "title": "New Event",
+            "body": "$backendUserName created a new event: $eventTitle",
+            "data": {
+              "title": eventTitle,
+              "image": eventImageUrl,
+              "type": "event",
+              "eventId": eventId
+            }
+          });
 
-        // 🔎 Step 2: Get follower details to get FCM token
-        final detailRes = await http.get(
-          Uri.parse('http://82.29.167.118:8000/api/user/$followerId'),
-        );
+          final notificationUrl = Uri.parse('http://82.29.167.118:8000/api/notification');
+          final notifResponse = await http.post(
+            notificationUrl,
+            headers: {"Content-Type": "application/json"},
+            body: notificationBody,
+          );
 
-        if (detailRes.statusCode == 200) {
-          final followerDetails = jsonDecode(detailRes.body);
-          final fcmToken = followerDetails['data']['fcmToken'];
-
-          if (fcmToken != null && fcmToken.toString().isNotEmpty) {
-            // 📤 Step 3: Send notification
-            final notificationUrl =
-            Uri.parse('http://82.29.167.118:8000/api/send-notification');
-
-            final notificationBody = {
-              'fcmToken': fcmToken,
-              "title": "$senderName is hosting a new event!",
-              'body': eventTitle,
-              'imageUrl': eventImageUrl,
-              'data': {
-                'type': 'event',
-                'userId': backendUserId,
-                'userName': senderName,
-                'userMobile': userMobile,
-                'userAvatar': userAvatar,
-                'eventImage': eventImageUrl,
-              },
-            };
-
-            final notificationRes = await http.post(
-              notificationUrl,
-              headers: {'Content-Type': 'application/json'},
-              body: jsonEncode(notificationBody),
-            );
-
-            debugPrint('✅ Notification sent to follower $followerId');
-            debugPrint('📥 Notification response: ${notificationRes.body}');
+          if (notifResponse.statusCode == 200 || notifResponse.statusCode == 201) {
+            debugPrint("✅ Notification sent to $followerId");
           } else {
-            debugPrint('⚠️ No FCM token for follower $followerId');
+            debugPrint("❌ Failed to send notification to $followerId: ${notifResponse.body}");
           }
-        } else {
-          debugPrint('❌ Failed to fetch details for follower $followerId');
-          debugPrint('📥 Status: ${detailRes.statusCode}');
-          debugPrint('📥 Body: ${detailRes.body}');
         }
+      } else {
+        debugPrint("❌ Failed to fetch followers: ${followersResponse.body}");
       }
-
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('📣 Event notifications sent to followers!')),
-        );
-      }
-    } catch (e, stack) {
-      debugPrint('❌ Exception while sending event notifications: $e');
-      debugPrint('🧱 Stacktrace: $stack');
-
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('❌ Error: $e')),
-        );
-      }
+    } catch (e) {
+      debugPrint("🛑 Error sending event notifications: $e");
     }
   }
   void clearAllEventData() {
