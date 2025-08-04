@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'package:aayo/screens/home_screens/post_detail_screens.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../models/event_model.dart';
 import '../../models/notification_model.dart';
 import 'notification_item.dart';
 
@@ -47,9 +49,15 @@ class _NotificationscreenState extends State<Notificationscreen> {
             .map((json) => NotificationModel.fromJson(json))
             .toList();
 
-        final userNotifications = allNotifications
-            .where((notif) => notif.receiverId == currentUserId)
-            .toList();
+        final userNotifications = allNotifications.where((notif) {
+          if (notif.receiverId != currentUserId) return false;
+
+          // Skip self-like or self-join
+          final isSelfLike = notif.senderId == currentUserId && notif.type == "post_like";
+          final isSelfJoin = notif.senderId == currentUserId && notif.type == "event_join";
+
+          return !(isSelfLike || isSelfJoin);
+        }).toList();
 
         final Map<String, List<NotificationModel>> grouped = {};
         for (var notif in userNotifications) {
@@ -90,20 +98,73 @@ class _NotificationscreenState extends State<Notificationscreen> {
     return months[month - 1];
   }
 
-  String _formatTitle(NotificationModel notif) {
-    switch (notif.type) {
-      case 'comment':
-        return "💬 ${notif.userName ?? notif.user} commented on your post";
-      case 'like':
-        return "❤️ ${notif.userName ?? notif.user} liked your post";
-      case 'follow':
-        return "👤 ${notif.userName ?? notif.user} started following you";
-      case 'broadcast':
-        return "📢 ${notif.message}";
-      default:
-        return notif.message;
+  String formatNotificationText(NotificationModel notif) {
+    String name = notif.senderName.isNotEmpty ? notif.senderName : "Someone";
+
+    // Handle likes
+    if (notif.type == "post_like" || notif.type == "event_like") {
+      String itemType = notif.type == "post_like" ? "post" : "event";
+      return "❤️ $name liked your $itemType: ${notif.dataTitle ?? ''}";
+    }
+
+    // Backend sends "Some one liked you"
+    if ((notif.type?.toLowerCase().contains("like") ?? false) &&
+        (notif.type != "post_like" && notif.type != "event_like")) {
+      // Guess based on title or data
+      bool isEvent = notif.dataTitle?.toLowerCase().contains("event") ?? false;
+      String itemType = isEvent ? "event" : "post";
+      return "❤️ $name liked your $itemType: ${notif.dataTitle ?? ''}";
+    }
+
+    // Comments
+    if (notif.type == "post_comment") {
+      return "💬 $name commented on your post: ${notif.dataTitle ?? ''}";
+    }
+
+    // Post creation
+    if (notif.type == "post_creation") {
+      return "📝 $name created a new post: ${notif.dataTitle ?? ''}";
+    }
+
+    // Event creation
+    if (notif.type == "event_creation") {
+      return "📅 $name created a new event: ${notif.dataTitle ?? ''}";
+    }
+
+    // Broadcast
+    if (notif.type == "broadcast") {
+      return "📢 ${notif.message}";
+    }
+
+    // Default (with name replacement)
+    String bodyText = notif.message;
+    if (bodyText.toLowerCase().contains("some one")) {
+      bodyText = bodyText.replaceAll("Some one", name);
+      bodyText = bodyText.replaceAll("some one", name);
+    }
+
+    return bodyText;
+  }
+  String formatTimeAgo(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+
+    if (difference.inSeconds < 60) {
+      return "Just now";
+    } else if (difference.inMinutes < 60) {
+      return "${difference.inMinutes}m";
+    } else if (difference.inHours < 24) {
+      return "${difference.inHours}h";
+    } else if (difference.inDays == 1) {
+      return "Yesterday";
+    } else if (difference.inDays < 7) {
+      return "${difference.inDays}d";
+    } else {
+      // Show date if older than 7 days
+      return "${dateTime.day}/${dateTime.month}/${dateTime.year}";
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -144,13 +205,50 @@ class _NotificationscreenState extends State<Notificationscreen> {
                   ),
                 ),
                 ...items.map((notif) {
-                  return NotificationItem(
+                  return InkWell(
+                    onTap: () async {
+                      debugPrint("📩 Notification tapped: ${notif.type}, postId: ${notif.postId}");
+
+                      if (notif.type == "post_like" || notif.type == "event_like" ||
+                          notif.type == "post_creation" || notif.type == "event_creation") {
+                        if (notif.postId != null && notif.postId!.isNotEmpty) {
+                          try {
+                            final response = await http.get(
+                              Uri.parse("http://82.29.167.118:8000/api/events/${notif.postId}"),
+                            );
+
+                            debugPrint("📡 Fetching detail... Status: ${response.statusCode}");
+
+                            if (response.statusCode == 200) {
+                              final data = jsonDecode(response.body)['data'];
+                              final event = Event.fromJson(data); // your model
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => PostDetailScreen(post: event),
+                                ),
+                              );
+                            } else {
+                              debugPrint("❌ Failed to fetch details: ${response.statusCode}");
+                            }
+                          } catch (e) {
+                            debugPrint("❌ Error opening detail: $e");
+                          }
+                        } else {
+                          debugPrint("⚠ No postId found in notification.");
+                        }
+                      }
+                    },
+                    child:
+                    NotificationItem(
                       profileImageUrl: notif.profileImage,
-                      title: _formatTitle(notif),
-                      subtitle:
-                      "${notif.createdAt.hour.toString().padLeft(2, '0')}:${notif.createdAt.minute.toString().padLeft(2, '0')}"
+                      title: formatNotificationText(notif),
+                      subtitle: formatTimeAgo(notif.createdAt),
+                      trailingImageUrl: notif.dataImage, // ✅ show post/event image
+
+                    ),
                   );
-                })
+                }).toList()
               ],
             );
           }).toList(),
